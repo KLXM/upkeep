@@ -33,7 +33,7 @@ $field->setAttribute('rows', 5);
 $field = $form->addFieldset($addon->i18n('upkeep_access_settings'));
 
 // Passwort für Frontend-Zugang
-$field = $form->addInputField('password', 'frontend_password_input', null, ['id' => 'upkeep-password']);
+$field = $form->addTextField('frontend_password');
 $field->setLabel($addon->i18n('upkeep_frontend_password'));
 $field->setAttribute('class', 'form-control');
 $field->setNotice($addon->i18n('upkeep_frontend_password_notice'));
@@ -95,7 +95,7 @@ $fragment->setVar('title', $addon->i18n('upkeep_settings'), false);
 $fragment->setVar('body', $form->get(), false);
 echo $fragment->parse('core/page/section.php');
 
-// JavaScript für IP-Adresse und Passwort-Handling
+// JavaScript für IP-Adresse hinzufügen
 ?>
 <script type="text/javascript">
 document.addEventListener('DOMContentLoaded', function() {
@@ -113,47 +113,5 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    
-    // Passwort-Handling beim Speichern
-    document.querySelector('form.rex-form').addEventListener('submit', function(e) {
-        var passwordField = document.getElementById('upkeep-password');
-        var hiddenField = document.createElement('input');
-        
-        // Nur wenn das Passwort-Feld ausgefüllt ist, ein gehashtes Passwort speichern
-        if (passwordField.value.trim() !== '') {
-            e.preventDefault();
-            
-            // AJAX-Request zum Hashen des Passworts
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?= rex_url::currentBackendPage(['upkeep_action' => 'hash_password']) ?>', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    
-                    // Verstecktes Feld für das gehashte Passwort erstellen
-                    hiddenField.type = 'hidden';
-                    hiddenField.name = 'frontend_password';
-                    hiddenField.value = response.hash;
-                    
-                    // Zum Formular hinzufügen und abschicken
-                    document.querySelector('form.rex-form').appendChild(hiddenField);
-                    document.querySelector('form.rex-form').submit();
-                }
-            };
-            xhr.send('password=' + encodeURIComponent(passwordField.value));
-        }
-    });
 });
 </script>
-
-<?php
-// AJAX-Handler für Passwort-Hashing
-if (rex_request('upkeep_action', 'string') === 'hash_password') {
-    $password = rex_request('password', 'string');
-    $hash = password_hash($password, PASSWORD_DEFAULT);
-    
-    header('Content-Type: application/json');
-    echo json_encode(['hash' => $hash]);
-    exit;
-}
