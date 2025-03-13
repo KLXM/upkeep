@@ -119,7 +119,7 @@ $(document).on('rex:ready', function() {
         }
     });
 
-    // Token generieren
+    // Token generieren - korrigierte Selektoren
     $('#upkeep-gen-token').on('click', function(e) {
         e.preventDefault();
         // Zufälligen Token generieren
@@ -128,7 +128,11 @@ $(document).on('rex:ready', function() {
         for (var i = 0; i < 32; i++) {
             token += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        $('input[name="api_token"]').val(token);
+        
+        // Korrekter Selektor basierend auf dem tatsächlichen Eingabefeld
+        $('input[name="api_einstellungen[api_token]"]').val(token);
+        // Alternative mit ID
+        $('#api-einstellungen-api-token').val(token);
     });
 });
 </script>
