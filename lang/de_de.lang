@@ -66,3 +66,10 @@ upkeep_console_active = Der Wartungsmodus für {0} wurde aktiviert.
 upkeep_console_inactive = Der Wartungsmodus für {0} wurde deaktiviert.
 upkeep_console_already_active = Der Wartungsmodus für {0} ist bereits aktiviert.
 upkeep_console_already_inactive = Der Wartungsmodus für {0} ist bereits deaktiviert.
+
+# API-Einstellungen
+upkeep_api_settings = API-Einstellungen
+upkeep_api_token = API-Token
+upkeep_api_token_notice = Token für API-Zugriff. Leer lassen, um die API zu deaktivieren.
+upkeep_generate_token = Token generieren
+
