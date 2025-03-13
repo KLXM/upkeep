@@ -49,6 +49,7 @@ $select->addOption($addon->i18n('upkeep_no'), 0);
 $field = $form->addTextField('allowed_ips');
 $field->setLabel($addon->i18n('upkeep_allowed_ips'));
 $field->setAttribute('class', 'form-control');
+$field->setAttribute('id', 'upkeep-allowed-ips');
 
 // Aktuelle IP-Adresse anzeigen
 $notice = $addon->i18n('upkeep_your_ip') . ': <code>' . rex_server('REMOTE_ADDR', 'string', '') . '</code>';
@@ -95,21 +96,28 @@ $fragment->setVar('title', $addon->i18n('upkeep_settings'), false);
 $fragment->setVar('body', $form->get(), false);
 echo $fragment->parse('core/page/section.php');
 
-// JavaScript für IP-Adresse hinzufügen
+// JavaScript für IP-Adresse hinzufügen mit REDAXO jQuery Event Handler
 ?>
 <script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
+$(document).on('rex:ready', function() {
     // IP-Adresse hinzufügen
-    document.getElementById('upkeep-add-ip').addEventListener('click', function() {
-        var ipField = document.querySelector('input[name="allowed_ips"]');
+    $('#upkeep-add-ip').on('click', function(e) {
+        e.preventDefault();
+        var ipField = $('#upkeep-allowed-ips');
         var currentIp = '<?= rex_server('REMOTE_ADDR', 'string', '') ?>';
         
-        if (ipField.value.trim() === '') {
-            ipField.value = currentIp;
+        if (ipField.val().trim() === '') {
+            ipField.val(currentIp);
         } else {
+            // IP-Adressen als Array verarbeiten
+            var ips = ipField.val().split(',').map(function(ip) {
+                return ip.trim();
+            });
+            
             // Prüfen, ob IP bereits enthalten ist
-            if (!ipField.value.split(',').map(ip => ip.trim()).includes(currentIp)) {
-                ipField.value = ipField.value + ', ' + currentIp;
+            if (ips.indexOf(currentIp) === -1) {
+                ips.push(currentIp);
+                ipField.val(ips.join(', '));
             }
         }
     });
