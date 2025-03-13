@@ -31,6 +31,22 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
             --bg-color: #f8f8f8;
             --card-bg: #ffffff;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --error-color: #e74c3c;
+            --border-color: #ddd;
+            --button-hover: #4a87c6;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #64a0e0;
+                --text-color: #e0e0e0;
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                --error-color: #e74c3c;
+                --border-color: #444;
+                --button-hover: #5590c9;
+            }
         }
         
         * {
@@ -91,10 +107,12 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
             display: block;
             width: 100%;
             padding: 0.75rem 1rem;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             margin-bottom: 1rem;
             font-size: 1rem;
+            background-color: var(--card-bg);
+            color: var(--text-color);
         }
         
         .maintenance-button {
@@ -110,7 +128,7 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
         }
         
         .maintenance-button:hover {
-            background-color: #4a87c6;
+            background-color: var(--button-hover);
         }
         
         @keyframes fadeIn {
@@ -130,7 +148,7 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
         }
         
         .error-message {
-            color: #e74c3c;
+            color: var(--error-color);
             margin-bottom: 1rem;
             font-size: 0.9rem;
         }
