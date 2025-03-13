@@ -94,8 +94,6 @@ $fragment->setVar('class', 'edit', false);
 $fragment->setVar('title', $addon->i18n('upkeep_settings'), false);
 $fragment->setVar('body', $form->get(), false);
 echo $fragment->parse('core/page/section.php');
-
-// JavaScript für IP-Adresse hinzufügen mit REDAXO jQuery Event Handler
 ?>
 <script type="text/javascript">
 $(document).on('rex:ready', function() {
@@ -121,20 +119,16 @@ $(document).on('rex:ready', function() {
         }
     });
 
-// Token generieren
-$('#upkeep-gen-token').on('click', function(e) {
-    e.preventDefault();
-    // Zufälligen Token generieren
-    var token = '';
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (var i = 0; i < 32; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    $('input[name="api_token"]').val(token);
+    // Token generieren
+    $('#upkeep-gen-token').on('click', function(e) {
+        e.preventDefault();
+        // Zufälligen Token generieren
+        var token = '';
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (var i = 0; i < 32; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        $('input[name="api_token"]').val(token);
+    });
 });
-
-});
-
-
-
 </script>
