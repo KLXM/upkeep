@@ -54,20 +54,33 @@ class Upkeep
     /**
      * Prüft, ob die aktuelle Domäne in der erlaubten Liste steht
      */
-    public static function isDomainAllowed(): bool
-    {
-        if (!rex_addon::get('yrewrite')->isAvailable()) {
-            return false;
-        }
-
-        $currentDomain = rex_yrewrite::getCurrentDomain()?->getName();
-        if (!$currentDomain) {
-            return false;
-        }
-
-        $allowedDomains = (array) self::getConfig('allowed_domains', []);
-        return in_array($currentDomain, $allowedDomains, true);
+    /**
+ * Prüft, ob die aktuelle Domäne im Wartungsmodus sein soll
+ */
+public static function isDomainAllowed(): bool
+{
+    if (!rex_addon::get('yrewrite')->isAvailable()) {
+        return false;
     }
+
+    $currentDomain = rex_yrewrite::getCurrentDomain()?->getName();
+    if (!$currentDomain) {
+        return false;
+    }
+
+    // Holen der Domain-Statuseinstellungen aus der Konfiguration
+    $domainStatus = (array) self::getConfig('domain_status', []);
+    
+    // Wenn die aktuelle Domain einen Eintrag hat und dieser auf 1/true gesetzt ist,
+    // dann ist der Wartungsmodus für diese Domain aktiv und wir geben false zurück
+    if (isset($domainStatus[$currentDomain]) && $domainStatus[$currentDomain]) {
+        return false;
+    }
+    
+    // Wenn es keinen Eintrag gibt oder der Wert 0/false ist,
+    // dann ist der Wartungsmodus für diese Domain inaktiv und wir geben true zurück
+    return true;
+}
 
     /**
      * Prüft, ob das eingegebene Passwort korrekt ist
