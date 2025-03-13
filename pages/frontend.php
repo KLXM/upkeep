@@ -68,6 +68,13 @@ $select->addOption($addon->i18n('upkeep_http_503_no_cache'), '503');
 $select->addOption($addon->i18n('upkeep_http_403'), rex_response::HTTP_FORBIDDEN);
 #$select->addOption($addon->i18n('upkeep_http_307'), rex_response::HTTP_TEMPORARY_REDIRECT);
 
+// Retry-After Header
+$field = $form->addInputField('number', 'retry_after', null, ['min' => '0']);
+$field->setLabel($addon->i18n('upkeep_retry_after'));
+$field->setNotice($addon->i18n('upkeep_retry_after_notice'));
+$field->setAttribute('class', 'form-control');
+
+
 // API-Einstellungen
 $field = $form->addFieldset($addon->i18n('upkeep_api_settings'));
 
@@ -80,12 +87,6 @@ $field->setNotice($addon->i18n('upkeep_api_token_notice'));
 // Button zum Generieren eines zufälligen Tokens
 $genButton = '<button class="btn btn-sm btn-primary" type="button" id="upkeep-gen-token">' . $addon->i18n('upkeep_generate_token') . '</button>';
 $field->setNotice($field->getNotice() . ' ' . $genButton);
-
-// Retry-After Header
-$field = $form->addInputField('number', 'retry_after', null, ['min' => '0']);
-$field->setLabel($addon->i18n('upkeep_retry_after'));
-$field->setNotice($addon->i18n('upkeep_retry_after_notice'));
-$field->setAttribute('class', 'form-control');
 
 // Vorschau-Bereich
 $fragment = new rex_fragment();
