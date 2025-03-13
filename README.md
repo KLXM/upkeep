@@ -1,4 +1,4 @@
-# Upkeep - Wartungsmodus für REDAXO 5
+# Upkeep der KLXM Wartungsmodus für REDAXO 5
 
 Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends während Wartungsarbeiten.
 
