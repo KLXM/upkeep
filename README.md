@@ -1,8 +1,8 @@
 # Upkeep für REDAXO 5
 
-Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends während Wartungsarbeiten.
+Ein modernes, schlankes AddOn für Wartungsarbeiten.
 
-## Features
+## Features der 1. Version
 
 - **Frontend-Sperre** mit eleganter und anpassbarer Wartungsseite
 - **Backend-Sperre** für Redakteure (Admins haben immer Zugriff)
@@ -12,6 +12,8 @@ Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends
 - **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
 - **Konfigurierbare HTTP-Statuscodes** (503, 403, 307) mit Retry-After Header
 - **Konsolen-Befehle** für Remote-Management
+- **API zur Stuerung aus der Ferne**
+
 
 ## Installation
 
