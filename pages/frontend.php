@@ -74,21 +74,6 @@ $field->setLabel($addon->i18n('upkeep_retry_after'));
 $field->setNotice($addon->i18n('upkeep_retry_after_notice'));
 $field->setAttribute('class', 'form-control');
 
-// YRewrite-Domain-Einstellungen
-if (rex_addon::get('yrewrite')->isAvailable()) {
-    $field = $form->addFieldset($addon->i18n('upkeep_yrewrite_settings'));
-    
-    $field = $form->addSelectField('allowed_domains', null, ['class' => 'form-control selectpicker', 'multiple' => 'multiple']);
-    $field->setLabel($addon->i18n('upkeep_allowed_domains'));
-    $select = $field->getSelect();
-    
-    foreach (rex_yrewrite::getDomains() as $domain) {
-        if ($domain->getName() !== 'default') {
-            $select->addOption($domain->getName(), $domain->getName());
-        }
-    }
-}
-
 // Vorschau-Bereich
 $fragment = new rex_fragment();
 $fragment->setVar('class', 'edit', false);
