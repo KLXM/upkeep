@@ -11,19 +11,19 @@ page:
     perm: upkeep[]
     prio: 200
     block: system
-    icon: 'fa fa-wrench'
+    icon: 'rex-icon fa fa-wrench'
     subpages:
         frontend:
             title: 'translate:upkeep_frontend_title'
-            icon: fa fa-globe
+            icon: rex-icon fa fa-globe
             perm: upkeep[frontend]
         backend:
             title: 'translate:upkeep_backend_title'
-            icon: fa fa-users
+            icon: rex-icon fa fa-users
             perm: admin[]
         domains:
             title: 'translate:upkeep_domains_title'
-            icon: fa fa-sitemap
+            icon: rex-icon fa fa-sitemap
             perm: upkeep[domains]
             
 requires:
