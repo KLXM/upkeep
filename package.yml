@@ -9,7 +9,7 @@ perm: upkeep[]
 page:
     title: 'translate:upkeep_title'
     perm: upkeep[]
-    prio: 81
+    prio: 200
     block: system
     icon: 'fa fa-wrench'
     subpages:
