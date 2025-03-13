@@ -86,9 +86,9 @@ class Upkeep
             return true;
         }
 
-        // Passwort aus Anfrage überprüfen
+        // Passwort aus Anfrage überprüfen - jetzt direkter Vergleich
         $inputPassword = rex_request('upkeep_password', 'string', '');
-        if ($inputPassword !== '' && password_verify($inputPassword, $configPassword)) {
+        if ($inputPassword !== '' && $inputPassword === $configPassword) {
             // Bei korrektem Passwort in Session speichern
             rex_set_session('upkeep_authorized', true);
             return true;
