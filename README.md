@@ -1,8 +1,6 @@
-# Upkeep - KLXM Wartungsmodus für REDAXO 5
+# Upkeep - Wartungsmodus für REDAXO 5
 
 Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends während Wartungsarbeiten.
-**Es ist kein Ersatz für das Maintenance-AddOn.** 
-
 
 ## Features
 
@@ -12,6 +10,7 @@ Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends
 - **Passwort-Bypass** zum Testen des Frontends im Wartungsmodus
 - **Automatischer Zugang** für angemeldete Benutzer (konfigurierbar)
 - **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
+- **Konfigurierbare HTTP-Statuscodes** (503, 403, 307) mit Retry-After Header
 - **Konsolen-Befehle** für Remote-Management
 
 ## Installation
@@ -29,6 +28,7 @@ Im Tab "Frontend" können Sie:
 - Ein Passwort für den Testzugang festlegen
 - Festlegen, ob angemeldete Benutzer Zugriff haben sollen
 - IP-Adressen hinzufügen, die immer Zugriff haben
+- Den HTTP-Statuscode (503, 403, 307) und Retry-After Header konfigurieren
 
 ### Backend-Wartungsmodus
 
