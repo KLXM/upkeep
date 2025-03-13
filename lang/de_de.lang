@@ -39,6 +39,7 @@ upkeep_no_permission = Sie haben keine Berechtigung, diese Seite zu sehen.
 
 # Domain-Verwaltung
 upkeep_domain = Domain
+upkeep_lock_all_domains = Alle Domains sperren
 upkeep_maintenance_active = Wartungsmodus
 upkeep_domains_management = Domain-Verwaltung
 upkeep_domains_notice = Hier können Sie den Wartungsmodus für einzelne YRewrite-Domains aktivieren oder deaktivieren. Diese Einstellung überschreibt die allgemeine Frontend-Einstellung.
