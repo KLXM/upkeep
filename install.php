@@ -27,7 +27,6 @@ if ($currentIp && $allowedIps === '') {
 if ($addon->getConfig('frontend_password', '') === '') {
     $randomPassword = bin2hex(random_bytes(4)); // 8 Zeichen langes zufälliges Passwort
     
-    // Passwort in der Konfiguration speichern (nicht mehr hashen)
     $addon->setConfig('frontend_password', $randomPassword);
     
     // Hinweis mit dem Passwort anzeigen (nur bei Installation)
