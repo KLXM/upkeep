@@ -25,13 +25,12 @@ if ($currentIp && $allowedIps === '') {
 
 // Standard-Passwort generieren, wenn keines gesetzt ist
 if ($addon->getConfig('frontend_password', '') === '') {
-    $randomPassword = bin2hex(random_bytes(8)); // 16 Zeichen langes zufälliges Passwort
-    $hashedPassword = password_hash($randomPassword, PASSWORD_DEFAULT);
+    $randomPassword = bin2hex(random_bytes(4)); // 8 Zeichen langes zufälliges Passwort
     
-    // Passwort-Hash in der Konfiguration speichern
-    $addon->setConfig('frontend_password', $hashedPassword);
+    // Passwort in der Konfiguration speichern (nicht mehr hashen)
+    $addon->setConfig('frontend_password', $randomPassword);
     
-    // Hinweis mit dem Klartext-Passwort anzeigen (nur bei Installation)
+    // Hinweis mit dem Passwort anzeigen (nur bei Installation)
     rex_extension::register('OUTPUT_FILTER', function(rex_extension_point $ep) use ($randomPassword) {
         $content = $ep->getSubject();
         $message = '<div class="alert alert-info">';
