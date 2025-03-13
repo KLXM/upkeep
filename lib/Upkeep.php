@@ -154,8 +154,15 @@ class Upkeep
         // Wartungsseite anzeigen
         $fragment = new rex_fragment();
         
-        // HTTP Response Code setzen (503 Service Unavailable)
-        rex_response::setStatus(rex_response::HTTP_SERVICE_UNAVAILABLE);
+        // HTTP Response Code setzen (aus Konfiguration)
+        $httpStatusCode = self::getConfig('http_status_code', rex_response::HTTP_SERVICE_UNAVAILABLE);
+        rex_response::setStatus($httpStatusCode);
+        
+        // Retry-After Header setzen, wenn konfiguriert
+        $retryAfter = self::getConfig('retry_after', 0);
+        if ($retryAfter > 0) {
+            header('Retry-After: ' . $retryAfter);
+        }
         
         // Cache-Header setzen, damit die Seite nicht gecacht wird
         rex_response::sendCacheControl();
@@ -182,8 +189,9 @@ class Upkeep
         // Backend-Benutzer sperren
         $fragment = new rex_fragment();
         
-        // HTTP Response Code setzen (503 Service Unavailable)
-        rex_response::setStatus(rex_response::HTTP_SERVICE_UNAVAILABLE);
+        // HTTP Response Code setzen (aus Konfiguration)
+        $httpStatusCode = self::getConfig('http_status_code', rex_response::HTTP_SERVICE_UNAVAILABLE);
+        rex_response::setStatus($httpStatusCode);
         
         // Cache-Header setzen, damit die Seite nicht gecacht wird
         rex_response::sendCacheControl();
