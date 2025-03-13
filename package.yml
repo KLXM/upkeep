@@ -46,3 +46,5 @@ default_config:
     bypass_logged_in: 1
     maintenance_page_title: 'Site Maintenance'
     maintenance_page_message: 'We are currently performing maintenance. Please check back soon.'
+    http_status_code: 503
+    retry_after: 3600
