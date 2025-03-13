@@ -66,18 +66,18 @@ php redaxo/bin/console upkeep:mode backend on
 php redaxo/bin/console upkeep:mode backend off
 ```
 
-# API-Referenz für das REDAXO Upkeep AddOn
+## API-Referenz für das REDAXO Upkeep AddOn
 
 Das Upkeep-AddOn bietet eine REST-API, mit der Sie den Wartungsmodus programmgesteuert abfragen und ändern können. Dies ist besonders nützlich für automatisierte Wartungsabläufe, CI/CD-Pipelines oder Monitoring.
 
-## Einrichtung
+### Einrichtung
 
 1. Navigieren Sie zu den Frontend-Einstellungen des AddOns
 2. Im Abschnitt "API-Einstellungen" können Sie einen API-Token generieren oder selbst eingeben
 3. Der Token wird für alle API-Anfragen benötigt
 4. Lassen Sie das Token-Feld leer, um die API zu deaktivieren
 
-## Grundlegende API-Verwendung
+### Grundlegende API-Verwendung
 
 Die API wird über den REDAXO-API-Mechanismus aufgerufen:
 
@@ -92,9 +92,9 @@ Alle API-Anfragen benötigen folgende Parameter:
 
 Alle Anfragen liefern JSON-Antworten zurück.
 
-## Verfügbare Aktionen
+### Verfügbare Aktionen
 
-### Status abfragen
+#### Status abfragen
 
 Ruft den aktuellen Status aller Wartungsmodi ab.
 
@@ -112,7 +112,7 @@ Beispielantwort:
 }
 ```
 
-### Frontend-Wartungsmodus aktivieren/deaktivieren
+#### Frontend-Wartungsmodus aktivieren/deaktivieren
 
 Aktiviert oder deaktiviert den Frontend-Wartungsmodus.
 
@@ -132,7 +132,7 @@ Beispielantwort:
 }
 ```
 
-### Backend-Wartungsmodus aktivieren/deaktivieren
+#### Backend-Wartungsmodus aktivieren/deaktivieren
 
 Aktiviert oder deaktiviert den Backend-Wartungsmodus.
 
@@ -152,7 +152,7 @@ Beispielantwort:
 }
 ```
 
-### Alle YRewrite-Domains sperren/entsperren
+#### Alle YRewrite-Domains sperren/entsperren
 
 Aktiviert oder deaktiviert den Wartungsmodus für alle YRewrite-Domains auf einmal.
 
@@ -172,7 +172,7 @@ Beispielantwort:
 }
 ```
 
-### Einzelne YRewrite-Domain sperren/entsperren
+#### Einzelne YRewrite-Domain sperren/entsperren
 
 Aktiviert oder deaktiviert den Wartungsmodus für eine bestimmte YRewrite-Domain.
 
@@ -194,7 +194,7 @@ Beispielantwort:
 }
 ```
 
-## Anwendungsbeispiele
+### Anwendungsbeispiele
 
 ### Mit cURL in einem Shell-Script
 
@@ -209,7 +209,7 @@ curl "https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&acti
 curl "https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=0"
 ```
 
-### Mit PHP (z.B. in einem Cronjob oder Deployment-Script)
+#### Mit PHP (z.B. in einem Cronjob oder Deployment-Script)
 
 ```php
 <?php
@@ -225,7 +225,7 @@ if ($result['success']) {
 }
 ```
 
-### Mit JavaScript/AJAX für ein Administrationsinterface
+#### Mit JavaScript/AJAX für ein Administrationsinterface
 
 ```javascript
 // Status abfragen
@@ -245,7 +245,7 @@ fetch('https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&act
   });
 ```
 
-## Fehlerbehandlung
+### Fehlerbehandlung
 
 Bei ungültigen oder fehlerhaften Anfragen gibt die API einen entsprechenden Fehlercode zurück:
 
@@ -267,7 +267,7 @@ HTTP-Statuscodes:
 - `400 Bad Request`: Ungültige Anfrage
 - `401 Unauthorized`: Ungültiger API-Token
 
-## Sicherheitshinweise
+### Sicherheitshinweise
 
 - Bewahren Sie Ihren API-Token sicher auf
 - Setzen Sie den Token zurück, wenn Sie vermuten, dass er kompromittiert wurde
