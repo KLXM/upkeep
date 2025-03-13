@@ -8,6 +8,7 @@ upkeep_domains_title = Domains
 upkeep_settings = Einstellungen
 upkeep_general_settings = Allgemeine Einstellungen
 upkeep_access_settings = Zugriffsberechtigungen
+upkeep_http_settings = HTTP-Einstellungen
 upkeep_yrewrite_settings = YRewrite-Einstellungen
 upkeep_active = Aktiv
 upkeep_inactive = Inaktiv
@@ -49,6 +50,15 @@ upkeep_backend_maintenance = Backend-Wartung
 upkeep_backend_maintenance_message = Das REDAXO-Backend befindet sich im Wartungsmodus und ist vorübergehend nicht verfügbar.
 upkeep_contact_admin = Bitte kontaktieren Sie den Administrator für weitere Informationen.
 upkeep_back_to_website = Zurück zur Website
+
+# HTTP-Einstellungen
+upkeep_http_status_code = HTTP-Statuscode
+upkeep_http_503 = 503 Service Unavailable (mit Cache-Control)
+upkeep_http_503_no_cache = 503 Service Unavailable (ohne Cache-Control)
+upkeep_http_403 = 403 Forbidden
+upkeep_http_307 = 307 Temporary Redirect
+upkeep_retry_after = Retry-After Header (Sekunden)
+upkeep_retry_after_notice = Gibt an, nach wie vielen Sekunden der Client erneut versuchen soll, die Seite zu laden. 0 = deaktiviert. Empfohlen: 3600 (1 Stunde)
 
 # Konsolenbefehle
 upkeep_console_active = Der Wartungsmodus für {0} wurde aktiviert.
