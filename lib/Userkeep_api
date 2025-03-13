@@ -1,7 +1,10 @@
 <?php
 /**
  * API-Klasse für das Upkeep AddOn
+ * Diese Klasse muss im globalen Namespace definiert sein
  */
+
+use KLXM\Upkeep\Upkeep;
 
 class rex_api_upkeep extends rex_api_function
 {
