@@ -51,10 +51,7 @@ class Upkeep
         return false;
     }
 
-    /**
-     * Prüft, ob die aktuelle Domäne in der erlaubten Liste steht
-     */
-    /**
+  /**
  * Prüft, ob die aktuelle Domäne im Wartungsmodus sein soll
  */
 public static function isDomainAllowed(): bool
@@ -66,6 +63,12 @@ public static function isDomainAllowed(): bool
     $currentDomain = rex_yrewrite::getCurrentDomain()?->getName();
     if (!$currentDomain) {
         return false;
+    }
+
+    // Prüfen, ob alle Domains gesperrt sind
+    $allDomainsLocked = (bool) self::getConfig('all_domains_locked', false);
+    if ($allDomainsLocked) {
+        return false; // Keine Domain ist erlaubt
     }
 
     // Holen der Domain-Statuseinstellungen aus der Konfiguration
