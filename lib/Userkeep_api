@@ -20,8 +20,7 @@ class rex_api_upkeep extends rex_api_function
         if ($apiToken === '' || $requestToken !== $apiToken) {
             $result['error'] = 'Invalid token';
             rex_response::setStatus(rex_response::HTTP_UNAUTHORIZED);
-            echo json_encode($result);
-            exit;
+            $this->sendJsonResponse($result);
         }
 
         $action = rex_request('action', 'string', 'status');
@@ -96,9 +95,20 @@ class rex_api_upkeep extends rex_api_function
                 rex_response::setStatus(rex_response::HTTP_BAD_REQUEST);
         }
 
+        $this->sendJsonResponse($result);
+    }
+    
+    /**
+     * Sendet eine JSON-Antwort und beendet die Ausführung
+     */
+    private function sendJsonResponse($data)
+    {
+        // Alle Output-Buffer leeren
+        rex_response::cleanOutputBuffers();
+        
         // Content-Type setzen und JSON ausgeben
         rex_response::setHeader('Content-Type', 'application/json; charset=utf-8');
-        echo json_encode($result);
+        echo json_encode($data);
         exit;
     }
 }
