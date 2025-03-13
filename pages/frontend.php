@@ -55,6 +55,24 @@ $notice = $addon->i18n('upkeep_your_ip') . ': <code>' . rex_server('REMOTE_ADDR'
 $notice .= ' <button class="btn btn-sm btn-primary" type="button" id="upkeep-add-ip">' . $addon->i18n('upkeep_add_ip') . '</button>';
 $field->setNotice($notice);
 
+// HTTP-Einstellungen
+$field = $form->addFieldset($addon->i18n('upkeep_http_settings'));
+
+// HTTP-Statuscode
+$field = $form->addSelectField('http_status_code');
+$field->setLabel($addon->i18n('upkeep_http_status_code'));
+$select = $field->getSelect();
+$select->addOption($addon->i18n('upkeep_http_503'), rex_response::HTTP_SERVICE_UNAVAILABLE);
+$select->addOption($addon->i18n('upkeep_http_503_no_cache'), '503');
+$select->addOption($addon->i18n('upkeep_http_403'), rex_response::HTTP_FORBIDDEN);
+$select->addOption($addon->i18n('upkeep_http_307'), rex_response::HTTP_TEMPORARY_REDIRECT);
+
+// Retry-After Header
+$field = $form->addInputField('number', 'retry_after', null, ['min' => '0']);
+$field->setLabel($addon->i18n('upkeep_retry_after'));
+$field->setNotice($addon->i18n('upkeep_retry_after_notice'));
+$field->setAttribute('class', 'form-control');
+
 // YRewrite-Domain-Einstellungen
 if (rex_addon::get('yrewrite')->isAvailable()) {
     $field = $form->addFieldset($addon->i18n('upkeep_yrewrite_settings'));
