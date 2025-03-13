@@ -12,6 +12,11 @@ if (rex::isSetup()) {
 
 // Register Extension Point nach dem Laden aller Packages
 rex_extension::register('PACKAGES_INCLUDED', static function () {
+    // Starte Session im Frontend, falls erforderlich
+    if (rex::isFrontend() && !rex_backend_login::hasSession()) {
+        rex_login::startSession();
+    }
+    
     // Frontend-Prüfung
     if (rex::isFrontend()) {
         Upkeep::checkFrontend();
