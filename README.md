@@ -30,17 +30,17 @@ Im Tab "Frontend" können Sie:
 - IP-Adressen hinzufügen, die immer Zugriff haben
 - Den HTTP-Statuscode (503, 403, 307) und Retry-After Header konfigurieren
 
-### Backend-Wartungsmodus
+### Backend
 
 Im Tab "Backend" können Sie:
-- Den Wartungsmodus für das Backend aktivieren oder deaktivieren (sperrt alle Benutzer außer Administratoren)
+- Den Ukeep-Mode für das Backend aktivieren oder deaktivieren (sperrt alle Benutzer außer Administratoren)
 
 ### Domain-Einstellungen (nur bei YRewrite)
 
 Wenn YRewrite installiert ist, können Sie im Tab "Domains":
-- Den Wartungsmodus für einzelne Domains aktivieren oder deaktivieren
+- Den Ukeep-Mode für einzelne Domains aktivieren oder deaktivieren
 
-## Anpassen der Wartungsseite
+## Anpassen der Ukeep-Seite
 
 Sie können die Wartungsseite anpassen, indem Sie ein eigenes Fragment erstellen:
 
@@ -53,22 +53,22 @@ Sie können die Wartungsseite anpassen, indem Sie ein eigenes Fragment erstellen
 Sie können den Wartungsmodus auch über die Konsole aktivieren oder deaktivieren:
 
 ```bash
-# Frontend-Wartungsmodus aktivieren
+# Frontend-Ukeep aktivieren
 php redaxo/bin/console upkeep:mode frontend on
 
-# Frontend-Wartungsmodus deaktivieren
+# Frontend-Ukeep deaktivieren
 php redaxo/bin/console upkeep:mode frontend off
 
-# Backend-Wartungsmodus aktivieren
+# Backend-Ukeep aktivieren
 php redaxo/bin/console upkeep:mode backend on
 
-# Backend-Wartungsmodus deaktivieren
+# Backend-Ukeep deaktivieren
 php redaxo/bin/console upkeep:mode backend off
 ```
 
 ## API-Referenz für das REDAXO Upkeep AddOn
 
-Das Upkeep-AddOn bietet eine REST-API, mit der Sie den Wartungsmodus programmgesteuert abfragen und ändern können. Dies ist besonders nützlich für automatisierte Wartungsabläufe, CI/CD-Pipelines oder Monitoring.
+Das Upkeep-AddOn bietet API, mit der Sie den Wartungsmodus programmgesteuert abfragen und ändern können. Dies ist besonders nützlich für automatisierte Wartungsabläufe, CI/CD-Pipelines oder Monitoring.
 
 ### Einrichtung
 
