@@ -1,4 +1,4 @@
-# Upkeep der KLXM Wartungsmodus für REDAXO 5
+# Upkeep für REDAXO 5
 
 Ein modernes, schlankes AddOn zum Sperren des REDAXO Frontends und/oder Backends während Wartungsarbeiten.
 
@@ -77,7 +77,3 @@ php redaxo/bin/console upkeep:mode backend off
 ## Lizenz
 
 MIT License - siehe LICENSE.md
-
-## Support
-
-Bei Fragen oder Problemen erstellen Sie bitte ein Issue auf GitHub oder besuchen Sie das REDAXO-Forum.
