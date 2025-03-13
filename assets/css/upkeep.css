@@ -1,0 +1,42 @@
+/**
+ * Upkeep AddOn CSS
+ */
+
+/* Statusindikatoren im Backend-Menü */
+.rex-nav-main li a[data-pjax] span.label {
+    float: right;
+    margin-top: 3px;
+}
+
+/* Stile für die IP-Adresse und Token-Felder */
+.tokenfield {
+    width: 100%;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 34px;
+}
+.tokenfield .token {
+    display: inline-block;
+    border: 1px solid #d0d0d0;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    padding: 2px 7px;
+    margin: 2px;
+    vertical-align: middle;
+}
+.tokenfield .token .close {
+    color: #888;
+    font-size: 15px;
+    margin-left: 5px;
+    cursor: pointer;
+}
+.tokenfield input {
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 2px 0;
+    margin: 2px;
+    width: auto;
+    max-width: 100%;
+}
