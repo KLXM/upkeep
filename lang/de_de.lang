@@ -1,0 +1,57 @@
+# Allgemeine Übersetzungen
+upkeep_title = Wartungsmodus
+upkeep_frontend_title = Frontend
+upkeep_backend_title = Backend
+upkeep_domains_title = Domains
+
+# Allgemeine Einstellungen & Buttons
+upkeep_settings = Einstellungen
+upkeep_general_settings = Allgemeine Einstellungen
+upkeep_access_settings = Zugriffsberechtigungen
+upkeep_yrewrite_settings = YRewrite-Einstellungen
+upkeep_active = Aktiv
+upkeep_inactive = Inaktiv
+upkeep_save = Speichern
+upkeep_yes = Ja
+upkeep_no = Nein
+
+# Frontend-Einstellungen
+upkeep_frontend_active = Frontend-Wartungsmodus
+upkeep_page_title = Seitentitel
+upkeep_page_message = Wartungsmeldung
+upkeep_frontend_password = Zugangspasswort
+upkeep_frontend_password_notice = Leer lassen, um keine Passwort-Abfrage anzuzeigen, oder neues Passwort eingeben
+upkeep_bypass_logged_in = Angemeldete Benutzer ausschließen
+upkeep_allowed_ips = Erlaubte IP-Adressen
+upkeep_your_ip = Deine IP-Adresse
+upkeep_add_ip = Diese IP hinzufügen
+upkeep_allowed_domains = Erlaubte Domains
+upkeep_enter_password = Passwort eingeben
+upkeep_wrong_password = Falsches Passwort
+upkeep_submit = Absenden
+
+# Backend-Einstellungen
+upkeep_backend_active = Backend-Wartungsmodus
+upkeep_backend_settings = Backend-Einstellungen
+upkeep_backend_notice = Der Backend-Wartungsmodus sperrt alle Benutzer außer Administratoren aus dem REDAXO-Backend aus.
+upkeep_no_permission = Sie haben keine Berechtigung, diese Seite zu sehen.
+
+# Domain-Verwaltung
+upkeep_domain = Domain
+upkeep_maintenance_active = Wartungsmodus
+upkeep_domains_management = Domain-Verwaltung
+upkeep_domains_notice = Hier können Sie den Wartungsmodus für einzelne YRewrite-Domains aktivieren oder deaktivieren. Diese Einstellung überschreibt die allgemeine Frontend-Einstellung.
+upkeep_yrewrite_not_available = Das YRewrite-AddOn ist nicht installiert oder aktiviert. Die Domain-Verwaltung ist nicht verfügbar.
+upkeep_settings_saved = Die Einstellungen wurden gespeichert.
+
+# Wartungsseiten
+upkeep_backend_maintenance = Backend-Wartung
+upkeep_backend_maintenance_message = Das REDAXO-Backend befindet sich im Wartungsmodus und ist vorübergehend nicht verfügbar.
+upkeep_contact_admin = Bitte kontaktieren Sie den Administrator für weitere Informationen.
+upkeep_back_to_website = Zurück zur Website
+
+# Konsolenbefehle
+upkeep_console_active = Der Wartungsmodus für {0} wurde aktiviert.
+upkeep_console_inactive = Der Wartungsmodus für {0} wurde deaktiviert.
+upkeep_console_already_active = Der Wartungsmodus für {0} ist bereits aktiviert.
+upkeep_console_already_inactive = Der Wartungsmodus für {0} ist bereits deaktiviert.
