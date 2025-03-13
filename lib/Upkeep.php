@@ -113,31 +113,41 @@ public static function isDomainAllowed(): bool
         return false;
     }
 
-    /**
-     * Prüft, ob der aktuelle Benutzer angemeldet ist und Zugriff haben soll
-     */
-    public static function isUserAllowed(): bool
-    {
-        // Prüfen, ob angemeldete Benutzer Zugriff haben sollen
-        if (!self::getConfig('bypass_logged_in', true)) {
-            return false;
-        }
-
-        rex_backend_login::createUser();
-        $user = rex::getUser();
-
-        // Admins haben immer Zugriff
-        if ($user instanceof rex_user && $user->isAdmin()) {
-            return true;
-        }
-
-        // Andere angemeldete Benutzer haben Zugriff, wenn aktiviert
-        if ($user instanceof rex_user) {
-            return true;
-        }
-
+ /**
+ * Prüft, ob der aktuelle Benutzer angemeldet ist und Zugriff haben soll
+ */
+public static function isUserAllowed(): bool
+{
+    // Prüfen, ob angemeldete Benutzer Zugriff haben sollen
+    if (!self::getConfig('bypass_logged_in', true)) {
         return false;
     }
+
+    // Prüfen, ob gesperrte Backend-Benutzer auch im Frontend gesperrt werden sollen
+    $blockBackendUsers = self::getConfig('block_backend_users', false);
+    $backendActive = self::getConfig('backend_active', false);
+    
+    rex_backend_login::createUser();
+    $user = rex::getUser();
+
+    // Keine Anmeldung
+    if (!$user instanceof rex_user) {
+        return false;
+    }
+
+    // Admins haben immer Zugriff
+    if ($user->isAdmin()) {
+        return true;
+    }
+
+    // Wenn Backend-Sperre aktiv und Backend-Benutzer auch im Frontend gesperrt werden sollen
+    if ($backendActive && $blockBackendUsers) {
+        return false;
+    }
+
+    // Andere angemeldete Benutzer haben Zugriff, wenn aktiviert
+    return true;
+}
 
     /**
      * Prüft, ob Frontend-Zugriff erlaubt ist oder gesperrt werden soll
