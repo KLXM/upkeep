@@ -128,3 +128,37 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
                 font-size: 2rem;
             }
         }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="maintenance-container">
+        <svg class="maintenance-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        
+        <h1 class="maintenance-title"><?= htmlspecialchars($title) ?></h1>
+        <div class="maintenance-message">
+            <?= nl2br(htmlspecialchars($message)) ?>
+        </div>
+        
+        <?php if ($showPasswordForm): ?>
+        <form class="maintenance-password-form" method="post">
+            <?php if ($passwordError): ?>
+            <div class="error-message"><?= $addon->i18n('upkeep_wrong_password') ?></div>
+            <?php endif; ?>
+            
+            <input type="password" name="upkeep_password" class="maintenance-input" placeholder="<?= $addon->i18n('upkeep_enter_password') ?>" required>
+            <button type="submit" class="maintenance-button"><?= $addon->i18n('upkeep_submit') ?></button>
+        </form>
+        <?php endif; ?>
+    </div>
+</body>
+</html>
