@@ -65,7 +65,7 @@ $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_http_503'), rex_response::HTTP_SERVICE_UNAVAILABLE);
 $select->addOption($addon->i18n('upkeep_http_503_no_cache'), '503');
 $select->addOption($addon->i18n('upkeep_http_403'), rex_response::HTTP_FORBIDDEN);
-$select->addOption($addon->i18n('upkeep_http_307'), rex_response::HTTP_TEMPORARY_REDIRECT);
+#$select->addOption($addon->i18n('upkeep_http_307'), rex_response::HTTP_TEMPORARY_REDIRECT);
 
 // Retry-After Header
 $field = $form->addInputField('number', 'retry_after', null, ['min' => '0']);
