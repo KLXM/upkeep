@@ -1,8 +1,48 @@
-package: addon_key
-version: '0.0.0'
-author: 'Friends Of REDAXO'
-supportpage: https://github.com/FriendsOfREDAXO/addon_key
+package: upkeep
+version: '1.0.0'
+author: KLXM Crossmedia
+supportpage: https://github.com/klxm/upkeep
+
+title: 'translate:upkeep_title'
+perm: upkeep[]
+
+page:
+    title: 'translate:upkeep_title'
+    perm: upkeep[]
+    prio: 81
+    block: system
+    icon: 'fa fa-wrench'
+    subpages:
+        frontend:
+            title: 'translate:upkeep_frontend_title'
+            icon: fa fa-globe
+            perm: upkeep[frontend]
+        backend:
+            title: 'translate:upkeep_backend_title'
+            icon: fa fa-users
+            perm: admin[]
+        domains:
+            title: 'translate:upkeep_domains_title'
+            icon: fa fa-sitemap
+            perm: upkeep[domains]
+            
 requires:
-    redaxo: '^5.15.1'
-    php:
-        version: '>=8.1, <9'
+    redaxo: ^5.18.1
+    php: '>=8.2'
+
+permissions:
+    upkeep[]: 'translate:upkeep[]'
+    upkeep[frontend]: 'translate:upkeep[frontend]'
+    upkeep[domains]: 'translate:upkeep[domains]'
+
+console_commands:
+    upkeep:mode: rex_upkeep_mode_command
+
+default_config:
+    frontend_active: 0
+    backend_active: 0
+    frontend_password: ''
+    allowed_ips: ''
+    bypass_logged_in: 1
+    maintenance_page_title: 'Site Maintenance'
+    maintenance_page_message: 'We are currently performing maintenance. Please check back soon.'
