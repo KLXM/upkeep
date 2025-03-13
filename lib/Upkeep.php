@@ -139,53 +139,58 @@ public static function isDomainAllowed(): bool
         return false;
     }
 
-    /**
-     * Prüft, ob Frontend-Zugriff erlaubt ist oder gesperrt werden soll
-     */
-    public static function checkFrontend(): void
-    {
-        // Wenn der Wartungsmodus deaktiviert ist, nichts tun
-        if (!self::getConfig('frontend_active', false)) {
-            return;
-        }
-
-        // Prüfen, ob der Zugriff über eine Ausnahme erlaubt ist
-        if (self::isIpAllowed() || self::isDomainAllowed() || self::isPasswordValid() || self::isUserAllowed()) {
-            return;
-        }
-
-        // Extension Point, um bestimmte Medien oder Pfade freizuschalten
-        $requestUri = rex_server('REQUEST_URI', 'string', '');
-        $allowedPaths = [];
-        $allowedPathsList = rex_extension::registerPoint(
-            new rex_extension_point('UPKEEP_ALLOWED_PATHS', $allowedPaths)
-        );
-        
-        foreach ($allowedPathsList as $path) {
-            if (str_contains($requestUri, $path)) {
-                return;
-            }
-        }
-
-        // Wartungsseite anzeigen
-        $fragment = new rex_fragment();
-        
-        // HTTP Response Code setzen (aus Konfiguration)
-        $httpStatusCode = self::getConfig('http_status_code', rex_response::HTTP_SERVICE_UNAVAILABLE);
-        rex_response::setStatus($httpStatusCode);
-        
-        // Retry-After Header setzen, wenn konfiguriert
-        $retryAfter = self::getConfig('retry_after', 0);
-        if ($retryAfter > 0) {
-            header('Retry-After: ' . $retryAfter);
-        }
-        
-        // Cache-Header setzen, damit die Seite nicht gecacht wird
-        rex_response::sendCacheControl();
-        
-        // Wartungsseite ausgeben und Script beenden
-        exit($fragment->parse('upkeep/frontend.php'));
+/**
+ * Prüft, ob Frontend-Zugriff erlaubt ist oder gesperrt werden soll
+ */
+public static function checkFrontend(): void
+{
+    // Wenn der Wartungsmodus deaktiviert ist, nichts tun
+    if (!self::getConfig('frontend_active', false)) {
+        return;
     }
+    
+    // Prüfen, ob es sich um einen API-Aufruf handelt
+    if (rex_request('rex-api-call', 'string', '') === 'upkeep') {
+        return; // API-Aufrufe immer erlauben
+    }
+
+    // Prüfen, ob der Zugriff über eine Ausnahme erlaubt ist
+    if (self::isIpAllowed() || self::isDomainAllowed() || self::isPasswordValid() || self::isUserAllowed()) {
+        return;
+    }
+
+    // Extension Point, um bestimmte Medien oder Pfade freizuschalten
+    $requestUri = rex_server('REQUEST_URI', 'string', '');
+    $allowedPaths = [];
+    $allowedPathsList = rex_extension::registerPoint(
+        new rex_extension_point('UPKEEP_ALLOWED_PATHS', $allowedPaths)
+    );
+    
+    foreach ($allowedPathsList as $path) {
+        if (str_contains($requestUri, $path)) {
+            return;
+        }
+    }
+
+    // Wartungsseite anzeigen
+    $fragment = new rex_fragment();
+    
+    // HTTP Response Code setzen (aus Konfiguration)
+    $httpStatusCode = self::getConfig('http_status_code', rex_response::HTTP_SERVICE_UNAVAILABLE);
+    rex_response::setStatus($httpStatusCode);
+    
+    // Retry-After Header setzen, wenn konfiguriert
+    $retryAfter = self::getConfig('retry_after', 0);
+    if ($retryAfter > 0) {
+        header('Retry-After: ' . $retryAfter);
+    }
+    
+    // Cache-Header setzen, damit die Seite nicht gecacht wird
+    rex_response::sendCacheControl();
+    
+    // Wartungsseite ausgeben und Script beenden
+    exit($fragment->parse('upkeep/frontend.php'));
+}
 
     /**
      * Prüft, ob Backend-Zugriff erlaubt ist oder gesperrt werden soll
