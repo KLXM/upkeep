@@ -73,3 +73,7 @@ upkeep_api_token = API-Token
 upkeep_api_token_notice = Token für API-Zugriff. Leer lassen, um die API zu deaktivieren.
 upkeep_generate_token = Token generieren
 
+upkeep_your_ip = Deine IP-Adresse
+upkeep_add_ip = Diese IP hinzufügen
+upkeep_server_ip = Server IP-Adresse
+upkeep_add_server_ip = Server-IP hinzufügen
