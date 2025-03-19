@@ -54,10 +54,20 @@ $field->setAttribute('id', 'upkeep-allowed-ips');
 // Aktuelle IP-Adresse anzeigen
 $clientIp = rex_server('REMOTE_ADDR', 'string', '');
 $serverIp = $_SERVER['SERVER_ADDR'] ?? gethostbyname($_SERVER['SERVER_NAME'] ?? 'localhost');
-$notice = $addon->i18n('upkeep_your_ip') . ': <code>' . $clientIp . '</code>';
-$notice .= ' <button class="btn btn-sm btn-primary" type="button" id="upkeep-add-ip">' . $addon->i18n('upkeep_add_ip') . '</button>';
-$notice .= '<br>' . $addon->i18n('upkeep_server_ip') . ': <code>' . $serverIp . '</code>';
-$notice .= ' <button class="btn btn-sm btn-primary" type="button" id="upkeep-add-server-ip">' . $addon->i18n('upkeep_add_server_ip') . '</button>';
+
+// IP-Adressen als formatierte Liste mit Buttons
+$notice = '<div class="ip-addresses">';
+$notice .= '<div class="ip-address-row"><span class="ip-label">' . $addon->i18n('upkeep_your_ip') . ':</span> <code class="ip-code">' . $clientIp . '</code>';
+$notice .= ' <button class="btn btn-xs btn-primary" type="button" id="upkeep-add-ip"><i class="rex-icon fa-plus"></i> ' . $addon->i18n('upkeep_add_ip') . '</button></div>';
+$notice .= '<div class="ip-address-row"><span class="ip-label">' . $addon->i18n('upkeep_server_ip') . ':</span> <code class="ip-code">' . $serverIp . '</code>';
+$notice .= ' <button class="btn btn-xs btn-primary" type="button" id="upkeep-add-server-ip"><i class="rex-icon fa-plus"></i> ' . $addon->i18n('upkeep_add_server_ip') . '</button></div>';
+$notice .= '</div>';
+$notice .= '<style>
+.ip-addresses { margin-top: 5px; }
+.ip-address-row { margin-bottom: 5px; display: flex; align-items: center; }
+.ip-label { min-width: 120px; }
+.ip-code { margin: 0 10px; display: inline-block; min-width: 100px; }
+</style>';
 $field->setNotice($notice);
 
 // HTTP-Einstellungen
