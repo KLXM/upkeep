@@ -52,8 +52,12 @@ $field->setAttribute('class', 'form-control');
 $field->setAttribute('id', 'upkeep-allowed-ips');
 
 // Aktuelle IP-Adresse anzeigen
-$notice = $addon->i18n('upkeep_your_ip') . ': <code>' . rex_server('REMOTE_ADDR', 'string', '') . '</code>';
+$clientIp = rex_server('REMOTE_ADDR', 'string', '');
+$serverIp = $_SERVER['SERVER_ADDR'] ?? gethostbyname($_SERVER['SERVER_NAME'] ?? 'localhost');
+$notice = $addon->i18n('upkeep_your_ip') . ': <code>' . $clientIp . '</code>';
 $notice .= ' <button class="btn btn-sm btn-primary" type="button" id="upkeep-add-ip">' . $addon->i18n('upkeep_add_ip') . '</button>';
+$notice .= '<br>' . $addon->i18n('upkeep_server_ip') . ': <code>' . $serverIp . '</code>';
+$notice .= ' <button class="btn btn-sm btn-primary" type="button" id="upkeep-add-server-ip">' . $addon->i18n('upkeep_add_server_ip') . '</button>';
 $field->setNotice($notice);
 
 // HTTP-Einstellungen
@@ -97,15 +101,13 @@ echo $fragment->parse('core/page/section.php');
 ?>
 <script type="text/javascript">
 $(document).on('rex:ready', function() {
-    // IP-Adresse hinzufügen
-    $('#upkeep-add-ip').on('click', function(e) {
-        e.preventDefault();
+    // Funktion zum Hinzufügen einer IP-Adresse zum Whitelist-Feld
+    function addIpToWhitelist(ip) {
         var ipField = $('#upkeep-allowed-ips');
-        var currentIp = '<?= rex_server('REMOTE_ADDR', 'string', '') ?>';
         
         if (ipField.val().trim() === '') {
-            // Wenn das Feld leer ist, einfach die aktuelle IP hinzufügen
-            ipField.val(currentIp);
+            // Wenn das Feld leer ist, einfach die IP hinzufügen
+            ipField.val(ip);
         } else {
             // IP-Adressen als Array verarbeiten und alle Leerzeichen entfernen
             var ips = ipField.val().split(',').map(function(ip) {
@@ -116,12 +118,26 @@ $(document).on('rex:ready', function() {
             });
             
             // Prüfen, ob IP bereits enthalten ist
-            if (ips.indexOf(currentIp) === -1) {
-                ips.push(currentIp);
+            if (ips.indexOf(ip) === -1) {
+                ips.push(ip);
                 // Saubere Komma-getrennte Liste ohne unnötige Leerzeichen
                 ipField.val(ips.join(','));
             }
         }
+    }
+    
+    // Client-IP-Adresse hinzufügen
+    $('#upkeep-add-ip').on('click', function(e) {
+        e.preventDefault();
+        var currentIp = '<?= rex_server('REMOTE_ADDR', 'string', '') ?>';
+        addIpToWhitelist(currentIp);
+    });
+    
+    // Server-IP-Adresse hinzufügen
+    $('#upkeep-add-server-ip').on('click', function(e) {
+        e.preventDefault();
+        var serverIp = '<?= $_SERVER['SERVER_ADDR'] ?? gethostbyname($_SERVER['SERVER_NAME'] ?? 'localhost') ?>';
+        addIpToWhitelist(serverIp);
     });
 
     // Token generieren - korrigierte Selektoren
