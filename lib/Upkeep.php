@@ -44,7 +44,8 @@ class Upkeep
         $allowedIps = (string) self::getConfig('allowed_ips', '');
 
         if ($allowedIps !== '') {
-            $allowedIpsArray = array_filter(explode(',', $allowedIps));
+            // IP-Adressen trennen und trimmen
+            $allowedIpsArray = array_filter(array_map('trim', explode(',', $allowedIps)));
             return in_array($ip, $allowedIpsArray, true);
         }
 
