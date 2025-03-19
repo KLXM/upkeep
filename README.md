@@ -12,7 +12,7 @@ Ein modernes, schlankes AddOn für Wartungsarbeiten.
 - **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
 - **Konfigurierbare HTTP-Statuscodes** (503, 403, 307) mit Retry-After Header
 - **Konsolen-Befehle** für Remote-Management
-- **API zur Stuerung aus der Ferne**
+- **API zur Steuerung aus der Ferne**
 
 
 ## Installation
