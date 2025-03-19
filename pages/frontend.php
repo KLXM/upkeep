@@ -104,17 +104,22 @@ $(document).on('rex:ready', function() {
         var currentIp = '<?= rex_server('REMOTE_ADDR', 'string', '') ?>';
         
         if (ipField.val().trim() === '') {
+            // Wenn das Feld leer ist, einfach die aktuelle IP hinzufügen
             ipField.val(currentIp);
         } else {
-            // IP-Adressen als Array verarbeiten
+            // IP-Adressen als Array verarbeiten und alle Leerzeichen entfernen
             var ips = ipField.val().split(',').map(function(ip) {
                 return ip.trim();
+            }).filter(function(ip) {
+                // Leere Einträge filtern
+                return ip !== '';
             });
             
             // Prüfen, ob IP bereits enthalten ist
             if (ips.indexOf(currentIp) === -1) {
                 ips.push(currentIp);
-                ipField.val(ips.join(', '));
+                // Saubere Komma-getrennte Liste ohne unnötige Leerzeichen
+                ipField.val(ips.join(','));
             }
         }
     });
