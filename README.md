@@ -1,6 +1,6 @@
 # Upkeep für REDAXO 5
 
-(https://github.com/KLXM/upkeep/blob/main/assets/css/screen.jpg?raw=true)
+![Screenshot](https://github.com/KLXM/upkeep/blob/main/assets/css/screen.jpg?raw=true)
 
 
 Ein modernes, schlankes AddOn für Wartungsarbeiten.
