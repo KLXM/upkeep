@@ -21,10 +21,14 @@ Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Ba
 ### Intrusion Prevention System (IPS) 🛡️
 - **Echtzeit-Bedrohungserkennung**: Automatische Erkennung von Angriffsmustern
 - **CMS-spezifische Patterns**: Schutz vor WordPress, TYPO3, Drupal und Joomla Exploits
-- **Positivliste**: Ausnahmen für vertrauenswürdige IPs
-- **Rate Limiting**: Schutz vor Brute-Force-Angriffen (100 Requests/Minute)
+- **Scanner-Erkennung**: Erkennt Pentest-Tools (Nikto, SQLMap, Burp Suite, etc.)
+- **Positivliste mit Ablaufzeiten**: Ausnahmen für vertrauenswürdige IPs (permanent oder temporär)
+- **CAPTCHA-Entsperrung**: Menschliche Verifikation mit automatischer Rehabilitation
+- **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, etc.)
+- **Optionales Rate Limiting**: DoS-Schutz (standardmäßig deaktiviert - Server sollte das machen)
 - **Custom Patterns**: Eigene Bedrohungsmuster mit Regex-Unterstützung
 - **Umfassende Protokollierung**: Detaillierte Logs aller Sicherheitsereignisse
+- **Automatische Bereinigung**: Selbstreinigende Datenbank-Logs
 
 ### Backend-Integration
 - **Status-Indikatoren**: Live-Anzeige der aktiven Systeme (B/F/R/S)
@@ -92,17 +96,38 @@ Domain-Umzug:  old-company.com → https://new-company.com
 
 #### Automatischer Schutz
 Das IPS läuft automatisch und prüft alle eingehenden Requests auf:
-- Bekannte Angriffsmuster
-- CMS-spezifische Exploits  
-- Verdächtige URL-Parameter
-- Rate-Limiting-Verstöße
+- Bekannte Angriffsmuster (CMS-Exploits, SQL-Injection, Path-Traversal)
+- Scanner-Tools (Nikto, SQLMap, Burp Suite, Nmap, etc.)
+- Verdächtige User-Agents und Request-Patterns
+- Optionale Rate-Limiting-Verstöße (standardmäßig deaktiviert)
+
+#### CAPTCHA-Entsperrung 🤖
+Gesperrte Benutzer können sich per CAPTCHA entsperren:
+- Einfache mathematische Aufgaben
+- Mehrsprachig (Deutsch/Englisch) mit automatischer Erkennung
+- Komplette IP-Rehabilitation nach erfolgreicher Verifikation
+- 24h temporäre Positivliste nach Entsperrung
+
+#### Bot-Management 🔍
+- **Gute Bots**: Automatische Erkennung von Google, Bing, Facebook, etc.
+- **Reverse DNS**: Verifikation kritischer Bots durch DNS-Lookup
+- **Erhöhte Limits**: Legitime Bots erhalten doppelte Rate-Limits
+
+#### Rate-Limiting (Optional) ⚠️
+**Standardmäßig DEAKTIVIERT** - Webserver/Reverse Proxy sollten das übernehmen!
+```php
+// Nur bei Bedarf aktivieren (Shared Hosting, etc.)
+rex_config::set('upkeep', 'ips_rate_limiting_enabled', true);
+```
+**Wenn aktiviert:** 600 Requests/Minute (10/Sekunde) für DoS-Schutz
 
 #### Positivliste verwalten
 ```
 Backend → Upkeep → IPS → Positivliste
 ```
-- IP-Adressen hinzufügen, die nie blockiert werden sollen
-- Nützlich für eigene IPs oder vertrauenswürdige Services
+- IP-Adressen mit permanenter oder temporärer Freigabe
+- Automatische Ablaufzeiten für CAPTCHA-verifizierte IPs
+- CIDR-Notation für IP-Bereiche unterstützt
 
 #### Custom Patterns
 ```
@@ -282,14 +307,19 @@ php bin/console upkeep:ips:cleanup
 
 ## �📈 Changelog
 
-### Version 1.3.0
+### Version 1.3.0 - Erweiterte Sicherheit 🛡️
+- **CAPTCHA-Entsperrung**: Menschliche Verifikation mit mathematischen Aufgaben
+- **Multilingual Support**: Deutsch/Englisch mit automatischer Spracherkennung und Sprachumschalter
+- **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, Facebook, etc.)
+- **Reverse DNS**: Verifikation kritischer Bots durch DNS-Lookup zur Fälschungsverhinderung
+- **Temporäre Positivliste**: 24h automatische Vertrauensstellung nach CAPTCHA-Entsperrung
+- **Optionales Rate-Limiting**: Standardmäßig deaktiviert (Webserver sollte das übernehmen)
+- **Intelligente URI-Limits**: Pfad-basierte Rate-Limits (normal/admin/assets/api)
+- **CAPTCHA-Rehabilitation**: Komplette IP-Bereinigung inkl. Bedrohungshistorie
+- **Automatische Bereinigung**: Selbstreinigende Datenbank mit 1% Chance pro Request
+- **Erweiterte Konsolen-Befehle**: IPS-Cleanup und detaillierte Status-Abfragen
 - **UI-Optimierungen**: Verbessertes Design ohne problematische `<code>`-Tags
-- **Kompakter Button**: "+" Button für Pattern hinzufügen passt in enge Panels
-- **Bessere Lesbarkeit**: Optimierte Darstellung von Code-Beispielen und IPs
-- **Bootstrap-Integration**: Konsistente Verwendung von Bootstrap-Klassen
-- **Automatische Bereinigung**: 1% Chance bei jedem Request für Datenbank-Cleanup
-- **Konsolen-Kommando**: `upkeep:ips:cleanup` für Cronjob-Integration
-- **Admin-Interface**: Datenbereinigung mit Live-Statistiken
+- **Verbesserte Logs**: Detaillierte Protokollierung aller Sicherheitsereignisse
 
 ### Version 1.2.0
 - **Vollständiges IPS**: Intrusion Prevention System mit Echtzeit-Schutz
@@ -330,14 +360,27 @@ GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
 curl "https://example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
 ```
 
-## Konsolen-Befehle
+## 🔧 Konsolen-Befehle
 
+### Wartungsmodi
 ```bash
 # Frontend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode frontend on|off
+php bin/console upkeep:mode frontend on|off
 
 # Backend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode backend on|off
+php bin/console upkeep:mode backend on|off
+
+# Status abfragen
+php bin/console upkeep:status
+```
+
+### IPS-Management
+```bash
+# IPS-Bereinigung (abgelaufene Sperren, alte Logs)
+php bin/console upkeep:ips-cleanup
+
+# IPS-Status einer IP prüfen
+php bin/console upkeep:ips-status <IP-ADRESSE>
 ```
 
 ## Extension Points
