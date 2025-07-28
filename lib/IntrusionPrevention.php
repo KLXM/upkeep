@@ -204,6 +204,9 @@ class IntrusionPrevention
             return;
         }
         
+        // Gelegentliche automatische Bereinigung
+        self::performRandomCleanup();
+        
         $clientIp = self::getClientIp();
         $requestUri = rex_server('REQUEST_URI', 'string', '');
         $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
@@ -895,5 +898,58 @@ class IntrusionPrevention
         }
         
         return $stats;
+    }
+    
+    /**
+     * Bereinigt abgelaufene IP-Sperrungen und alte Logs
+     * Sollte regelmäßig aufgerufen werden (z.B. per Cronjob)
+     */
+    public static function cleanupExpiredData(): array
+    {
+        $sql = rex_sql::factory();
+        $cleanup = [
+            'expired_ips' => 0,
+            'old_threats' => 0,
+            'old_rate_limits' => 0
+        ];
+        
+        try {
+            // 1. Abgelaufene IP-Sperrungen löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
+                           WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < NOW()");
+            $cleanup['expired_ips'] = $sql->getRows();
+            
+            // 2. Alte Bedrohungs-Logs löschen (älter als 30 Tage)
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                           WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            $cleanup['old_threats'] = $sql->getRows();
+            
+            // 3. Alte Rate-Limit-Daten löschen (älter als 2 Stunden)
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
+                           WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
+            $cleanup['old_rate_limits'] = $sql->getRows();
+            
+            // Log der Bereinigung
+            if ($cleanup['expired_ips'] > 0 || $cleanup['old_threats'] > 0 || $cleanup['old_rate_limits'] > 0) {
+                rex_logger::factory()->log('info', 'IPS Cleanup: ' . json_encode($cleanup), [], __FILE__, __LINE__);
+            }
+            
+        } catch (Exception $e) {
+            rex_logger::factory()->log('error', 'IPS Cleanup Error: ' . $e->getMessage(), [], __FILE__, __LINE__);
+        }
+        
+        return $cleanup;
+    }
+    
+    /**
+     * Automatische Bereinigung beim Request (mit Wahrscheinlichkeit)
+     * Reduziert die Datenbankgröße ohne Performance-Impact
+     */
+    private static function performRandomCleanup(): void
+    {
+        // 1% Chance pro Request für Cleanup
+        if (random_int(1, 100) <= 1) {
+            self::cleanupExpiredData();
+        }
     }
 }

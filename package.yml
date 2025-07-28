@@ -39,6 +39,7 @@ page:
                 positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
                 patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
                 settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
+                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
             
 requires:
     redaxo: ^5.18.1
@@ -52,6 +53,7 @@ permissions:
 
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
+    upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
 
 default_config:
     frontend_active: 0

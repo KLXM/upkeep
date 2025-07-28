@@ -190,6 +190,20 @@ Backend → Upkeep → IPS → Blockierte IPs
 - Grund der Sperrung
 - Entsperrmöglichkeit
 
+### Datenbereinigung 🗂️
+```
+Backend → Upkeep → IPS → Datenbereinigung
+```
+- **Automatische Bereinigung**: 1% Wahrscheinlichkeit bei jedem Frontend-Request
+- **Manuelle Bereinigung**: Admin-Interface mit Live-Statistiken
+- **Konsolen-Kommando**: `php bin/console upkeep:ips:cleanup`
+
+#### Was wird bereinigt:
+- **Abgelaufene IP-Sperrungen**: Temporäre Sperrungen nach Ablaufzeit
+- **Alte Bedrohungs-Logs**: Einträge älter als 30 Tage
+- **Rate-Limit-Daten**: Zeitfenster-Daten älter als 2 Stunden
+- **Permanente Sperrungen**: Bleiben erhalten (nur manuelle Entsperrung)
+
 ## ⚙️ Konfiguration
 
 ### Datenbankstruktur
@@ -243,13 +257,41 @@ IntrusionPrevention::addCustomPattern($pattern, $description, $severity);
 IntrusionPrevention::addToPositivliste($ip, $description);
 ```
 
-## 📈 Changelog
+## � Konsolen-Kommandos
+
+### Wartungsmodi verwalten
+```bash
+# Frontend-Wartungsmodus aktivieren/deaktivieren
+php bin/console upkeep:mode frontend on|off
+
+# Backend-Wartungsmodus aktivieren/deaktivieren
+php bin/console upkeep:mode backend on|off
+```
+
+### IPS-Datenbereinigung
+```bash
+# Manuelle Bereinigung ausführen
+php bin/console upkeep:ips:cleanup
+
+# Für Cronjob (täglich um 2:00 Uhr)
+0 2 * * * cd /pfad/zu/redaxo && php bin/console upkeep:ips:cleanup >/dev/null 2>&1
+```
+
+**Bereinigt automatisch:**
+- Abgelaufene temporäre IP-Sperrungen
+- Bedrohungs-Logs älter als 30 Tage  
+- Rate-Limit-Daten älter als 2 Stunden
+
+## �📈 Changelog
 
 ### Version 1.3.0
 - **UI-Optimierungen**: Verbessertes Design ohne problematische `<code>`-Tags
 - **Kompakter Button**: "+" Button für Pattern hinzufügen passt in enge Panels
 - **Bessere Lesbarkeit**: Optimierte Darstellung von Code-Beispielen und IPs
 - **Bootstrap-Integration**: Konsistente Verwendung von Bootstrap-Klassen
+- **Automatische Bereinigung**: 1% Chance bei jedem Request für Datenbank-Cleanup
+- **Konsolen-Kommando**: `upkeep:ips:cleanup` für Cronjob-Integration
+- **Admin-Interface**: Datenbereinigung mit Live-Statistiken
 
 ### Version 1.2.0
 - **Vollständiges IPS**: Intrusion Prevention System mit Echtzeit-Schutz

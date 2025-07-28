@@ -225,3 +225,12 @@ upkeep_ips_status_updated = Status erfolgreich aktualisiert
 upkeep_ips_error_adding = Fehler beim Hinzufügen zur Positivliste
 upkeep_ips_error_removing = Fehler beim Entfernen aus Positivliste
 upkeep_ips_error_updating = Fehler beim Aktualisieren des Status
+
+# IPS Cleanup
+upkeep_ips_cleanup = Datenbereinigung
+upkeep_ips_cleanup_info = Bereinigung alter IPS-Daten
+upkeep_ips_cleanup_help = Entfernt abgelaufene IP-Sperrungen und alte Logs zur Optimierung der Datenbankperformance
+upkeep_ips_cleanup_manual = Manuelle Bereinigung
+upkeep_ips_cleanup_auto = Automatische Bereinigung
+upkeep_ips_cleanup_success = Datenbank erfolgreich bereinigt
+upkeep_ips_cleanup_nothing = Keine Bereinigung notwendig - alle Daten sind aktuell
