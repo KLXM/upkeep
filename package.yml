@@ -1,5 +1,5 @@
 package: upkeep
-version: '1.2.0'
+version: '1.3.0'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
@@ -29,6 +29,16 @@ page:
             title: 'translate:upkeep_domain_mapping_title'
             icon: rex-icon fa fa-share
             perm: upkeep[domains]
+        ips:
+            title: 'translate:upkeep_ips_title'
+            icon: rex-icon fa fa-shield
+            perm: upkeep[security]
+            subpages:
+                threats: {title: 'translate:upkeep_ips_threats', icon: rex-icon fa fa-exclamation-triangle}
+                blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
+                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
+                patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
+                settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
             
 requires:
     redaxo: ^5.18.1
@@ -38,6 +48,7 @@ permissions:
     upkeep[]: 'translate:upkeep[]'
     upkeep[frontend]: 'translate:upkeep[frontend]'
     upkeep[domains]: 'translate:upkeep[domains]'
+    upkeep[security]: 'translate:upkeep[security]'
 
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
@@ -48,6 +59,13 @@ default_config:
     frontend_password: ''
     allowed_ips: ''
     bypass_logged_in: 1
+    # IPS Configuration
+    ips_active: 0
+    ips_burst_limit: 10
+    ips_block_title: 'Access Denied'
+    ips_block_message: 'Your request has been blocked by our security system.'
+    ips_contact_info: ''
+    ips_whitelist: []
     maintenance_page_title: 'Site Maintenance'
     maintenance_page_message: 'We are currently performing maintenance. Please check back soon.'
     http_status_code: 503

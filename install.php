@@ -57,3 +57,96 @@ rex_sql_table::get(rex::getTable('upkeep_domain_mapping'))
     ->setPrimaryKey('id')
     ->ensureIndex(new rex_sql_index('source_domain', ['source_domain']))
     ->ensure();
+
+// IPS Blocked IPs Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_ips_blocked_ips'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
+    ->ensureColumn(new rex_sql_column('block_type', 'enum("temporary","permanent")', false, 'temporary'))
+    ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true))
+    ->ensureColumn(new rex_sql_column('reason', 'text', true))
+    ->ensureColumn(new rex_sql_column('threat_level', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_lookup', ['ip_address', 'expires_at']))
+    ->ensure();
+
+// IPS Threat Log Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_ips_threat_log'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false))
+    ->ensureColumn(new rex_sql_column('request_uri', 'text', false))
+    ->ensureColumn(new rex_sql_column('user_agent', 'text', true))
+    ->ensureColumn(new rex_sql_column('threat_type', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('threat_category', 'varchar(100)', true))
+    ->ensureColumn(new rex_sql_column('pattern_matched', 'varchar(500)', true))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false))
+    ->ensureColumn(new rex_sql_column('action_taken', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_time', ['ip_address', 'created_at']))
+    ->ensureIndex(new rex_sql_index('severity_time', ['severity', 'created_at']))
+    ->ensure();
+
+// IPS Custom Patterns Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_ips_custom_patterns'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
+    ->ensureColumn(new rex_sql_column('description', 'text', true))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('status', ['status']))
+    ->ensure();
+
+// IPS Rate Limiting Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_ips_rate_limit'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false))
+    ->ensureColumn(new rex_sql_column('request_count', 'int(11)', false, '1'))
+    ->ensureColumn(new rex_sql_column('window_start', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('last_request', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_window', ['ip_address', 'window_start']))
+    ->ensure();
+
+// IPS Positivliste Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_ips_positivliste'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
+    ->ensureColumn(new rex_sql_column('ip_range', 'varchar(50)', true)) // CIDR-Notation für IP-Bereiche
+    ->ensureColumn(new rex_sql_column('description', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted")', false, 'trusted'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_lookup', ['ip_address', 'status']))
+    ->ensureIndex(new rex_sql_index('range_lookup', ['ip_range', 'status']))
+    ->ensure();
+
+// Aktuelle Admin-IP automatisch zur Positivliste hinzufügen
+if ($currentIp) {
+    $sql = rex_sql::factory();
+    $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$currentIp]);
+    
+    if ((int) $sql->getValue('count') === 0) {
+        $sql = rex_sql::factory();
+        $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
+        $sql->setValue('ip_address', $currentIp);
+        $sql->setValue('description', 'Automatisch hinzugefügte Admin-IP bei Installation');
+        $sql->setValue('category', 'admin');
+        $sql->setValue('status', 1);
+        $sql->setValue('created_at', date('Y-m-d H:i:s'));
+        $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+        $sql->insert();
+    }
+}
+
+// IPS standardmäßig aktivieren
+if ($addon->getConfig('ips_active') === null) {
+    $addon->setConfig('ips_active', true);
+}

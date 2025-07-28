@@ -1,69 +1,206 @@
-# Upkeep für REDAXO 5
+# REDAXO Upkeep AddOn v1.3.0
 
 ![Screenshot](https://github.com/KLXM/upkeep/blob/main/assets/css/screen.jpg?raw=true)
 
+Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Backend-Wartungsmodi, URL-Redirects und integriertem Intrusion Prevention System (IPS).
 
-Ein modernes, schlankes AddOn für Wartungsarbeiten.
+## 🚀 Features
 
-## Features
-
-- **Frontend-Sperre** mit eleganter und anpassbarer Wartungsseite
-- **Backend-Sperre** für Redakteure (Admins haben immer Zugriff)
-- **Domain-spezifische Sperren** für Multidomains mit YRewrite
-- **URL-Redirects** für automatische Weiterleitungen mit Wildcard-Unterstützung
-- **Passwort-Bypass** zum Testen des Frontends im Wartungsmodus
-- **Automatischer Zugang** für angemeldete Benutzer (konfigurierbar)
-- **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
-- **Konfigurierbare HTTP-Statuscodes** (503, 403, 307) mit Retry-After Header
-- **Konsolen-Befehle** für Remote-Management
-- **API zur Steuerung aus der Ferne**
-
-
-## Installation
-
-1. Das AddOn über den REDAXO Installer installieren oder von GitHub herunterladen und installieren.
-2. Konfigurieren Sie die Einstellungen über das REDAXO-Backend.
-
-## Konfiguration
-
-### Frontend-Wartungsmodus
-
-Im Tab "Frontend" können Sie:
-- Den Wartungsmodus aktivieren oder deaktivieren
-- Den Titel und die Nachricht für die Wartungsseite anpassen
-- Ein Passwort für den Testzugang festlegen
-- Festlegen, ob angemeldete Benutzer Zugriff haben sollen
-- IP-Adressen hinzufügen, die immer Zugriff haben
-- Den HTTP-Statuscode (503, 403, 307) und Retry-After Header konfigurieren
-
-### Backend
-
-Im Tab "Backend" können Sie:
-- Den Ukeep-Mode für das Backend aktivieren oder deaktivieren (sperrt alle Benutzer außer Administratoren)
-
-### Domain-Einstellungen (nur bei YRewrite)
-
-Wenn YRewrite installiert ist, können Sie im Tab "Domains":
-- Den Ukeep-Mode für einzelne Domains aktivieren oder deaktivieren
+### Wartungsmodi
+- **Frontend-Wartungsmodus**: Zeigt Besuchern eine elegante Wartungsseite an
+- **Backend-Wartungsmodus**: Sperrt den Backend-Zugang für bestimmte Benutzergruppen  
+- **Domain-spezifische Sperren**: Für Multidomains mit YRewrite
+- **Flexible Berechtigungen**: Wartungsmodi können unabhängig voneinander aktiviert werden
+- **Passwort-Bypass**: Zum Testen des Frontends im Wartungsmodus
+- **IP-Whitelist**: Mit einfacher Übernahme der aktuellen IP-Adresse
 
 ### URL-Redirects
+- **Wildcard-Unterstützung**: Flexible URL-Umleitungen mit Platzhaltern (`old-blog.com/posts/*` → `new-blog.com/articles/*`)
+- **Pfad-Ersetzung**: Automatische Übertragung von URL-Parametern
+- **HTTP-Status-Codes**: Konfigurierbare Redirect-Codes (301, 302, 303, 307, 308)
+- **Path-Traversal-Schutz**: RFC-konforme Domain-Validierung
 
-Im Tab "URL-Redirects" können Sie:
-- Domains und Pfade zu beliebigen URLs weiterleiten
-- **Wildcard-Redirects** für dynamische Pfad-Weiterleitung
-- HTTP-Statuscodes konfigurieren (301, 302, 303, 307, 308)
-- Redirects aktivieren/deaktivieren
+### Intrusion Prevention System (IPS) 🛡️
+- **Echtzeit-Bedrohungserkennung**: Automatische Erkennung von Angriffsmustern
+- **CMS-spezifische Patterns**: Schutz vor WordPress, TYPO3, Drupal und Joomla Exploits
+- **Positivliste**: Ausnahmen für vertrauenswürdige IPs
+- **Rate Limiting**: Schutz vor Brute-Force-Angriffen (100 Requests/Minute)
+- **Custom Patterns**: Eigene Bedrohungsmuster mit Regex-Unterstützung
+- **Umfassende Protokollierung**: Detaillierte Logs aller Sicherheitsereignisse
+
+### Backend-Integration
+- **Status-Indikatoren**: Live-Anzeige der aktiven Systeme (B/F/R/S)
+- **Benutzerfreundliche Oberfläche**: Intuitive Bootstrap-basierte UI
+- **Responsive Design**: Optimiert für Desktop und Mobile
+- **Konsolen-Befehle**: Für Remote-Management
+- **REST-API**: Zur Steuerung aus der Ferne
+
+## 📋 Systemvoraussetzungen
+
+- **REDAXO**: Version 5.18 oder höher
+- **PHP**: Version 8.0 oder höher
+- **MySQL**: Version 5.7 oder höher
+
+## 🔧 Installation
+
+1. AddOn über das REDAXO Backend installieren
+2. AddOn aktivieren  
+3. Die Datenbanktabellen werden automatisch erstellt
+4. Konfiguration über das Backend-Menü "Upkeep"
+
+## 📚 Verwendung
+
+### Wartungsmodi aktivieren
+
+#### Frontend-Wartungsmodus
+```
+Backend → Upkeep → Frontend → Wartungsmodus aktivieren
+```
+- Zeigt allen Besuchern eine Wartungsseite
+- Benutzer mit entsprechenden Rechten können weiterhin zugreifen
+- Konfigurierbare HTTP-Statuscodes (503, 403, 307) mit Retry-After Header
+
+#### Backend-Wartungsmodus  
+```
+Backend → Upkeep → Backend → Wartungsmodus aktivieren
+```
+- Sperrt den Backend-Zugang
+- Nur Administratoren können sich anmelden
+
+### URL-Redirects einrichten
+
+#### Einfache Weiterleitung
+```
+Quelle: /alte-seite
+Ziel: /neue-seite  
+Status: 301
+```
+
+#### Wildcard-Weiterleitung
+```
+Quelle: /blog/*
+Ziel: /aktuelles/$1
+Status: 301
+```
 
 **Wildcard-Beispiele:**
 ```
 Blog-Umzug:    old-blog.com/posts/* → new-blog.com/articles/*
 Shop-Umzug:    shop.com/kategorie/* → example.com/shop/*
+Domain-Umzug:  old-company.com → https://new-company.com
 ```
 
-**Anwendungsfälle:**
-- SEO-Weiterleitungen bei Domain-Umzügen
-- Dynamische Pfad-Umleitungen mit Wildcard-Unterstützung
-- Temporäre Wartungs-Redirects
+### Intrusion Prevention System 🛡️
+
+#### Automatischer Schutz
+Das IPS läuft automatisch und prüft alle eingehenden Requests auf:
+- Bekannte Angriffsmuster
+- CMS-spezifische Exploits  
+- Verdächtige URL-Parameter
+- Rate-Limiting-Verstöße
+
+#### Positivliste verwalten
+```
+Backend → Upkeep → IPS → Positivliste
+```
+- IP-Adressen hinzufügen, die nie blockiert werden sollen
+- Nützlich für eigene IPs oder vertrauenswürdige Services
+
+#### Custom Patterns
+```
+Backend → Upkeep → IPS → Patterns
+```
+- Eigene Bedrohungsmuster definieren
+- Regex-Unterstützung
+- Verschiedene Schweregrade (low, medium, high, critical)
+
+## 🛡️ Sicherheitsfeatures
+
+### Eingebaute Bedrohungserkennung
+
+#### WordPress-Exploits
+```
+/wp-admin/
+/wp-content/plugins/
+/wp-includes/
+xmlrpc.php
+```
+
+#### TYPO3-Exploits
+```
+/typo3/
+/typo3conf/
+/typo3temp/
+/fileadmin/
+```
+
+#### Drupal-Exploits
+```
+/sites/default/
+/modules/
+/themes/
+/core/
+```
+
+#### Joomla-Exploits
+```
+/administrator/
+/components/
+/modules/
+/plugins/
+```
+
+#### Allgemeine Angriffsmuster
+```
+SQL-Injection Versuche
+XSS-Payloads
+Directory Traversal  
+Shell-Injection
+```
+
+### Rate Limiting
+- **Standard**: 100 Requests pro Minute
+- **Burst-Schutz**: Temporäre Sperrung bei Überschreitung
+- **Konfigurierbar**: Anpassbare Limits per IP
+
+## 📊 Status-Indikatoren
+
+Das AddOn zeigt Live-Status im Backend-Menü:
+
+- **B** (🔴): Backend-Wartungsmodus aktiv
+- **F** (🔴): Frontend-Wartungsmodus aktiv
+- **R** (🟢): URL-Redirects aktiv  
+- **S** (🟡/🔴): IPS-Status (Gelb: Warnungen, Rot: Kritische Bedrohungen)
+
+## 🔍 Monitoring und Logs
+
+### Bedrohungsprotokoll
+```
+Backend → Upkeep → IPS → Bedrohungen
+```
+- Chronologische Auflistung aller Sicherheitsereignisse
+- IP-Adressen, Patterns und Request-Details
+- Filtermöglichkeiten nach Schweregrad
+
+### Blockierte IPs
+```
+Backend → Upkeep → IPS → Blockierte IPs
+```
+- Übersicht aller gesperrten IP-Adressen
+- Grund der Sperrung
+- Entsperrmöglichkeit
+
+## ⚙️ Konfiguration
+
+### Datenbankstruktur
+
+Das AddOn erstellt folgende Tabellen:
+- `rex_upkeep_domain_mapping`: URL-Redirects
+- `rex_upkeep_ips_blocked_ips`: Gesperrte IP-Adressen
+- `rex_upkeep_ips_threat_log`: Bedrohungsprotokoll
+- `rex_upkeep_ips_custom_patterns`: Benutzerdefinierte Patterns
+- `rex_upkeep_ips_rate_limit`: Rate-Limiting-Daten
+- `rex_upkeep_ips_positivliste`: Vertrauenswürdige IPs
 
 ## Anpassen der Wartungsseite
 
@@ -73,26 +210,69 @@ Sie können die Wartungsseite anpassen, indem Sie ein eigenes Fragment erstellen
 2. Kopieren Sie die Datei `fragments/upkeep/frontend.php` aus dem Upkeep-AddOn dorthin
 3. Passen Sie den Inhalt der Datei nach Ihren Wünschen an
 
-## Konsolen-Befehle
+## 🔧 Entwicklung
 
-```bash
-# Frontend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode frontend on|off
+### Hooks und Events
 
-# Backend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode backend on|off
+Das AddOn registriert sich in der `boot.php`:
+```php
+// Intrusion Prevention - höchste Priorität
+IntrusionPrevention::checkRequest();
 
-# Backend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode backend on|off
+// Wartungsmodi
+rex_extension::register('PACKAGES_INCLUDED', function() {
+    if (rex::isFrontend()) {
+        Upkeep::checkFrontend();
+    }
+    if (rex::isBackend()) {
+        Upkeep::checkBackend();
+    }
+});
 ```
+
+### API-Verwendung
+
+```php
+// IPS-Status abfragen
+$threats = IntrusionPrevention::getRecentThreats();
+
+// Custom Pattern hinzufügen
+IntrusionPrevention::addCustomPattern($pattern, $description, $severity);
+
+// IP zur Positivliste hinzufügen
+IntrusionPrevention::addToPositivliste($ip, $description);
+```
+
+## 📈 Changelog
+
+### Version 1.3.0
+- **UI-Optimierungen**: Verbessertes Design ohne problematische `<code>`-Tags
+- **Kompakter Button**: "+" Button für Pattern hinzufügen passt in enge Panels
+- **Bessere Lesbarkeit**: Optimierte Darstellung von Code-Beispielen und IPs
+- **Bootstrap-Integration**: Konsistente Verwendung von Bootstrap-Klassen
+
+### Version 1.2.0
+- **Vollständiges IPS**: Intrusion Prevention System mit Echtzeit-Schutz
+- **CMS-Patterns**: Spezifische Bedrohungserkennung für WordPress, TYPO3, Drupal, Joomla
+- **Positivliste-System**: Ausnahmen für vertrauenswürdige IP-Adressen
+- **Rate-Limiting**: Schutz vor Brute-Force-Angriffen
+- **Status-Indikatoren**: Live-Anzeige im Backend-Menü (B/F/R/S)
+- **Umfassende Protokollierung**: Detaillierte Logs aller Sicherheitsereignisse
+
+### Version 1.1.0
+- **Wildcard-Redirects**: URL-Redirects mit Wildcard-Unterstützung (`/*`)
+- **Pfad-Ersetzung**: Dynamische Parameter-Übertragung bei Redirects
+- **HTTP-Status-Codes**: Konfigurierbare Redirect-Codes (301, 302, 303, 307, 308)
+- **Path-Traversal-Schutz**: RFC-konforme Domain-Validierung
+
+### Version 1.0.0
+- **Grundlegende Wartungsmodi**: Frontend- und Backend-Sperrung
+- **Benutzerrechte-Integration**: Admin-Bypass und rollenbasierte Zugriffe
+- **Domain-spezifische Sperren**: Multidomains mit YRewrite-Unterstützung
 
 ## API
 
 Das Upkeep-AddOn bietet eine REST-API für automatisierte Wartungsabläufe:
-
-### API-Token einrichten
-1. **Frontend-Einstellungen** > API-Token generieren
-2. Token für alle API-Anfragen verwenden
 
 ### API-Verwendung
 ```
@@ -104,214 +284,41 @@ GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
 - `action=set_frontend&status=1|0` - Frontend-Wartung aktivieren/deaktivieren
 - `action=set_backend&status=1|0` - Backend-Wartung aktivieren/deaktivieren
 
-Ruft den aktuellen Status aller Wartungsmodi ab.
-
-```
-index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=status
-```
-
-Beispielantwort:
-```json
-{
-  "success": true,
-  "frontend_active": true,
-  "backend_active": false,
-  "all_domains_locked": false
-}
+**Beispiel:**
+```bash
+# Wartungsmodus aktivieren
+curl "https://example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
 ```
 
-#### Frontend-Wartungsmodus aktivieren/deaktivieren
-
-Aktiviert oder deaktiviert den Frontend-Wartungsmodus.
-
-```
-index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=1
-```
-
-Parameter:
-- `status=1`: Aktivieren des Wartungsmodus
-- `status=0`: Deaktivieren des Wartungsmodus
-
-Beispielantwort:
-```json
-{
-  "success": true,
-  "frontend_active": true
-}
-```
-
-#### Backend-Wartungsmodus aktivieren/deaktivieren
-
-Aktiviert oder deaktiviert den Backend-Wartungsmodus.
-
-```
-index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_backend&status=1
-```
-
-Parameter:
-- `status=1`: Aktivieren des Wartungsmodus
-- `status=0`: Deaktivieren des Wartungsmodus
-
-Beispielantwort:
-```json
-{
-  "success": true,
-  "backend_active": true
-}
-```
-
-#### Alle YRewrite-Domains sperren/entsperren
-
-Aktiviert oder deaktiviert den Wartungsmodus für alle YRewrite-Domains auf einmal.
-
-```
-index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_all_domains&status=1
-```
-
-Parameter:
-- `status=1`: Alle Domains sperren
-- `status=0`: Domainsperre aufheben
-
-Beispielantwort:
-```json
-{
-  "success": true,
-  "all_domains_locked": true
-}
-```
-
-#### Einzelne YRewrite-Domain sperren/entsperren
-
-Aktiviert oder deaktiviert den Wartungsmodus für eine bestimmte YRewrite-Domain.
-
-```
-index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_domain&domain=example.com&status=1
-```
-
-Parameter:
-- `domain=DOMAIN_NAME`: Name der Domain (z.B. example.com)
-- `status=1`: Domain sperren
-- `status=0`: Domain entsperren
-
-Beispielantwort:
-```json
-{
-  "success": true,
-  "domain": "example.com",
-  "status": true
-}
-```
-
-### Anwendungsbeispiele
-
-### Mit cURL in einem Shell-Script
+## Konsolen-Befehle
 
 ```bash
-#!/bin/bash
-# Wartungsmodus aktivieren vor Backup oder Deployment
-curl "https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=1"
+# Frontend-Wartungsmodus aktivieren/deaktivieren
+php redaxo/bin/console upkeep:mode frontend on|off
 
-# Backup- oder Deployment-Prozess hier...
-
-# Wartungsmodus wieder deaktivieren
-curl "https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=0"
+# Backend-Wartungsmodus aktivieren/deaktivieren
+php redaxo/bin/console upkeep:mode backend on|off
 ```
-
-#### Mit PHP (z.B. in einem Cronjob oder Deployment-Script)
-
-```php
-<?php
-// Wartungsmodus aktivieren
-$response = file_get_contents('https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=1');
-$result = json_decode($response, true);
-
-if ($result['success']) {
-    // Wartungsarbeiten durchführen...
-    
-    // Wartungsmodus wieder deaktivieren
-    file_get_contents('https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=0');
-}
-```
-
-#### Mit JavaScript/AJAX für ein Administrationsinterface
-
-```javascript
-// Status abfragen
-fetch('https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=status')
-  .then(response => response.json())
-  .then(data => {
-    console.log('Wartungsmodus Status:', data);
-  });
-
-// Wartungsmodus aktivieren
-fetch('https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=set_frontend&status=1')
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      console.log('Wartungsmodus aktiviert');
-    }
-  });
-```
-
-### Fehlerbehandlung
-
-Bei ungültigen oder fehlerhaften Anfragen gibt die API einen entsprechenden Fehlercode zurück:
-
-```json
-{
-  "success": false,
-  "error": "Invalid token"
-}
-```
-
-Mögliche Fehlermeldungen:
-- `"Invalid token"`: Der API-Token ist ungültig oder fehlt
-- `"Invalid action"`: Die angegebene Aktion wird nicht unterstützt
-- `"Domain not found"`: Die angegebene Domain existiert nicht
-- `"Invalid domain or YRewrite not available"`: YRewrite ist nicht verfügbar oder die Domain ist ungültig
-
-HTTP-Statuscodes:
-- `200 OK`: Anfrage erfolgreich
-- `400 Bad Request`: Ungültige Anfrage
-- `401 Unauthorized`: Ungültiger API-Token
-
-### Sicherheitshinweise
-
-- Bewahren Sie Ihren API-Token sicher auf
-- Setzen Sie den Token zurück, wenn Sie vermuten, dass er kompromittiert wurde
-- Verwenden Sie nach Möglichkeit HTTPS für alle API-Aufrufe
-- Beschränken Sie den Zugriff auf die API über Ihre Server-Konfiguration
-- Die API bietet keine Ratengrenzwerte, implementieren Sie bei Bedarf eigene Maßnahmen gegen Missbrauch
-
-## URL-Redirects
-
-Automatische Weiterleitungen von Domains und Pfaden mit Wildcard-Unterstützung:
-
-**Konfiguration:** Upkeep > URL-Redirects
-
-**HTTP-Codes:** 301 (permanent), 302 (temporär), 303, 307, 308
-
-**Wildcard-Beispiele:**
-```
-Blog-Umzug:     old-blog.com/posts/* → new-blog.com/articles/*
-Shop-Umzug:     shop.com/kategorie/* → example.com/shop/*
-Domain-Umzug:   old-company.com → https://new-company.com
-```
-
-**Features:**
-- Wildcard-Pfade mit `/*` und dynamischer `*`-Ersetzung
-- Path-Traversal-Schutz und RFC-konforme Domain-Validierung
-- Pfad-Priorität (längere Pfade haben Vorrang)
-- Frühe Ausführung vor Wartungsmodus-Prüfung
 
 ## Extension Points
 
 - `UPKEEP_ALLOWED_PATHS`: Pfade vom Wartungsmodus ausnehmen
 
-## Lizenz
+## 🤝 Support
+
+- **Issues**: Über GitHub Issues melden
+- **Dokumentation**: Siehe REDAXO-Community
+- **Community**: REDAXO Slack-Channel
+
+## 📄 Lizenz
 
 MIT License
 
-## Autor
-Thomas Skerbis KLXM Crossmedia 
+## 👥 Autor
+
+**Thomas Skerbis** - KLXM Crossmedia
+
+---
+
+**Upkeep v1.3.0** - Ihr zuverlässiger Partner für REDAXO-Wartung und -Sicherheit! 🛡️ 
 

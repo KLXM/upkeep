@@ -4,11 +4,15 @@
  */
 
 use KLXM\Upkeep\Upkeep;
+use KLXM\Upkeep\IntrusionPrevention;
 
 // Falls Setup aktiv ist, nichts tun
 if (rex::isSetup()) {
     return;
 }
+
+// Intrusion Prevention System - ALLERERSTE Prüfung
+IntrusionPrevention::checkRequest();
 
 // Stellen Sie sicher, dass die Session immer verfügbar ist
 if (!rex_backend_login::hasSession()) {
