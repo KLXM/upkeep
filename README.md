@@ -10,7 +10,7 @@ Ein modernes, schlankes AddOn für Wartungsarbeiten.
 - **Frontend-Sperre** mit eleganter und anpassbarer Wartungsseite
 - **Backend-Sperre** für Redakteure (Admins haben immer Zugriff)
 - **Domain-spezifische Sperren** für Multidomains mit YRewrite
-- **Domain-Mapping** für automatische Weiterleitungen von Domains zu beliebigen URLs
+- **URL-Redirects** für automatische Weiterleitungen mit Wildcard-Unterstützung
 - **Passwort-Bypass** zum Testen des Frontends im Wartungsmodus
 - **Automatischer Zugang** für angemeldete Benutzer (konfigurierbar)
 - **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
@@ -46,53 +46,26 @@ Im Tab "Backend" können Sie:
 Wenn YRewrite installiert ist, können Sie im Tab "Domains":
 - Den Ukeep-Mode für einzelne Domains aktivieren oder deaktivieren
 
-### Domain-Mapping
+### URL-Redirects
 
-Im Tab "Domain-Mapping" können Sie:
-- Domains zu beliebigen URLs weiterleiten
+Im Tab "URL-Redirects" können Sie:
+- Domains und Pfade zu beliebigen URLs weiterleiten
 - **Wildcard-Redirects** für dynamische Pfad-Weiterleitung
-- HTTP-Statuscodes für Weiterleitungen konfigurieren (301, 302, 303, 307, 308)
-- Domain-Mappings aktivieren oder deaktivieren
-- Beschreibungen für bessere Übersicht hinzufügen
+- HTTP-Statuscodes konfigurieren (301, 302, 303, 307, 308)
+- Redirects aktivieren/deaktivieren
 
-**Anwendungsfälle für Domain-Mapping:**
-- Weiterleitung alter Domains auf neue URLs
-- Temporäre Weiterleitungen während Wartungsarbeiten
-- Umleitung von Subdomains auf Hauptseiten
-- SEO-Weiterleitungen für Domainwechsel
-- **Wildcard-Redirects für Pfad-basierte Umleitungen**
-
-### Wildcard-Redirects
-
-Wildcard-Redirects ermöglichen dynamische Pfad-Weiterleitung mit Platzhaltern:
-
-**Beispiel 1: Blog-Umzug**
+**Wildcard-Beispiele:**
 ```
-Quell-Domain: old-blog.com
-Quell-Pfad: /posts/*
-Ziel-URL: https://new-blog.com/articles/*
-HTTP-Code: 301
-Wildcard: ✓ Aktiv
+Blog-Umzug:    old-blog.com/posts/* → new-blog.com/articles/*
+Shop-Umzug:    shop.com/kategorie/* → example.com/shop/*
 ```
-Resultat: `old-blog.com/posts/artikel-name` → `https://new-blog.com/articles/artikel-name`
 
-**Beispiel 2: Kategorie-Umleitung**
-```
-Quell-Domain: shop.example.com
-Quell-Pfad: /kategorie/*
-Ziel-URL: https://example.com/shop/kategorie/*
-HTTP-Code: 301
-Wildcard: ✓ Aktiv
-```
-Resultat: `shop.example.com/kategorie/schuhe/nike` → `https://example.com/shop/kategorie/schuhe/nike`
+**Anwendungsfälle:**
+- SEO-Weiterleitungen bei Domain-Umzügen
+- Dynamische Pfad-Umleitungen mit Wildcard-Unterstützung
+- Temporäre Wartungs-Redirects
 
-**Wildcard-Funktionen:**
-- **Dynamische Pfad-Ersetzung**: Der `*` wird durch den verbleibenden Pfad ersetzt
-- **Sichere Validierung**: Path-Traversal-Schutz gegen `..` und Backslashes
-- **RFC-konforme Domain-Prüfung**: Strikte Domain-Validierung
-- **Pfad-Priorität**: Längere Pfade haben Vorrang vor kürzeren
-
-## Anpassen der Ukeep-Seite
+## Anpassen der Wartungsseite
 
 Sie können die Wartungsseite anpassen, indem Sie ein eigenes Fragment erstellen:
 
@@ -102,51 +75,34 @@ Sie können die Wartungsseite anpassen, indem Sie ein eigenes Fragment erstellen
 
 ## Konsolen-Befehle
 
-Sie können den Wartungsmodus auch über die Konsole aktivieren oder deaktivieren:
-
 ```bash
-# Frontend-Ukeep aktivieren
-php redaxo/bin/console upkeep:mode frontend on
+# Frontend-Wartungsmodus aktivieren/deaktivieren
+php redaxo/bin/console upkeep:mode frontend on|off
 
-# Frontend-Ukeep deaktivieren
-php redaxo/bin/console upkeep:mode frontend off
+# Backend-Wartungsmodus aktivieren/deaktivieren
+php redaxo/bin/console upkeep:mode backend on|off
 
-# Backend-Ukeep aktivieren
-php redaxo/bin/console upkeep:mode backend on
-
-# Backend-Ukeep deaktivieren
-php redaxo/bin/console upkeep:mode backend off
+# Backend-Wartungsmodus aktivieren/deaktivieren
+php redaxo/bin/console upkeep:mode backend on|off
 ```
 
-## API-Referenz für das REDAXO Upkeep AddOn
+## API
 
-Das Upkeep-AddOn bietet API, mit der Sie den Wartungsmodus programmgesteuert abfragen und ändern können. Dies ist besonders nützlich für automatisierte Wartungsabläufe, CI/CD-Pipelines oder Monitoring.
+Das Upkeep-AddOn bietet eine REST-API für automatisierte Wartungsabläufe:
 
-### Einrichtung
+### API-Token einrichten
+1. **Frontend-Einstellungen** > API-Token generieren
+2. Token für alle API-Anfragen verwenden
 
-1. Navigieren Sie zu den Frontend-Einstellungen des AddOns
-2. Im Abschnitt "API-Einstellungen" können Sie einen API-Token generieren oder selbst eingeben
-3. Der Token wird für alle API-Anfragen benötigt
-4. Lassen Sie das Token-Feld leer, um die API zu deaktivieren
-
-### Grundlegende API-Verwendung
-
-Die API wird über den REDAXO-API-Mechanismus aufgerufen:
-
+### API-Verwendung
 ```
-https://example.com/index.php?rex-api-call=upkeep&token=IHR_API_TOKEN&action=AKTION
+GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
 ```
 
-Alle API-Anfragen benötigen folgende Parameter:
-- `rex-api-call=upkeep`: Ruft die Upkeep-API auf
-- `token=IHR_API_TOKEN`: Authentifizierung mit Ihrem API-Token
-- `action=AKTION`: Die auszuführende Aktion
-
-Alle Anfragen liefern JSON-Antworten zurück.
-
-### Verfügbare Aktionen
-
-#### Status abfragen
+**Verfügbare Aktionen:**
+- `action=status` - Wartungsmodus-Status abfragen
+- `action=set_frontend&status=1|0` - Frontend-Wartung aktivieren/deaktivieren
+- `action=set_backend&status=1|0` - Backend-Wartung aktivieren/deaktivieren
 
 Ruft den aktuellen Status aller Wartungsmodi ab.
 
@@ -327,142 +283,31 @@ HTTP-Statuscodes:
 - Beschränken Sie den Zugriff auf die API über Ihre Server-Konfiguration
 - Die API bietet keine Ratengrenzwerte, implementieren Sie bei Bedarf eigene Maßnahmen gegen Missbrauch
 
-## Domain-Mapping
+## URL-Redirects
 
-Das Domain-Mapping ermöglicht es, eingehende Anfragen von bestimmten Domains automatisch zu anderen URLs weiterzuleiten. Dies ist besonders nützlich für:
+Automatische Weiterleitungen von Domains und Pfaden mit Wildcard-Unterstützung:
 
-- **Domain-Umzüge**: Weiterleitung von alten auf neue Domains
-- **SEO-Optimierung**: Permanente Weiterleitungen (301) für bessere Suchmaschinenrankings
-- **Wartungsarbeiten**: Temporäre Weiterleitungen (302/307) während Updates
-- **Subdomain-Management**: Zentrale Verwaltung von Subdomain-Weiterleitungen
-- **Wildcard-Redirects**: Dynamische Pfad-basierte Weiterleitungen mit Platzhaltern
+**Konfiguration:** Upkeep > URL-Redirects
 
-### Domain-Mapping konfigurieren
+**HTTP-Codes:** 301 (permanent), 302 (temporär), 303, 307, 308
 
-1. Navigieren Sie zu **Upkeep > URL-Redirects** im Backend
-2. Klicken Sie auf "URL-Redirect hinzufügen"
-3. Füllen Sie das Formular aus:
-   - **Quell-Domain**: Die eingehende Domain (z.B. `old-domain.com`)
-   - **Quell-Pfad**: Optionaler Pfad für spezifische Weiterleitungen (z.B. `/blog/*`)
-   - **Ziel-URL**: Die URL, zu der weitergeleitet werden soll (z.B. `https://new-domain.com/start`)
-   - **HTTP-Code**: Der HTTP-Statuscode für die Weiterleitung
-   - **Wildcard-Redirect**: Aktiviert dynamische Pfad-Ersetzung mit `*`
-   - **Status**: Aktiv/Inaktiv für die Weiterleitung
-   - **Beschreibung**: Optionale Beschreibung für bessere Übersicht
-
-### HTTP-Statuscodes für Weiterleitungen
-
-| Code | Typ | Verwendung |
-|------|-----|------------|
-| **301** | Permanent Redirect | Für dauerhafte Domain-Umzüge, SEO-freundlich |
-| **302** | Found (Temporary) | Für temporäre Weiterleitungen |
-| **303** | See Other | Nach POST-Anfragen |
-| **307** | Temporary Redirect | Behält HTTP-Methode bei |
-| **308** | Permanent Redirect | Permanent + behält HTTP-Methode bei |
-
-### Funktionsweise
-
-Das Domain-Mapping wird **vor** allen anderen Prüfungen ausgeführt:
-
-1. **Domain-Prüfung**: System prüft die eingehende Domain
-2. **Datenbankabfrage**: Suche nach aktivem Domain-Mapping
-3. **Weiterleitung**: Bei Treffer sofortige Weiterleitung mit konfiguriertem HTTP-Code
-4. **Normale Verarbeitung**: Bei keinem Treffer normale REDAXO-Verarbeitung
-
-### Beispiele
-
-#### Permanente Domain-Weiterleitung (SEO)
+**Wildcard-Beispiele:**
 ```
-Quell-Domain: old-company.com
-Quell-Pfad: (leer)
-Ziel-URL: https://new-company.com
-HTTP-Code: 301
-Status: Aktiv
-Beschreibung: Permanente Weiterleitung nach Rebranding
+Blog-Umzug:     old-blog.com/posts/* → new-blog.com/articles/*
+Shop-Umzug:     shop.com/kategorie/* → example.com/shop/*
+Domain-Umzug:   old-company.com → https://new-company.com
 ```
 
-#### Subdomain zu Hauptseite
-```
-Quell-Domain: blog.example.com
-Quell-Pfad: (leer)
-Ziel-URL: https://example.com/blog
-HTTP-Code: 301
-Status: Aktiv
-Beschreibung: Blog-Subdomain auf Hauptseite umleiten
-```
-
-#### Wildcard-Redirect für Blog-Artikel
-```
-Quell-Domain: old-blog.com
-Quell-Pfad: /posts/*
-Ziel-URL: https://new-blog.com/articles/*
-HTTP-Code: 301
-Wildcard: ✓ Aktiv
-Status: Aktiv
-Beschreibung: Alle Blog-Posts zu neuer Struktur weiterleiten
-```
-Resultat: `old-blog.com/posts/artikel-name` → `https://new-blog.com/articles/artikel-name`
-
-#### Wildcard-Redirect für Shop-Kategorien
-```
-Quell-Domain: shop.example.com
-Quell-Pfad: /kategorie/*
-Ziel-URL: https://example.com/shop/*
-HTTP-Code: 301
-Wildcard: ✓ Aktiv
-Status: Aktiv
-Beschreibung: Shop-Kategorien zur Hauptseite weiterleiten
-```
-Resultat: `shop.example.com/kategorie/schuhe/nike` → `https://example.com/shop/schuhe/nike`
-
-#### Temporäre Wartungsweiterleitung
-```
-Quell-Domain: shop.example.com
-Quell-Pfad: (leer)
-Ziel-URL: https://example.com/wartung
-HTTP-Code: 302
-Status: Aktiv
-Beschreibung: Temporäre Weiterleitung während Shop-Wartung
-```
-
-### Tipps und Best Practices
-
-**URL-Format:**
-- URLs ohne Protokoll werden automatisch mit `https://` ergänzt
-- Verwenden Sie vollständige URLs mit Protokoll für beste Kontrolle
-
-**Wildcard-Redirects:**
-- Quell-Pfad muss mit `/*` enden (z.B. `/blog/*`, `/kategorie/*`)
-- Ziel-URL muss `*` enthalten, um den dynamischen Teil zu ersetzen
-- Längere Pfade haben Vorrang vor kürzeren (z.B. `/blog/tech/*` vor `/blog/*`)
-- Path-Traversal-Schutz verhindert `..` und Backslashes in Pfaden
-
-**SEO-Optimierung:**
-- Nutzen Sie 301-Weiterleitungen für permanente Domain-Wechsel
-- Dokumentieren Sie Weiterleitungen in der Beschreibung
-- Vermeiden Sie Weiterleitungsschleifen
-- Wildcard-Redirects erhalten die URL-Struktur für bessere SEO
-
-**Performance:**
-- Domain-Mappings werden frühzeitig geprüft (vor Wartungsmodus)
-- Minimale Datenbankabfrage nur bei Frontend-Anfragen
-- Keine zusätzliche Latenz bei nicht gemappten Domains
-- Pfad-Priorität vermeidet unnötige Datenbankabfragen
-
-**Verwaltung:**
-- Nutzen Sie den Status-Toggle für temporäre Deaktivierung
-- Beschreibungen helfen bei der Übersicht komplexer Setups
-- Regelmäßige Überprüfung nicht mehr benötigter Mappings
-- Testen Sie Wildcard-Redirects vor der Aktivierung
+**Features:**
+- Wildcard-Pfade mit `/*` und dynamischer `*`-Ersetzung
+- Path-Traversal-Schutz und RFC-konforme Domain-Validierung
+- Pfad-Priorität (längere Pfade haben Vorrang)
+- Frühe Ausführung vor Wartungsmodus-Prüfung
 
 ## Extension Points
 
-- `UPKEEP_ALLOWED_PATHS`: Hier können Sie Pfade definieren, die vom Wartungsmodus ausgenommen werden sollen (z.B. für APIs oder bestimmte Medien)
-
-## Autorenschaft
-
-- KLXM Crossmedia
+- `UPKEEP_ALLOWED_PATHS`: Pfade vom Wartungsmodus ausnehmen
 
 ## Lizenz
 
-MIT License - siehe LICENSE.md
+MIT License
