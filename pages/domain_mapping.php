@@ -23,9 +23,12 @@ if (rex_post('save', 'bool')) {
     $data = [
         'id' => rex_post('id', 'int'),
         'source_domain' => trim(rex_post('source_domain', 'string')),
+        'source_path' => trim(rex_post('source_path', 'string')),
         'target_url' => trim(rex_post('target_url', 'string')),
         'redirect_code' => rex_post('redirect_code', 'int', 301),
-        'status' => rex_post('status', 'bool') ? 1 : 0
+        'is_wildcard' => rex_post('is_wildcard', 'bool') ? 1 : 0,
+        'status' => rex_post('status', 'bool') ? 1 : 0,
+        'description' => trim(rex_post('description', 'string'))
     ];
     
     // Validation
@@ -37,17 +40,27 @@ if (rex_post('save', 'bool')) {
         $errors[] = 'Ungültige Domain';
     }
     
-    if (empty($data['target_url'])) {
-        $errors[] = 'Target URL ist erforderlich';
-    } elseif (!filter_var($data['target_url'], FILTER_VALIDATE_URL)) {
-        $errors[] = 'Ungültige URL';
+    // Pfad-Validierung für Wildcards
+    if (!empty($data['source_path'])) {
+        if ($data['is_wildcard'] && !str_ends_with($data['source_path'], '/*')) {
+            $errors[] = 'Wildcard-Pfade müssen mit /* enden';
+        }
+        if (!str_starts_with($data['source_path'], '/')) {
+            $errors[] = 'Pfade müssen mit / beginnen';
+        }
     }
     
-    // Check for duplicate domain
+    if (empty($data['target_url'])) {
+        $errors[] = 'Target URL ist erforderlich';
+    } elseif (!filter_var($data['target_url'], FILTER_VALIDATE_URL) && !str_contains($data['target_url'], '*')) {
+        $errors[] = 'Ungültige URL (außer bei Wildcard-URLs mit *)';
+    }
+    
+    // Check for duplicate domain+path combination
     if (empty($errors)) {
         $sql = rex_sql::factory();
-        $where = 'source_domain = ?';
-        $params = [$data['source_domain']];
+        $where = 'source_domain = ? AND source_path = ?';
+        $params = [$data['source_domain'], $data['source_path']];
         
         if (!empty($data['id'])) {
             $where .= ' AND id != ?';
@@ -57,7 +70,7 @@ if (rex_post('save', 'bool')) {
         $sql->setQuery('SELECT id FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE ' . $where, $params);
         
         if ($sql->getRows() > 0) {
-            $errors[] = 'Diese Domain ist bereits konfiguriert';
+            $errors[] = 'Diese Domain+Pfad-Kombination ist bereits konfiguriert';
         }
     }
     
@@ -66,9 +79,12 @@ if (rex_post('save', 'bool')) {
         $sql = rex_sql::factory();
         $sql->setTable(rex::getTable('upkeep_domain_mapping'));
         $sql->setValue('source_domain', $data['source_domain']);
+        $sql->setValue('source_path', $data['source_path']);
         $sql->setValue('target_url', $data['target_url']);
         $sql->setValue('redirect_code', $data['redirect_code']);
+        $sql->setValue('is_wildcard', $data['is_wildcard']);
         $sql->setValue('status', $data['status']);
+        $sql->setValue('description', $data['description']);
         $sql->setValue('updatedate', date('Y-m-d H:i:s'));
         
         if (!empty($data['id'])) {
@@ -111,9 +127,12 @@ if ($func == 'add' || $func == 'edit') {
             $data = [
                 'id' => $sql->getValue('id'),
                 'source_domain' => $sql->getValue('source_domain'),
+                'source_path' => $sql->getValue('source_path'),
                 'target_url' => $sql->getValue('target_url'),
                 'redirect_code' => $sql->getValue('redirect_code'),
-                'status' => $sql->getValue('status')
+                'is_wildcard' => $sql->getValue('is_wildcard'),
+                'status' => $sql->getValue('status'),
+                'description' => $sql->getValue('description')
             ];
         } else {
             echo rex_view::error('Eintrag nicht gefunden');
@@ -132,11 +151,26 @@ if ($func == 'add' || $func == 'edit') {
         $n['note'] = 'Domain ohne http(s):// und ohne Pfad (z.B. alt-domain.com)';
         $formElements[] = $n;
         
+        // Source Path
+        $n = [];
+        $n['label'] = '<label for="source_path">Source Path (optional)</label>';
+        $n['field'] = '<input class="form-control" type="text" id="source_path" name="source_path" value="' . rex_escape($data['source_path'] ?? '') . '" placeholder="/pfad/zur/seite">';
+        $n['note'] = 'Spezifischer Pfad für URL-Matching. Leer lassen für Domain-only Mapping.';
+        $formElements[] = $n;
+        
+        // Wildcard Checkbox
+        $n = [];
+        $n['label'] = '<label for="is_wildcard">Wildcard Mapping</label>';
+        $checked = isset($data['is_wildcard']) && $data['is_wildcard'] ? ' checked="checked"' : '';
+        $n['field'] = '<input type="checkbox" id="is_wildcard" name="is_wildcard" value="1"' . $checked . '> Wildcard-Umleitung aktivieren';
+        $n['note'] = 'Source Path muss mit /* enden. Target URL kann * enthalten für dynamische Ersetzung.';
+        $formElements[] = $n;
+        
         // Target URL
         $n = [];
         $n['label'] = '<label for="target_url">Target URL</label>';
-        $n['field'] = '<input class="form-control" type="url" id="target_url" name="target_url" value="' . rex_escape($data['target_url'] ?? '') . '" required>';
-        $n['note'] = 'Vollständige URL mit http:// oder https://';
+        $n['field'] = '<input class="form-control" type="text" id="target_url" name="target_url" value="' . rex_escape($data['target_url'] ?? '') . '" required>';
+        $n['note'] = 'Vollständige URL mit http:// oder https://. Bei Wildcards: * wird durch gefangenen Pfad ersetzt.';
         $formElements[] = $n;
         
         // HTTP Status Code
@@ -148,10 +182,18 @@ if ($func == 'add' || $func == 'edit') {
         $select->setAttribute('class', 'form-control');
         $select->addOption('301 - Moved Permanently', 301);
         $select->addOption('302 - Found', 302);
+        $select->addOption('303 - See Other', 303);
         $select->addOption('307 - Temporary Redirect', 307);
         $select->addOption('308 - Permanent Redirect', 308);
         $select->setSelected($data['redirect_code'] ?? 301);
         $n['field'] = $select->get();
+        $formElements[] = $n;
+        
+        // Description
+        $n = [];
+        $n['label'] = '<label for="description">Beschreibung (optional)</label>';
+        $n['field'] = '<textarea class="form-control" id="description" name="description" rows="3" placeholder="Beschreibung der Weiterleitung...">' . rex_escape($data['description'] ?? '') . '</textarea>';
+        $n['note'] = 'Optionale Beschreibung für bessere Übersicht und Dokumentation.';
         $formElements[] = $n;
         
         // Status
@@ -230,21 +272,48 @@ if ($func == '') {
     
     $list->setNoRowsMessage('Keine Domain Mappings vorhanden');
     
-    $list->setColumnLabel('source_domain', 'Source Domain');
-    $list->setColumnLabel('target_url', 'Target URL');
+    $list->setColumnLabel('source_domain', 'Domain');
+    $list->setColumnLabel('source_path', 'Pfad');
+    $list->setColumnLabel('target_url', 'Ziel-URL');
     $list->setColumnLabel('redirect_code', 'HTTP Code');
+    $list->setColumnLabel('is_wildcard', 'Wildcard');
     $list->setColumnLabel('status', 'Status');
+    $list->setColumnLabel('description', 'Beschreibung');
+    
+    // Format source_path column
+    $list->setColumnFormat('source_path', 'custom', function($params) {
+        $path = $params['value'];
+        if (empty($path)) {
+            return '<em>Domain-only</em>';
+        }
+        return rex_escape($path);
+    });
     
     $list->setColumnFormat('target_url', 'custom', function($params) {
         $url = $params['value'];
-        if (strlen($url) > 50) {
-            $url = substr($url, 0, 47) . '...';
+        if (strlen($url) > 40) {
+            $url = substr($url, 0, 37) . '...';
         }
         return '<a href="' . rex_escape($params['value']) . '" target="_blank">' . rex_escape($url) . '</a>';
     });
     
+    $list->setColumnFormat('is_wildcard', 'custom', function($params) {
+        return $params['value'] ? '<span class="label label-info">*</span>' : '';
+    });
+    
     $list->setColumnFormat('status', 'custom', function($params) {
         return $params['value'] ? '<span class="rex-online">Aktiv</span>' : '<span class="rex-offline">Inaktiv</span>';
+    });
+    
+    $list->setColumnFormat('description', 'custom', function($params) {
+        $desc = $params['value'];
+        if (empty($desc)) {
+            return '';
+        }
+        if (strlen($desc) > 30) {
+            $desc = substr($desc, 0, 27) . '...';
+        }
+        return '<small>' . rex_escape($desc) . '</small>';
     });
     
     $list->addColumn('edit', '<i class="rex-icon rex-icon-edit"></i> ' . rex_i18n::msg('edit'));

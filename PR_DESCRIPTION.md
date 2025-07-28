@@ -8,7 +8,7 @@ This PR adds comprehensive domain-mapping functionality to the Upkeep AddOn, all
 
 ### 🔀 Domain-Mapping System
 - **Individual Domain Redirects**: Map specific domains to target URLs
-- **HTTP Status Code Support**: 301 (Permanent), 302 (Temporary), 307, 308
+- **HTTP Status Code Support**: 301 (Permanent), 302 (Temporary), 303 (See Other), 307, 308
 - **Global Toggle**: Central activation/deactivation for all domain mappings
 - **Status Management**: Individual active/inactive control per mapping
 - **URL Validation**: Automatic `https://` protocol addition for incomplete URLs
@@ -90,7 +90,7 @@ Status: Active
 ## 🔍 Testing
 
 - ✅ Domain mapping creation and editing
-- ✅ HTTP status code validation (301, 302, 307, 308)
+- ✅ HTTP status code validation (301, 302, 303, 307, 308)
 - ✅ URL validation and protocol handling
 - ✅ Global toggle functionality  
 - ✅ Status indicator in backend menu
