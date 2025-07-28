@@ -119,13 +119,15 @@ rex_sql_table::get(rex::getTable('upkeep_ips_positivliste'))
     ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
     ->ensureColumn(new rex_sql_column('ip_range', 'varchar(50)', true)) // CIDR-Notation für IP-Bereiche
     ->ensureColumn(new rex_sql_column('description', 'varchar(255)', true))
-    ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted")', false, 'trusted'))
+    ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted","captcha_verified_temp")', false, 'trusted'))
+    ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent, sonst Ablaufzeit
     ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
     ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
     ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
     ->setPrimaryKey('id')
     ->ensureIndex(new rex_sql_index('ip_lookup', ['ip_address', 'status']))
     ->ensureIndex(new rex_sql_index('range_lookup', ['ip_range', 'status']))
+    ->ensureIndex(new rex_sql_index('expires_lookup', ['expires_at']))
     ->ensure();
 
 // Aktuelle Admin-IP automatisch zur Positivliste hinzufügen
@@ -149,4 +151,27 @@ if ($currentIp) {
 // IPS standardmäßig aktivieren
 if ($addon->getConfig('ips_active') === null) {
     $addon->setConfig('ips_active', true);
+}
+
+// Rate-Limiting standardmäßig DEAKTIVIERT (Webserver sollte das machen)
+if ($addon->getConfig('ips_rate_limiting_enabled') === null) {
+    $addon->setConfig('ips_rate_limiting_enabled', false);
+}
+
+// CAPTCHA-Vertrauensdauer konfigurieren (Standard: 24 Stunden)
+if ($addon->getConfig('ips_captcha_trust_duration') === null) {
+    $addon->setConfig('ips_captcha_trust_duration', 24);
+}
+
+// Rate-Limiting Konfiguration (sehr hoch - nur für DoS-Schutz)
+if ($addon->getConfig('ips_burst_limit') === null) {
+    $addon->setConfig('ips_burst_limit', 600); // 10 Requests pro Sekunde = echte DoS-Schwelle
+}
+
+if ($addon->getConfig('ips_strict_limit') === null) {
+    $addon->setConfig('ips_strict_limit', 200); // Auch Admin-Bereiche sehr großzügig
+}
+
+if ($addon->getConfig('ips_burst_window') === null) {
+    $addon->setConfig('ips_burst_window', 60); // 60 Sekunden Fenster
 }
