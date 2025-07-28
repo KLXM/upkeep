@@ -269,11 +269,11 @@ public static function checkFrontend(): void
 
         // Domain-Mapping aus der Datenbank laden
         $sql = rex_sql::factory();
-        $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE domain = ? AND status = 1', [$currentDomain]);
+        $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND status = 1', [$currentDomain]);
 
         if ($sql->getRows() > 0) {
             $targetUrl = $sql->getValue('target_url');
-            $httpCode = (int) $sql->getValue('http_code');
+            $httpCode = (int) $sql->getValue('redirect_code');
             
             // URL validieren und bei Bedarf Protocol hinzufügen
             if (!str_starts_with($targetUrl, 'http://') && !str_starts_with($targetUrl, 'https://')) {
