@@ -61,7 +61,6 @@ upkeep_settings_saved = Die Einstellungen wurden gespeichert.
 upkeep_backend_maintenance = Backend-Wartung
 
 # Domain Mapping
-upkeep_domain_mapping = Domain Mapping
 upkeep_domain_mapping_description = Hier können Sie Domains auf URLs umleiten
 upkeep_source_domain = Quell-Domain
 upkeep_target_url = Ziel-URL
