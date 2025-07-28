@@ -13,6 +13,7 @@ use rex_request;
 use rex_response;
 use rex_server;
 use rex_session;
+use rex_sql;
 use rex_user;
 use rex_yrewrite;
 
@@ -238,7 +239,131 @@ public static function checkFrontend(): void
             $page['title'] .= ' <span class="label label-warning">F</span>';
         }
 
+        if (self::getConfig('domain_mapping_active', false)) {
+            $page['title'] .= ' <span class="label label-default">D</span>';
+        }
+
         $addon->setProperty('page', $page);
+    }
+
+    /**
+     * Prüft Domain-Mapping und führt Redirects durch
+     */
+    public static function checkDomainMapping(): void
+    {
+        // Nur im Frontend prüfen
+        if (!rex::isFrontend()) {
+            return;
+        }
+
+        // Prüfen, ob Domain-Mapping global aktiviert ist
+        if (!self::getConfig('domain_mapping_active', false)) {
+            return;
+        }
+
+        $currentDomain = rex_server('HTTP_HOST', 'string', '');
+        $currentPath = rex_server('REQUEST_URI', 'string', '');
+        
+        if ($currentDomain === '') {
+            return;
+        }
+
+        // Erst exakte Domain-Mappings prüfen (ohne Wildcard)
+        $sql = rex_sql::factory();
+        $sql->setQuery('SELECT target_url, redirect_code FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND (source_path = "" OR source_path IS NULL) AND status = 1 ORDER BY id', [$currentDomain]);
+
+        if ($sql->getRows() > 0) {
+            $targetUrl = $sql->getValue('target_url');
+            $httpCode = (int) $sql->getValue('redirect_code');
+            
+            self::performRedirect($targetUrl, $httpCode);
+        }
+
+        // Dann Wildcard-Mappings prüfen
+        $sql = rex_sql::factory();
+        $sql->setQuery('SELECT target_url, redirect_code, source_path, is_wildcard FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND source_path != "" AND source_path IS NOT NULL AND status = 1 ORDER BY LENGTH(source_path) DESC', [$currentDomain]);
+
+        while ($sql->hasNext()) {
+            $sourcePath = $sql->getValue('source_path');
+            $isWildcard = (bool) $sql->getValue('is_wildcard');
+            
+            if (self::matchesPath($currentPath, $sourcePath, $isWildcard)) {
+                $targetUrl = $sql->getValue('target_url');
+                $httpCode = (int) $sql->getValue('redirect_code');
+                
+                // Wildcard-Ersetzung durchführen
+                if ($isWildcard && str_contains($targetUrl, '*')) {
+                    $targetUrl = self::replaceWildcard($currentPath, $sourcePath, $targetUrl);
+                }
+                
+                self::performRedirect($targetUrl, $httpCode);
+            }
+            
+            $sql->next();
+        }
+    }
+
+    /**
+     * Prüft, ob der aktuelle Pfad mit dem Quell-Pfad übereinstimmt
+     */
+    private static function matchesPath(string $currentPath, string $sourcePath, bool $isWildcard): bool
+    {
+        if (!$isWildcard) {
+            return $currentPath === $sourcePath;
+        }
+
+        // Wildcard-Matching
+        if (str_ends_with($sourcePath, '/*')) {
+            $basePattern = rtrim($sourcePath, '/*');
+            return str_starts_with($currentPath, $basePattern);
+        }
+
+        return false;
+    }
+
+    /**
+     * Ersetzt Wildcards in der Ziel-URL
+     */
+    private static function replaceWildcard(string $currentPath, string $sourcePath, string $targetUrl): string
+    {
+        if (str_ends_with($sourcePath, '/*') && str_contains($targetUrl, '*')) {
+            $basePattern = rtrim($sourcePath, '/*');
+            
+            // Sicherheitscheck: Pfad muss mit basePattern beginnen
+            if (!str_starts_with($currentPath, $basePattern)) {
+                return $targetUrl; // Kein Replacement, wenn Pattern nicht passt
+            }
+            
+            $remainingPathStartIndex = strlen($basePattern);
+            
+            // Bounds-Check für substr
+            if ($remainingPathStartIndex >= strlen($currentPath)) {
+                $remainingPath = '';
+            } else {
+                $remainingPath = substr($currentPath, $remainingPathStartIndex);
+                $remainingPath = ltrim($remainingPath, '/');
+            }
+            
+            return str_replace('*', $remainingPath, $targetUrl);
+        }
+
+        return $targetUrl;
+    }
+
+    /**
+     * Führt die tatsächliche Umleitung durch
+     */
+    private static function performRedirect(string $targetUrl, int $httpCode): void
+    {
+        // URL validieren und bei Bedarf Protocol hinzufügen
+        if (!str_starts_with($targetUrl, 'http://') && !str_starts_with($targetUrl, 'https://')) {
+            $targetUrl = 'https://' . $targetUrl;
+        }
+        
+        // Redirect durchführen
+        rex_response::setStatus($httpCode);
+        rex_response::sendRedirect($targetUrl);
+        exit;
     }
 
     /**

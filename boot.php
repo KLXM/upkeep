@@ -17,6 +17,9 @@ if (!rex_backend_login::hasSession()) {
 
 // Register Extension Point nach dem Laden aller Packages
 rex_extension::register('PACKAGES_INCLUDED', static function () {
+    // Domain-Mapping-Prüfung (vor Frontend/Backend-Prüfung)
+    Upkeep::checkDomainMapping();
+    
     // Frontend-Prüfung
     if (rex::isFrontend()) {
         Upkeep::checkFrontend();
@@ -34,4 +37,4 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
         // CSS für das Backend laden
         rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
     }
-});
+}, rex_extension::EARLY);

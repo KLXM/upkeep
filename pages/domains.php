@@ -21,9 +21,9 @@ $domainStatus = (array) $addon->getConfig('domain_status', []);
 $allDomainsLocked = (bool) $addon->getConfig('all_domains_locked', false);
 
 // Formular abgesendet?
-if (rex_post('save', 'boolean')) {
+if (rex_post('save', 'bool')) {
     // Globale Option für alle Domains speichern
-    $allDomainsLocked = rex_post('all_domains_locked', 'boolean', false);
+    $allDomainsLocked = rex_post('all_domains_locked', 'bool', false);
     $addon->setConfig('all_domains_locked', $allDomainsLocked);
     
     // Nur wenn nicht alle Domains gesperrt sind, individuelle Einstellungen speichern
@@ -33,7 +33,7 @@ if (rex_post('save', 'boolean')) {
         foreach ($domains as $domain) {
             $name = $domain->getName();
             if ($name !== 'default') {
-                $domainStatus[$name] = rex_post('domain_' . md5($name), 'boolean', false);
+                $domainStatus[$name] = rex_post('domain_' . md5($name), 'bool', false);
             }
         }
         
