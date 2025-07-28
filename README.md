@@ -311,3 +311,7 @@ Domain-Umzug:   old-company.com → https://new-company.com
 ## Lizenz
 
 MIT License
+
+## Autor
+Thomas Skerbis KLXM Crossmedia 
+
