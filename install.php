@@ -46,7 +46,7 @@ if ($addon->getConfig('frontend_password', '') === '') {
 rex_sql_table::get(rex::getTable('upkeep_domain_mapping'))
     ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
     ->ensureColumn(new rex_sql_column('source_domain', 'varchar(255)', false))
-    ->ensureColumn(new rex_sql_column('source_path', 'varchar(500)', true, ''))
+    ->ensureColumn(new rex_sql_column('source_path', 'varchar(500)', true, null))
     ->ensureColumn(new rex_sql_column('target_url', 'text', false))
     ->ensureColumn(new rex_sql_column('redirect_code', 'int(3)', false, '301'))
     ->ensureColumn(new rex_sql_column('is_wildcard', 'tinyint(1)', false, '0'))
