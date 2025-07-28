@@ -337,6 +337,15 @@ class IntrusionPrevention
      */
     private static function blockRequest(string $reason, string $ip, string $uri): void
     {
+        // Prüfe CAPTCHA-Entsperrungsversuch
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_ip'])) {
+            if (self::processCaptchaUnlock()) {
+                // Erfolgreich entsperrt - wird in processCaptchaUnlock() weitergeleitet
+                return;
+            }
+            // Fehlgeschlagen - zeige Fehler in der Blockierungsseite
+        }
+        
         rex_response::setStatus(rex_response::HTTP_FORBIDDEN);
         rex_response::sendCacheControl();
         
@@ -707,12 +716,65 @@ class IntrusionPrevention
         $message = self::getAddon()->getConfig('ips_block_message', 'Ihr Request wurde von unserem Sicherheitssystem blockiert.');
         $contact = self::getAddon()->getConfig('ips_contact_info', '');
         
+        // Handle language switching
+        $requestedLang = rex_server('REQUEST_METHOD', 'string') === 'GET' ? rex_request('lang', 'string', '') : '';
+        
+        // Detect language preference (German by default)
+        if ($requestedLang === 'en' || $requestedLang === 'de') {
+            $isEnglish = ($requestedLang === 'en');
+        } else {
+            // Auto-detect from Accept-Language header
+            $acceptLanguage = rex_server('HTTP_ACCEPT_LANGUAGE', 'string', '');
+            $isEnglish = stripos($acceptLanguage, 'en') !== false && stripos($acceptLanguage, 'de') === false;
+        }
+        
+        // Language-specific texts
+        if ($isEnglish) {
+            $texts = [
+                'title' => 'Access Denied',
+                'security_notice' => 'Security Notice:',
+                'message' => 'Your request has been blocked by our security system.',
+                'reason' => 'Reason:',
+                'ip_address' => 'Your IP Address:',
+                'timestamp' => 'Time:',
+                'human_verification' => 'Human Verification',
+                'are_you_human' => 'Are you a real person?',
+                'solve_captcha' => 'Solve this simple math problem to get unblocked and redirected to the homepage.',
+                'your_answer' => 'Your Answer:',
+                'unlock_button' => 'Unlock and go to homepage',
+                'support' => 'Support:',
+                'contact_text' => 'If you have questions, please contact:',
+                'powered_by' => 'Powered by REDAXO Upkeep AddOn - Intrusion Prevention System'
+            ];
+        } else {
+            $texts = [
+                'title' => 'Zugriff verweigert',
+                'security_notice' => 'Sicherheitshinweis:',
+                'message' => 'Ihr Request wurde von unserem Sicherheitssystem blockiert.',
+                'reason' => 'Grund:',
+                'ip_address' => 'Ihre IP-Adresse:',
+                'timestamp' => 'Zeitpunkt:',
+                'human_verification' => 'Menschliche Verifikation',
+                'are_you_human' => 'Sie sind ein echter Mensch?',
+                'solve_captcha' => 'Lösen Sie diese einfache Rechenaufgabe, um entsperrt zu werden und zur Startseite weitergeleitet zu werden.',
+                'your_answer' => 'Ihre Antwort:',
+                'unlock_button' => 'Entsperren und zur Startseite',
+                'support' => 'Support:',
+                'contact_text' => 'Bei Fragen wenden Sie sich an:',
+                'powered_by' => 'Powered by REDAXO Upkeep AddOn - Intrusion Prevention System'
+            ];
+        }
+        
+        // CAPTCHA-Parameter generieren
+        $captchaToken = self::generateCaptchaToken($ip);
+        $captchaProblem = self::generateCaptchaProblem();
+        
         $html = '<!DOCTYPE html>
-<html lang="de">
+<html lang="' . ($isEnglish ? 'en' : 'de') . '">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>' . rex_escape($title) . '</title>
+    <title>' . rex_escape($texts['title']) . '</title>
     <style>
         body { 
             font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -736,6 +798,9 @@ class IntrusionPrevention
         .panel-danger {
             border-color: #d43f3a;
         }
+        .panel-success {
+            border-color: #5cb85c;
+        }
         .panel-heading {
             padding: 10px 15px;
             border-bottom: 1px solid transparent;
@@ -744,6 +809,10 @@ class IntrusionPrevention
             background-color: #d9534f;
             border-color: #d43f3a;
             color: white;
+        }
+        .panel-heading.panel-success {
+            background-color: #5cb85c;
+            border-color: #4cae4c;
         }
         .panel-body {
             padding: 15px;
@@ -764,6 +833,11 @@ class IntrusionPrevention
             background-color: #d1ecf1;
             border-color: #bee5eb;
         }
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
         .fa {
             margin-right: 5px;
         }
@@ -772,6 +846,8 @@ class IntrusionPrevention
         .fa-clock-o:before { content: "🕐"; }
         .fa-info-circle:before { content: "ℹ️"; }
         .fa-envelope:before { content: "✉️"; }
+        .fa-unlock:before { content: "🔓"; }
+        .fa-robot:before { content: "🤖"; }
         h1 {
             color: white;
             margin: 0;
@@ -792,6 +868,54 @@ class IntrusionPrevention
             display: inline-block;
             min-width: 120px;
         }
+        .captcha-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .captcha-problem {
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            display: inline-block;
+            min-width: 100px;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-control {
+            width: 100px;
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-success {
+            background-color: #5cb85c;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #4cae4c;
+        }
         .footer {
             margin-top: 30px;
             padding: 15px;
@@ -801,56 +925,212 @@ class IntrusionPrevention
             color: #6c757d;
             text-align: center;
         }
+        .language-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 4px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .language-switcher a {
+            text-decoration: none;
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 3px;
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .language-switcher a:hover {
+            background: #f0f0f0;
+        }
+        .language-switcher a.active {
+            background: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <div class="language-switcher">
+        <a href="?' . ($isEnglish ? 'lang=de' : 'lang=en') . '" class="' . ($isEnglish ? '' : 'active') . '">🇩🇪 DE</a>
+        <a href="?' . ($isEnglish ? 'lang=de' : 'lang=en') . '" class="' . ($isEnglish ? 'active' : '') . '">🇺🇸 EN</a>
+    </div>
     <div class="container">
         <div class="panel panel-danger">
             <div class="panel-heading">
-                <h1><i class="fa fa-shield"></i> ' . rex_escape($title) . '</h1>
+                <h1><i class="fa fa-shield"></i> ' . rex_escape($texts['title']) . '</h1>
             </div>
             <div class="panel-body">
                 <div class="alert alert-danger">
                     <i class="fa fa-exclamation-triangle"></i>
-                    <strong>Sicherheitshinweis:</strong> ' . rex_escape($message) . '
+                    <strong>' . rex_escape($texts['security_notice']) . '</strong> ' . rex_escape($texts['message']) . '
                 </div>
                 
                 <div class="detail-row">
-                    <span class="detail-label">Grund:</span>
+                    <span class="detail-label">' . rex_escape($texts['reason']) . '</span>
                     ' . rex_escape($reason) . '
                 </div>
                 
                 <div class="detail-row">
-                    <span class="detail-label">Ihre IP-Adresse:</span>
+                    <span class="detail-label">' . rex_escape($texts['ip_address']) . '</span>
                     <strong>' . rex_escape($ip) . '</strong>
                 </div>
                 
                 <div class="detail-row">
-                    <span class="detail-label"><i class="fa fa-clock-o"></i> Zeitpunkt:</span>
+                    <span class="detail-label"><i class="fa fa-clock-o"></i> ' . rex_escape($texts['timestamp']) . '</span>
                     ' . date('d.m.Y H:i:s') . '
-                </div>';
-        
-        if (!empty($contact)) {
-            $html .= '
-                <div class="alert alert-info" style="margin-top: 20px;">
-                    <i class="fa fa-info-circle"></i>
-                    <strong>Support:</strong><br>
-                    <i class="fa fa-envelope"></i> Bei Fragen wenden Sie sich an: ' . rex_escape($contact) . '
-                </div>';
-        }
-        
-        $html .= '
+                </div>
             </div>
         </div>
         
+        <div class="panel panel-success">
+            <div class="panel-heading panel-success">
+                <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-unlock"></i> ' . rex_escape($texts['human_verification']) . '</h2>
+            </div>
+            <div class="panel-body">
+                <div class="alert alert-success">
+                    <i class="fa fa-robot"></i>
+                    <strong>' . rex_escape($texts['are_you_human']) . '</strong><br>
+                    ' . rex_escape($texts['solve_captcha']) . '
+                </div>
+                
+                <div class="captcha-section">
+                    <div class="captcha-problem">' . $captchaProblem['question'] . '</div>
+                    
+                    <form method="POST" action="' . rex_server('REQUEST_URI', 'string', '') . '">
+                        <input type="hidden" name="captcha_token" value="' . $captchaToken . '">
+                        <input type="hidden" name="captcha_answer" value="' . $captchaProblem['answer'] . '">
+                        <input type="hidden" name="unlock_ip" value="' . rex_escape($ip) . '">
+                        
+                        <div class="form-group">
+                            <label for="user_answer">' . rex_escape($texts['your_answer']) . '</label><br>
+                            <input type="number" class="form-control" id="user_answer" name="user_answer" required autofocus>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa fa-unlock"></i> ' . rex_escape($texts['unlock_button']) . '
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>';
+        
+        if (!empty($contact)) {
+            $html .= '
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle"></i>
+                    <strong>' . rex_escape($texts['support']) . '</strong><br>
+                    <i class="fa fa-envelope"></i> ' . rex_escape($texts['contact_text']) . ' ' . rex_escape($contact) . '
+                </div>
+            </div>
+        </div>';
+        }
+        
+        $html .= '
+        
         <div class="footer">
-            <i class="fa fa-shield"></i> Powered by REDAXO Upkeep AddOn - Intrusion Prevention System
+            <i class="fa fa-shield"></i> ' . rex_escape($texts['powered_by']) . '
         </div>
     </div>
 </body>
 </html>';
         
         return $html;
+    }
+    
+    /**
+     * Generiert CAPTCHA-Token für Sicherheit
+     */
+    private static function generateCaptchaToken(string $ip): string
+    {
+        $timestamp = time();
+        $secret = self::getAddon()->getConfig('captcha_secret', 'default_secret_' . rex::getServerName());
+        return hash('sha256', $ip . $timestamp . $secret . session_id());
+    }
+    
+    /**
+     * Generiert einfache Rechenaufgabe für CAPTCHA
+     */
+    private static function generateCaptchaProblem(): array
+    {
+        $operations = [
+            ['op' => '+', 'min' => 1, 'max' => 20],
+            ['op' => '-', 'min' => 5, 'max' => 25],
+            ['op' => '*', 'min' => 1, 'max' => 10]
+        ];
+        
+        $operation = $operations[array_rand($operations)];
+        
+        switch ($operation['op']) {
+            case '+':
+                $a = rand($operation['min'], $operation['max']);
+                $b = rand($operation['min'], $operation['max']);
+                return [
+                    'question' => "{$a} + {$b} = ?",
+                    'answer' => $a + $b
+                ];
+                
+            case '-':
+                $a = rand($operation['min'], $operation['max']);
+                $b = rand($operation['min'], $a); // b kleiner als a für positive Ergebnisse
+                return [
+                    'question' => "{$a} - {$b} = ?",
+                    'answer' => $a - $b
+                ];
+                
+            case '*':
+                $a = rand($operation['min'], $operation['max']);
+                $b = rand($operation['min'], $operation['max']);
+                return [
+                    'question' => "{$a} × {$b} = ?",
+                    'answer' => $a * $b
+                ];
+        }
+        
+        // Fallback
+        return [
+            'question' => "5 + 3 = ?",
+            'answer' => 8
+        ];
+    }
+    
+    /**
+     * Verarbeitet CAPTCHA-Entsperrungsversuch
+     */
+    public static function processCaptchaUnlock(): bool
+    {
+        if (!isset($_POST['captcha_token'], $_POST['captcha_answer'], $_POST['user_answer'], $_POST['unlock_ip'])) {
+            return false;
+        }
+        
+        $userAnswer = (int) $_POST['user_answer'];
+        $correctAnswer = (int) $_POST['captcha_answer'];
+        $ip = $_POST['unlock_ip'];
+        
+        // CAPTCHA-Token validieren (einfache Zeitprüfung)
+        $token = $_POST['captcha_token'];
+        if (strlen($token) !== 64) { // SHA256 hat 64 Zeichen
+            return false;
+        }
+        
+        // Antwort prüfen
+        if ($userAnswer === $correctAnswer) {
+            // IP entsperren
+            self::unblockIp($ip);
+            
+            // Log der manuellen Entsperrung
+            rex_logger::factory()->log('info', "IPS: IP {$ip} unlocked via CAPTCHA verification");
+            
+            // Zur Startseite weiterleiten (relative URL)
+            header('Location: /');
+            exit;
+        }
+        
+        return false;
     }
     
     /**
