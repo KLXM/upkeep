@@ -290,8 +290,6 @@ php bin/console upkeep:ips:cleanup
 - **Automatische Bereinigung**: 1% Chance bei jedem Request für Datenbank-Cleanup
 - **Konsolen-Kommando**: `upkeep:ips:cleanup` für Cronjob-Integration
 - **Admin-Interface**: Datenbereinigung mit Live-Statistiken
-
-### Version 1.2.0
 - **Vollständiges IPS**: Intrusion Prevention System mit Echtzeit-Schutz
 - **CMS-Patterns**: Spezifische Bedrohungserkennung für WordPress, TYPO3, Drupal, Joomla
 - **Positivliste-System**: Ausnahmen für vertrauenswürdige IP-Adressen
