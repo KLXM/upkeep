@@ -13,6 +13,7 @@ use rex_request;
 use rex_response;
 use rex_server;
 use rex_session;
+use rex_sql;
 use rex_user;
 use rex_yrewrite;
 
@@ -238,7 +239,52 @@ public static function checkFrontend(): void
             $page['title'] .= ' <span class="label label-warning">F</span>';
         }
 
+        if (self::getConfig('domain_mapping_active', false)) {
+            $page['title'] .= ' <span class="label label-default">D</span>';
+        }
+
         $addon->setProperty('page', $page);
+    }
+
+    /**
+     * Prüft Domain-Mapping und führt Redirects durch
+     */
+    public static function checkDomainMapping(): void
+    {
+        // Nur im Frontend prüfen
+        if (!rex::isFrontend()) {
+            return;
+        }
+
+        // Prüfen, ob Domain-Mapping global aktiviert ist
+        if (!self::getConfig('domain_mapping_active', false)) {
+            return;
+        }
+
+        $currentDomain = rex_server('HTTP_HOST', 'string', '');
+        
+        if ($currentDomain === '') {
+            return;
+        }
+
+        // Domain-Mapping aus der Datenbank laden
+        $sql = rex_sql::factory();
+        $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE domain = ? AND status = 1', [$currentDomain]);
+
+        if ($sql->getRows() > 0) {
+            $targetUrl = $sql->getValue('target_url');
+            $httpCode = (int) $sql->getValue('http_code');
+            
+            // URL validieren und bei Bedarf Protocol hinzufügen
+            if (!str_starts_with($targetUrl, 'http://') && !str_starts_with($targetUrl, 'https://')) {
+                $targetUrl = 'https://' . $targetUrl;
+            }
+            
+            // Redirect durchführen
+            rex_response::setStatus($httpCode);
+            rex_response::sendRedirect($targetUrl);
+            exit;
+        }
     }
 
     /**

@@ -41,3 +41,16 @@ if ($addon->getConfig('frontend_password', '') === '') {
         $ep->setSubject($content);
     });
 }
+
+// Domain-Mapping-Tabelle erstellen
+rex_sql_table::get(rex::getTable('upkeep_domain_mapping'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('source_domain', 'varchar(255)', false))
+    ->ensureColumn(new rex_sql_column('target_url', 'text', false))
+    ->ensureColumn(new rex_sql_column('redirect_code', 'int(3)', false, '301'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('createdate', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updatedate', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('source_domain', ['source_domain'], rex_sql_index::UNIQUE))
+    ->ensure();

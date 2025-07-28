@@ -25,6 +25,10 @@ page:
             title: 'translate:upkeep_domains_title'
             icon: rex-icon fa fa-sitemap
             perm: upkeep[domains]
+        domain_mapping:
+            title: 'translate:upkeep_domain_mapping_title'
+            icon: rex-icon fa fa-share
+            perm: upkeep[domains]
             
 requires:
     redaxo: ^5.18.1

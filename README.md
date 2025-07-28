@@ -5,11 +5,12 @@
 
 Ein modernes, schlankes AddOn für Wartungsarbeiten.
 
-## Features der 1. Version
+## Features
 
 - **Frontend-Sperre** mit eleganter und anpassbarer Wartungsseite
 - **Backend-Sperre** für Redakteure (Admins haben immer Zugriff)
 - **Domain-spezifische Sperren** für Multidomains mit YRewrite
+- **Domain-Mapping** für automatische Weiterleitungen von Domains zu beliebigen URLs
 - **Passwort-Bypass** zum Testen des Frontends im Wartungsmodus
 - **Automatischer Zugang** für angemeldete Benutzer (konfigurierbar)
 - **IP-Whitelist** mit einfacher Übernahme der aktuellen IP-Adresse
@@ -44,6 +45,20 @@ Im Tab "Backend" können Sie:
 
 Wenn YRewrite installiert ist, können Sie im Tab "Domains":
 - Den Ukeep-Mode für einzelne Domains aktivieren oder deaktivieren
+
+### Domain-Mapping
+
+Im Tab "Domain-Mapping" können Sie:
+- Domains zu beliebigen URLs weiterleiten
+- HTTP-Statuscodes für Weiterleitungen konfigurieren (301, 302, 303, 307, 308)
+- Domain-Mappings aktivieren oder deaktivieren
+- Beschreibungen für bessere Übersicht hinzufügen
+
+**Anwendungsfälle für Domain-Mapping:**
+- Weiterleitung alter Domains auf neue URLs
+- Temporäre Weiterleitungen während Wartungsarbeiten
+- Umleitung von Subdomains auf Hauptseiten
+- SEO-Weiterleitungen für Domainwechsel
 
 ## Anpassen der Ukeep-Seite
 
@@ -279,6 +294,95 @@ HTTP-Statuscodes:
 - Verwenden Sie nach Möglichkeit HTTPS für alle API-Aufrufe
 - Beschränken Sie den Zugriff auf die API über Ihre Server-Konfiguration
 - Die API bietet keine Ratengrenzwerte, implementieren Sie bei Bedarf eigene Maßnahmen gegen Missbrauch
+
+## Domain-Mapping
+
+Das Domain-Mapping ermöglicht es, eingehende Anfragen von bestimmten Domains automatisch zu anderen URLs weiterzuleiten. Dies ist besonders nützlich für:
+
+- **Domain-Umzüge**: Weiterleitung von alten auf neue Domains
+- **SEO-Optimierung**: Permanente Weiterleitungen (301) für bessere Suchmaschinenrankings
+- **Wartungsarbeiten**: Temporäre Weiterleitungen (302/307) während Updates
+- **Subdomain-Management**: Zentrale Verwaltung von Subdomain-Weiterleitungen
+
+### Domain-Mapping konfigurieren
+
+1. Navigieren Sie zu **Upkeep > Domain-Mapping** im Backend
+2. Klicken Sie auf "Domain-Mapping hinzufügen"
+3. Füllen Sie das Formular aus:
+   - **Domain**: Die eingehende Domain (z.B. `old-domain.com`)
+   - **Ziel-URL**: Die URL, zu der weitergeleitet werden soll (z.B. `https://new-domain.com/start`)
+   - **HTTP-Code**: Der HTTP-Statuscode für die Weiterleitung
+   - **Status**: Aktiv/Inaktiv für die Weiterleitung
+   - **Beschreibung**: Optionale Beschreibung für bessere Übersicht
+
+### HTTP-Statuscodes für Weiterleitungen
+
+| Code | Typ | Verwendung |
+|------|-----|------------|
+| **301** | Permanent Redirect | Für dauerhafte Domain-Umzüge, SEO-freundlich |
+| **302** | Found (Temporary) | Für temporäre Weiterleitungen |
+| **303** | See Other | Nach POST-Anfragen |
+| **307** | Temporary Redirect | Behält HTTP-Methode bei |
+| **308** | Permanent Redirect | Permanent + behält HTTP-Methode bei |
+
+### Funktionsweise
+
+Das Domain-Mapping wird **vor** allen anderen Prüfungen ausgeführt:
+
+1. **Domain-Prüfung**: System prüft die eingehende Domain
+2. **Datenbankabfrage**: Suche nach aktivem Domain-Mapping
+3. **Weiterleitung**: Bei Treffer sofortige Weiterleitung mit konfiguriertem HTTP-Code
+4. **Normale Verarbeitung**: Bei keinem Treffer normale REDAXO-Verarbeitung
+
+### Beispiele
+
+#### Permanente Domain-Weiterleitung (SEO)
+```
+Domain: old-company.com
+Ziel-URL: https://new-company.com
+HTTP-Code: 301
+Status: Aktiv
+Beschreibung: Permanente Weiterleitung nach Rebranding
+```
+
+#### Subdomain zu Hauptseite
+```
+Domain: blog.example.com
+Ziel-URL: https://example.com/blog
+HTTP-Code: 301
+Status: Aktiv
+Beschreibung: Blog-Subdomain auf Hauptseite umleiten
+```
+
+#### Temporäre Wartungsweiterleitung
+```
+Domain: shop.example.com
+Ziel-URL: https://example.com/wartung
+HTTP-Code: 302
+Status: Aktiv
+Beschreibung: Temporäre Weiterleitung während Shop-Wartung
+```
+
+### Tipps und Best Practices
+
+**URL-Format:**
+- URLs ohne Protokoll werden automatisch mit `https://` ergänzt
+- Verwenden Sie vollständige URLs mit Protokoll für beste Kontrolle
+
+**SEO-Optimierung:**
+- Nutzen Sie 301-Weiterleitungen für permanente Domain-Wechsel
+- Dokumentieren Sie Weiterleitungen in der Beschreibung
+- Vermeiden Sie Weiterleitungsschleifen
+
+**Performance:**
+- Domain-Mappings werden frühzeitig geprüft (vor Wartungsmodus)
+- Minimale Datenbankabfrage nur bei Frontend-Anfragen
+- Keine zusätzliche Latenz bei nicht gemappten Domains
+
+**Verwaltung:**
+- Nutzen Sie den Status-Toggle für temporäre Deaktivierung
+- Beschreibungen helfen bei der Übersicht komplexer Setups
+- Regelmäßige Überprüfung nicht mehr benötigter Mappings
 
 ## Extension Points
 
