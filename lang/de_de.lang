@@ -3,20 +3,20 @@ upkeep_title = Upkeep
 upkeep_frontend_title = Frontend
 upkeep_backend_title = Backend
 upkeep_domains_title = Domains
-upkeep_domain_mapping_title = Domain Mapping
+upkeep_domain_mapping_title = URL-Redirects
 
-# Domain Mapping
+# URL-Redirects (ehemals Domain Mapping)
 upkeep_domain_mapping_description = Hier können Sie Domains und URL-Pfade auf andere URLs umleiten. Unterstützt auch Wildcard-Redirects mit dynamischer Pfad-Ersetzung.
-upkeep_domain_mapping_add = Domain Mapping hinzufügen
-upkeep_domain_mapping_edit = Domain Mapping bearbeiten
-upkeep_domain_mapping_source_domain = Source Domain
-upkeep_domain_mapping_source_path = Source Path
-upkeep_domain_mapping_target_url = Target URL
+upkeep_domain_mapping_add = URL-Redirect hinzufügen
+upkeep_domain_mapping_edit = URL-Redirect bearbeiten
+upkeep_domain_mapping_source_domain = Quell-Domain
+upkeep_domain_mapping_source_path = Quell-Pfad
+upkeep_domain_mapping_target_url = Ziel-URL
 upkeep_domain_mapping_redirect_code = HTTP Status Code
-upkeep_domain_mapping_is_wildcard = Wildcard Mapping
+upkeep_domain_mapping_is_wildcard = Wildcard-Redirect
 upkeep_domain_mapping_status = Status
 upkeep_domain_mapping_description_field = Beschreibung
-upkeep_domain_mapping_no_entries = Keine Domain Mappings vorhanden
+upkeep_domain_mapping_no_entries = Keine URL-Redirects vorhanden
 
 # Allgemeine Einstellungen & Buttons
 upkeep_settings = Einstellungen
