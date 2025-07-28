@@ -26,8 +26,8 @@ if (rex_post('save', 'bool')) {
         'source_path' => trim(rex_request('source_path', 'string', '')),
         'target_url' => trim(rex_request('target_url', 'string', '')),
         'redirect_code' => rex_request('redirect_code', 'int', 301),
-        'is_wildcard' => rex_request('is_wildcard', 'boolean', false),
-        'status' => rex_request('status', 'boolean', true),
+        'is_wildcard' => rex_request('is_wildcard', 'bool', false),
+        'status' => rex_request('status', 'bool', true),
         'description' => trim(rex_request('description', 'string', ''))
     ];
     
