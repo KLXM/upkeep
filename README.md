@@ -50,6 +50,7 @@ Wenn YRewrite installiert ist, können Sie im Tab "Domains":
 
 Im Tab "Domain-Mapping" können Sie:
 - Domains zu beliebigen URLs weiterleiten
+- **Wildcard-Redirects** für dynamische Pfad-Weiterleitung
 - HTTP-Statuscodes für Weiterleitungen konfigurieren (301, 302, 303, 307, 308)
 - Domain-Mappings aktivieren oder deaktivieren
 - Beschreibungen für bessere Übersicht hinzufügen
@@ -59,6 +60,37 @@ Im Tab "Domain-Mapping" können Sie:
 - Temporäre Weiterleitungen während Wartungsarbeiten
 - Umleitung von Subdomains auf Hauptseiten
 - SEO-Weiterleitungen für Domainwechsel
+- **Wildcard-Redirects für Pfad-basierte Umleitungen**
+
+### Wildcard-Redirects
+
+Wildcard-Redirects ermöglichen dynamische Pfad-Weiterleitung mit Platzhaltern:
+
+**Beispiel 1: Blog-Umzug**
+```
+Quell-Domain: old-blog.com
+Quell-Pfad: /posts/*
+Ziel-URL: https://new-blog.com/articles/*
+HTTP-Code: 301
+Wildcard: ✓ Aktiv
+```
+Resultat: `old-blog.com/posts/artikel-name` → `https://new-blog.com/articles/artikel-name`
+
+**Beispiel 2: Kategorie-Umleitung**
+```
+Quell-Domain: shop.example.com
+Quell-Pfad: /kategorie/*
+Ziel-URL: https://example.com/shop/kategorie/*
+HTTP-Code: 301
+Wildcard: ✓ Aktiv
+```
+Resultat: `shop.example.com/kategorie/schuhe/nike` → `https://example.com/shop/kategorie/schuhe/nike`
+
+**Wildcard-Funktionen:**
+- **Dynamische Pfad-Ersetzung**: Der `*` wird durch den verbleibenden Pfad ersetzt
+- **Sichere Validierung**: Path-Traversal-Schutz gegen `..` und Backslashes
+- **RFC-konforme Domain-Prüfung**: Strikte Domain-Validierung
+- **Pfad-Priorität**: Längere Pfade haben Vorrang vor kürzeren
 
 ## Anpassen der Ukeep-Seite
 
@@ -303,15 +335,18 @@ Das Domain-Mapping ermöglicht es, eingehende Anfragen von bestimmten Domains au
 - **SEO-Optimierung**: Permanente Weiterleitungen (301) für bessere Suchmaschinenrankings
 - **Wartungsarbeiten**: Temporäre Weiterleitungen (302/307) während Updates
 - **Subdomain-Management**: Zentrale Verwaltung von Subdomain-Weiterleitungen
+- **Wildcard-Redirects**: Dynamische Pfad-basierte Weiterleitungen mit Platzhaltern
 
 ### Domain-Mapping konfigurieren
 
-1. Navigieren Sie zu **Upkeep > Domain-Mapping** im Backend
-2. Klicken Sie auf "Domain-Mapping hinzufügen"
+1. Navigieren Sie zu **Upkeep > URL-Redirects** im Backend
+2. Klicken Sie auf "URL-Redirect hinzufügen"
 3. Füllen Sie das Formular aus:
-   - **Domain**: Die eingehende Domain (z.B. `old-domain.com`)
+   - **Quell-Domain**: Die eingehende Domain (z.B. `old-domain.com`)
+   - **Quell-Pfad**: Optionaler Pfad für spezifische Weiterleitungen (z.B. `/blog/*`)
    - **Ziel-URL**: Die URL, zu der weitergeleitet werden soll (z.B. `https://new-domain.com/start`)
    - **HTTP-Code**: Der HTTP-Statuscode für die Weiterleitung
+   - **Wildcard-Redirect**: Aktiviert dynamische Pfad-Ersetzung mit `*`
    - **Status**: Aktiv/Inaktiv für die Weiterleitung
    - **Beschreibung**: Optionale Beschreibung für bessere Übersicht
 
@@ -338,7 +373,8 @@ Das Domain-Mapping wird **vor** allen anderen Prüfungen ausgeführt:
 
 #### Permanente Domain-Weiterleitung (SEO)
 ```
-Domain: old-company.com
+Quell-Domain: old-company.com
+Quell-Pfad: (leer)
 Ziel-URL: https://new-company.com
 HTTP-Code: 301
 Status: Aktiv
@@ -347,16 +383,42 @@ Beschreibung: Permanente Weiterleitung nach Rebranding
 
 #### Subdomain zu Hauptseite
 ```
-Domain: blog.example.com
+Quell-Domain: blog.example.com
+Quell-Pfad: (leer)
 Ziel-URL: https://example.com/blog
 HTTP-Code: 301
 Status: Aktiv
 Beschreibung: Blog-Subdomain auf Hauptseite umleiten
 ```
 
+#### Wildcard-Redirect für Blog-Artikel
+```
+Quell-Domain: old-blog.com
+Quell-Pfad: /posts/*
+Ziel-URL: https://new-blog.com/articles/*
+HTTP-Code: 301
+Wildcard: ✓ Aktiv
+Status: Aktiv
+Beschreibung: Alle Blog-Posts zu neuer Struktur weiterleiten
+```
+Resultat: `old-blog.com/posts/artikel-name` → `https://new-blog.com/articles/artikel-name`
+
+#### Wildcard-Redirect für Shop-Kategorien
+```
+Quell-Domain: shop.example.com
+Quell-Pfad: /kategorie/*
+Ziel-URL: https://example.com/shop/*
+HTTP-Code: 301
+Wildcard: ✓ Aktiv
+Status: Aktiv
+Beschreibung: Shop-Kategorien zur Hauptseite weiterleiten
+```
+Resultat: `shop.example.com/kategorie/schuhe/nike` → `https://example.com/shop/schuhe/nike`
+
 #### Temporäre Wartungsweiterleitung
 ```
-Domain: shop.example.com
+Quell-Domain: shop.example.com
+Quell-Pfad: (leer)
 Ziel-URL: https://example.com/wartung
 HTTP-Code: 302
 Status: Aktiv
@@ -369,20 +431,29 @@ Beschreibung: Temporäre Weiterleitung während Shop-Wartung
 - URLs ohne Protokoll werden automatisch mit `https://` ergänzt
 - Verwenden Sie vollständige URLs mit Protokoll für beste Kontrolle
 
+**Wildcard-Redirects:**
+- Quell-Pfad muss mit `/*` enden (z.B. `/blog/*`, `/kategorie/*`)
+- Ziel-URL muss `*` enthalten, um den dynamischen Teil zu ersetzen
+- Längere Pfade haben Vorrang vor kürzeren (z.B. `/blog/tech/*` vor `/blog/*`)
+- Path-Traversal-Schutz verhindert `..` und Backslashes in Pfaden
+
 **SEO-Optimierung:**
 - Nutzen Sie 301-Weiterleitungen für permanente Domain-Wechsel
 - Dokumentieren Sie Weiterleitungen in der Beschreibung
 - Vermeiden Sie Weiterleitungsschleifen
+- Wildcard-Redirects erhalten die URL-Struktur für bessere SEO
 
 **Performance:**
 - Domain-Mappings werden frühzeitig geprüft (vor Wartungsmodus)
 - Minimale Datenbankabfrage nur bei Frontend-Anfragen
 - Keine zusätzliche Latenz bei nicht gemappten Domains
+- Pfad-Priorität vermeidet unnötige Datenbankabfragen
 
 **Verwaltung:**
 - Nutzen Sie den Status-Toggle für temporäre Deaktivierung
 - Beschreibungen helfen bei der Übersicht komplexer Setups
 - Regelmäßige Überprüfung nicht mehr benötigter Mappings
+- Testen Sie Wildcard-Redirects vor der Aktivierung
 
 ## Extension Points
 
