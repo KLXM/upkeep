@@ -1,7 +1,5 @@
 # REDAXO Upkeep AddOn v1.3.0
 
-![Screenshot](https://github.com/KLXM/upkeep/blob/main/assets/css/screen.jpg?raw=true)
-
 Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Backend-Wartungsmodi, URL-Redirects und integriertem Intrusion Prevention System (IPS).
 
 ## 🚀 Features
