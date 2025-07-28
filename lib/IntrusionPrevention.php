@@ -558,7 +558,7 @@ class IntrusionPrevention
     }
     
     /**
-     * Prüft Rate Limiting
+     * Prüft Rate Limiting mit intelligenten Limits
      */
     private static function isRateLimitExceeded(string $ip): bool
     {
@@ -576,10 +576,47 @@ class IntrusionPrevention
         // Auch aktuellen Request miteinbeziehen
         self::updateRateLimit($ip);
         
-        // Limits aus Config holen
-        $burstLimit = (int) self::getAddon()->getConfig('ips_burst_limit', 10);
+        // Limits aus Config holen - realistischere Defaults
+        $burstLimit = (int) self::getAddon()->getConfig('ips_burst_limit', 60);        // 60 pro Minute
+        $burstWindow = (int) self::getAddon()->getConfig('ips_burst_window', 60);      // 60 Sekunden
+        $strictLimit = (int) self::getAddon()->getConfig('ips_strict_limit', 20);     // 20 für kritische Pfade
         
-        return $requestCount >= $burstLimit;
+        // Intelligente Limits basierend auf URI
+        $currentUri = rex_server('REQUEST_URI', 'string', '');
+        $effectiveLimit = self::getEffectiveLimitForUri($currentUri, $burstLimit, $strictLimit);
+        
+        return $requestCount >= $effectiveLimit;
+    }
+    
+    /**
+     * Bestimmt effektive Rate-Limits basierend auf URI
+     */
+    private static function getEffectiveLimitForUri(string $uri, int $defaultLimit, int $strictLimit): int
+    {
+        // Kritische Pfade mit strengeren Limits
+        $strictPaths = [
+            '/wp-admin/', '/wp-login.php', '/admin/', '/login',
+            '/phpmyadmin/', '/pma/', '/xmlrpc.php'
+        ];
+        
+        // API-Pfade mit moderaten Limits
+        $apiPaths = [
+            '/api/', '/wp-json/', '/jsonapi/', '/graphql'
+        ];
+        
+        foreach ($strictPaths as $path) {
+            if (stripos($uri, $path) !== false) {
+                return $strictLimit; // Strenge Limits für kritische Bereiche
+            }
+        }
+        
+        foreach ($apiPaths as $path) {
+            if (stripos($uri, $path) !== false) {
+                return (int) ($defaultLimit * 0.7); // 70% des Standard-Limits für APIs
+            }
+        }
+        
+        return $defaultLimit; // Standard-Limit für normale Seiten
     }
     
     /**
@@ -1119,11 +1156,23 @@ class IntrusionPrevention
         
         // Antwort prüfen
         if ($userAnswer === $correctAnswer) {
-            // IP entsperren
-            self::unblockIp($ip);
+            rex_logger::factory()->log('info', "IPS: CAPTCHA verification successful for IP {$ip}");
             
-            // Log der manuellen Entsperrung
-            rex_logger::factory()->log('info', "IPS: IP {$ip} unlocked via CAPTCHA verification");
+            // IP komplett entsperren und rehabilitieren
+            $unblockSuccess = self::unblockIp($ip);
+            $clearSuccess = self::clearThreatHistory($ip);
+            
+            // Optional: IP zur Positivliste hinzufügen (für vertrauensvolle IPs)
+            // Kann über Config aktiviert werden
+            $addToPositivliste = false;
+            if (self::getAddon()->getConfig('ips_captcha_add_to_positivliste', false)) {
+                $addToPositivliste = self::addToPositivliste($ip, 'CAPTCHA verified user', 'captcha_verified');
+            }
+            
+            // Detailliertes Logging der Rehabilitation
+            rex_logger::factory()->log('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
+                                               ", clear_history: " . ($clearSuccess ? 'success' : 'failed') . 
+                                               ", add_to_positivliste: " . ($addToPositivliste ? 'success' : 'disabled/failed'));
             
             // Zur Startseite weiterleiten (relative URL)
             header('Location: /');
@@ -1255,8 +1304,129 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
+            
+            // Prüfe zuerst, ob die IP überhaupt gesperrt ist
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
+            $blockedCount = (int) $sql->getValue('count');
+            
+            if ($blockedCount === 0) {
+                rex_logger::factory()->log('info', "IPS: IP {$ip} was not in blocked list");
+                return true; // Schon entsperrt
+            }
+            
+            // IP aus Sperrliste entfernen
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
-            rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked");
+            $deletedRows = $sql->getRows();
+            
+            rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
+            
+            return $deletedRows > 0;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+    
+    /**
+     * Löscht Bedrohungshistorie und Rate-Limit-Daten für eine IP (CAPTCHA-Rehabilitation)
+     */
+    public static function clearThreatHistory(string $ip): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $cleanup = [
+                'threat_logs' => 0,
+                'rate_limits' => 0
+            ];
+            
+            // 1. Alle Bedrohungs-Logs für diese IP löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ?", [$ip]);
+            $cleanup['threat_logs'] = $sql->getRows();
+            
+            // 2. Rate-Limit-Daten für diese IP löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " WHERE ip_address = ?", [$ip]);
+            $cleanup['rate_limits'] = $sql->getRows();
+            
+            // Log der Rehabilitation
+            rex_logger::factory()->log('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+    
+    /**
+     * Debug-Methode: Zeigt alle Einträge für eine IP in allen IPS-Tabellen
+     */
+    public static function debugIpStatus(string $ip): array
+    {
+        $sql = rex_sql::factory();
+        $debug = [];
+        
+        try {
+            // 1. Gesperrte IPs
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
+            $debug['blocked_ips'] = $sql->getArray();
+            
+            // 2. Positivliste
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_positivliste') . " WHERE ip_address = ?", [$ip]);
+            $debug['positivliste'] = $sql->getArray();
+            
+            // 3. Bedrohungshistorie
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? ORDER BY created_at DESC LIMIT 10", [$ip]);
+            $debug['threat_history'] = $sql->getArray();
+            
+            // 4. Rate-Limit-Daten
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_rate_limit') . " WHERE ip_address = ?", [$ip]);
+            $debug['rate_limits'] = $sql->getArray();
+            
+            // 5. Wartungsmodus erlaubte IPs
+            $allowedIps = explode("\n", self::getAddon()->getConfig('allowed_ips', ''));
+            $debug['maintenance_allowed'] = in_array($ip, array_map('trim', $allowedIps));
+            
+            // 6. Aktuelle Rate-Limit-Konfiguration
+            $debug['rate_limit_config'] = [
+                'burst_limit' => self::getAddon()->getConfig('ips_burst_limit', 60),
+                'strict_limit' => self::getAddon()->getConfig('ips_strict_limit', 20),
+                'burst_window' => self::getAddon()->getConfig('ips_burst_window', 60)
+            ];
+            
+            // 7. Aktuelle Request-Zählung (letzte Minute)
+            $now = new DateTime();
+            $windowStart = $now->modify('-1 minute')->format('Y-m-d H:i:s');
+            $sql->setQuery("SELECT SUM(request_count) as total FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
+                           WHERE ip_address = ? AND window_start >= ?", [$ip, $windowStart]);
+            $debug['current_request_count'] = (int) $sql->getValue('total');
+            
+        } catch (Exception $e) {
+            $debug['error'] = $e->getMessage();
+        }
+        
+        return $debug;
+    }
+    
+    /**
+     * Setzt Rate-Limit-Konfiguration
+     */
+    public static function setRateLimitConfig(array $config): bool
+    {
+        try {
+            $addon = self::getAddon();
+            
+            if (isset($config['burst_limit'])) {
+                $addon->setConfig('ips_burst_limit', (int) $config['burst_limit']);
+            }
+            
+            if (isset($config['strict_limit'])) {
+                $addon->setConfig('ips_strict_limit', (int) $config['strict_limit']);
+            }
+            
+            if (isset($config['burst_window'])) {
+                $addon->setConfig('ips_burst_window', (int) $config['burst_window']);
+            }
+            
             return true;
         } catch (Exception $e) {
             rex_logger::logException($e);
