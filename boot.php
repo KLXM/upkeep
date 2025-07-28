@@ -17,15 +17,12 @@ if (!rex_backend_login::hasSession()) {
 
 // Register Extension Point nach dem Laden aller Packages
 rex_extension::register('PACKAGES_INCLUDED', static function () {
-    // Domain-Mapping-Prüfung (vor Frontend/Backend-Prüfung)
-    Upkeep::checkDomainMapping();
-    
-    // Frontend-Prüfung
+    // Frontend-Wartungsmodus-Prüfung ZUERST
     if (rex::isFrontend()) {
         Upkeep::checkFrontend();
     }
     
-    // Backend-Prüfung
+    // Backend-Wartungsmodus-Prüfung
     if (rex::isBackend()) {
         if (rex::getUser()) {
             Upkeep::checkBackend();
@@ -37,4 +34,7 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
         // CSS für das Backend laden
         rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
     }
+    
+    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
+    Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
