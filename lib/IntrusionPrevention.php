@@ -331,6 +331,12 @@ class IntrusionPrevention
         rex_response::setStatus(rex_response::HTTP_FORBIDDEN);
         rex_response::sendCacheControl();
         
+        // Set appropriate headers for security
+        header('Content-Type: text/html; charset=utf-8');
+        header('Content-Security-Policy: default-src \'self\'; style-src \'self\' \'unsafe-inline\'');
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY');
+        
         // Custom 403-Seite oder Standard-Text
         $content = self::getBlockedPageContent($reason, $ip);
         
@@ -407,10 +413,23 @@ class IntrusionPrevention
             $subnet &= $mask;
             return ($ip & $mask) === $subnet;
         } elseif (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            // IPv6 - vereinfachte Implementierung
-            return inet_pton($ip) && inet_pton($subnet) && 
-                   (inet_pton($ip) & inet_pton(str_repeat('f', $bits/4) . str_repeat('0', (128-$bits)/4))) === 
-                   (inet_pton($subnet) & inet_pton(str_repeat('f', $bits/4) . str_repeat('0', (128-$bits)/4)));
+            // IPv6 - robuste Implementierung
+            $ip_bin = inet_pton($ip);
+            $subnet_bin = inet_pton($subnet);
+            
+            if ($ip_bin === false || $subnet_bin === false) {
+                return false;
+            }
+            
+            // Create mask for IPv6
+            $mask = str_repeat('f', $bits >> 2);
+            if ($bits & 3) {
+                $mask .= dechex(0xf << (4 - ($bits & 3)));
+            }
+            $mask = str_pad($mask, 32, '0');
+            $mask = pack('H*', $mask);
+            
+            return ($ip_bin & $mask) === ($subnet_bin & $mask);
         }
         
         return false;
@@ -455,6 +474,11 @@ class IntrusionPrevention
      */
     private static function getSeverityForCategory(string $category): string
     {
+        // Validate the category parameter
+        if (empty($category)) {
+            return 'medium'; // Default severity for invalid or empty category
+        }
+        
         return match ($category) {
             'shells', 'sql_injection' => 'critical',
             'path_traversal', 'config_files' => 'high',

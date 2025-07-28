@@ -1,6 +1,6 @@
 <?php
 
-// Update-Script für Upkeep AddOn v1.2.0
+// Update-Script für Upkeep AddOn v1.3.0
 // Führt Database-Updates für IPS durch
 
 $sql = rex_sql::factory();

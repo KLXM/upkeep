@@ -171,11 +171,15 @@ if ($sql->getRows() > 0) {
         echo '<td><span class="label label-default">' . rex_escape($threatType) . '</span></td>';
         echo '<td>';
         
+        // Validate severity to ensure it is not null or empty
+        $severity = $severity ?: 'unknown';
+        
         $severityClass = match($severity) {
             'critical' => 'label-danger',
             'high' => 'label-warning',
             'medium' => 'label-info',
             'low' => 'label-default',
+            'unknown' => 'label-default',
             default => 'label-default'
         };
         echo '<span class="label ' . $severityClass . '">' . rex_escape(ucfirst($severity)) . '</span>';
