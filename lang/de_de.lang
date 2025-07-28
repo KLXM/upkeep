@@ -5,6 +5,12 @@ upkeep_backend_title = Backend
 upkeep_domains_title = Domains
 upkeep_domain_mapping_title = URL-Redirects
 
+# Status-Indikatoren (Tooltips)
+upkeep_indicator_backend = Backend-Wartungsmodus aktiv
+upkeep_indicator_frontend = Frontend-Wartungsmodus aktiv  
+upkeep_indicator_domains = URL-Redirects aktiv
+upkeep_indicator_security = Intrusion Prevention System aktiv
+
 # URL-Redirects (ehemals Domain Mapping)
 upkeep_domain_mapping_description = Hier können Sie Domains und URL-Pfade auf andere URLs umleiten. Unterstützt auch Wildcard-Redirects mit dynamischer Pfad-Ersetzung.
 upkeep_domain_mapping_add = URL-Redirect hinzufügen
@@ -48,6 +54,80 @@ upkeep_submit = Absenden
 # Backend-Einstellungen
 upkeep_backend_active = Backend-Wartungsmodus
 upkeep_backend_settings = Backend-Einstellungen
+
+# IPS (Intrusion Prevention System)
+upkeep_ips_title = Intrusion Prevention System
+upkeep_ips_overview = Übersicht
+upkeep_ips_threats = Bedrohungen
+upkeep_ips_blocked = Gesperrte IPs
+upkeep_ips_patterns = Patterns
+upkeep_ips_settings = Einstellungen
+
+# IPS Dashboard
+upkeep_ips_blocked_count = Gesperrte IPs
+upkeep_ips_threats_today = Bedrohungen heute
+upkeep_ips_threats_week = Bedrohungen diese Woche
+upkeep_ips_status = IPS Status
+upkeep_ips_top_threats = Top Bedrohungen
+upkeep_ips_threat_type = Bedrohungstyp
+upkeep_ips_count = Anzahl
+upkeep_ips_quick_actions = Schnellaktionen
+upkeep_ips_view_threats = Bedrohungen anzeigen
+upkeep_ips_manage_blocked = Gesperrte IPs verwalten
+upkeep_ips_manage_patterns = Patterns verwalten
+upkeep_ips_system_info = System-Information
+upkeep_ips_version = Version
+upkeep_ips_patterns_count = Custom Patterns
+upkeep_ips_last_update = Letzte Aktualisierung
+
+# IPS Threat Log
+upkeep_ips_filter = Filter
+upkeep_ips_threat_log = Bedrohungsprotokoll
+upkeep_ips_time = Zeit
+upkeep_ips_ip = IP-Adresse
+upkeep_ips_severity = Schweregrad
+upkeep_ips_pattern = Pattern
+upkeep_ips_uri = URI
+upkeep_ips_action = Aktion
+upkeep_ips_no_threats = Keine Bedrohungen gefunden
+upkeep_ips_showing_results = Zeige %d Ergebnisse (%d - %d)
+
+# IPS Patterns
+upkeep_ips_add_pattern = Pattern hinzufügen
+upkeep_ips_custom_patterns = Benutzerdefinierte Patterns
+upkeep_ips_pattern = Pattern
+upkeep_ips_description = Beschreibung
+upkeep_ips_severity_low = Niedrig
+upkeep_ips_severity_medium = Mittel
+upkeep_ips_severity_high = Hoch
+upkeep_ips_severity_critical = Kritisch
+upkeep_ips_is_regex = RegEx
+upkeep_ips_type = Typ
+upkeep_ips_created = Erstellt
+upkeep_ips_pattern_added = Pattern erfolgreich hinzugefügt
+upkeep_ips_pattern_add_error = Fehler beim Hinzufügen des Patterns
+upkeep_ips_pattern_empty = Pattern darf nicht leer sein
+upkeep_ips_pattern_deleted = Pattern erfolgreich gelöscht
+upkeep_ips_pattern_delete_error = Fehler beim Löschen des Patterns
+upkeep_ips_delete_confirm = Sind Sie sicher, dass Sie dieses Pattern löschen möchten?
+upkeep_ips_no_patterns = Keine Custom Patterns vorhanden
+upkeep_ips_pattern_examples = Pattern-Beispiele
+upkeep_ips_string_patterns = String-Patterns
+upkeep_ips_regex_patterns = RegEx-Patterns
+upkeep_ips_pattern_help = URL-Pfad oder RegEx-Pattern
+
+# IPS Blocked IPs
+upkeep_ips_reason = Grund
+upkeep_ips_expires = Läuft ab
+upkeep_ips_active = IPS aktiviert
+upkeep_settings_saved = Einstellungen gespeichert
+
+# Actions
+upkeep_actions = Aktionen
+upkeep_add = Hinzufügen
+
+# Permissions
+upkeep[security] = IPS & Security
 upkeep_backend_notice = Der Backend-Wartungsmodus sperrt alle Benutzer außer Administratoren aus dem REDAXO-Backend aus.
 upkeep_no_permission = Sie haben keine Berechtigung, diese Seite zu sehen.
 
@@ -108,3 +188,49 @@ upkeep_your_ip = Deine IP-Adresse
 upkeep_add_ip = Diese IP hinzufügen
 upkeep_server_ip = Server IP-Adresse
 upkeep_add_server_ip = Server-IP hinzufügen
+
+# IPS Positivliste
+upkeep_ips_positivliste = Positivliste
+upkeep_ips_positivliste_add = IP zur Positivliste hinzufügen
+upkeep_ips_positivliste_info = Positivliste-Informationen
+upkeep_ips_positivliste_help = Die Positivliste schützt vertrauenswürdige IP-Adressen vor der automatischen Sperrung durch das Intrusion Prevention System.
+upkeep_ips_positivliste_entries = Positivliste-Einträge
+upkeep_ips_positivliste_added = IP erfolgreich zur Positivliste hinzugefügt
+upkeep_ips_positivliste_removed = IP erfolgreich aus Positivliste entfernt
+upkeep_ips_positivliste_ip_required = IP-Adresse oder IP-Bereich ist erforderlich
+upkeep_ips_no_positivliste_entries = Keine Positivliste-Einträge vorhanden
+
+upkeep_ips_ip_address = IP-Adresse
+upkeep_ips_ip_range = IP-Bereich (CIDR)
+upkeep_ips_ip_range_notice = Optional: CIDR-Notation für IP-Bereiche (z.B. 192.168.1.0/24)
+upkeep_ips_category = Kategorie
+upkeep_ips_category_admin = Admin
+upkeep_ips_category_cdn = CDN
+upkeep_ips_category_monitoring = Monitoring
+upkeep_ips_category_api = API
+upkeep_ips_category_trusted = Vertrauenswürdig
+
+upkeep_ips_category_admin_desc = Administratoren und Backend-Nutzer
+upkeep_ips_category_cdn_desc = Content Delivery Networks (Cloudflare, etc.)
+upkeep_ips_category_monitoring_desc = Monitoring-Services und Uptime-Checker
+upkeep_ips_category_api_desc = API-Clients und automatisierte Services
+upkeep_ips_category_trusted_desc = Sonstige vertrauenswürdige IP-Adressen
+
+upkeep_ips_confirm_remove = Sind Sie sicher, dass Sie diesen Eintrag entfernen möchten?
+upkeep_ips_active = Aktiv
+upkeep_ips_inactive = Inaktiv
+upkeep_ips_activate = Aktivieren
+upkeep_ips_deactivate = Deaktivieren
+upkeep_ips_status_updated = Status erfolgreich aktualisiert
+upkeep_ips_error_adding = Fehler beim Hinzufügen zur Positivliste
+upkeep_ips_error_removing = Fehler beim Entfernen aus Positivliste
+upkeep_ips_error_updating = Fehler beim Aktualisieren des Status
+
+# IPS Cleanup
+upkeep_ips_cleanup = Datenbereinigung
+upkeep_ips_cleanup_info = Bereinigung alter IPS-Daten
+upkeep_ips_cleanup_help = Entfernt abgelaufene IP-Sperrungen und alte Logs zur Optimierung der Datenbankperformance
+upkeep_ips_cleanup_manual = Manuelle Bereinigung
+upkeep_ips_cleanup_auto = Automatische Bereinigung
+upkeep_ips_cleanup_success = Datenbank erfolgreich bereinigt
+upkeep_ips_cleanup_nothing = Keine Bereinigung notwendig - alle Daten sind aktuell

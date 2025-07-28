@@ -232,15 +232,45 @@ public static function checkFrontend(): void
         $page = $addon->getProperty('page');
 
         if (self::getConfig('backend_active', false)) {
-            $page['title'] .= ' <span class="label label-danger">B</span>';
+            $page['title'] .= ' <span class="label label-danger" title="' . $addon->i18n('upkeep_indicator_backend') . '">B</span>';
         }
 
         if (self::getConfig('frontend_active', false)) {
-            $page['title'] .= ' <span class="label label-warning">F</span>';
+            $page['title'] .= ' <span class="label label-warning" title="' . $addon->i18n('upkeep_indicator_frontend') . '">F</span>';
         }
 
         if (self::getConfig('domain_mapping_active', false)) {
-            $page['title'] .= ' <span class="label label-default">D</span>';
+            $page['title'] .= ' <span class="label label-default" title="' . $addon->i18n('upkeep_indicator_domains') . '">R</span>';
+        }
+
+        // IPS-Indikator hinzufügen
+        if (self::getConfig('ips_active', false)) {
+            // Prüfe Bedrohungslevel für Farbe
+            try {
+                $stats = IntrusionPrevention::getStatistics();
+                $threatsToday = $stats['threats_today'] ?? 0;
+                $blockedIps = $stats['blocked_ips'] ?? 0;
+                
+                if ($threatsToday > 10) {
+                    $labelClass = 'label-danger';  // Rot bei vielen Bedrohungen
+                    $tooltip = $addon->i18n('upkeep_indicator_security') . ' - ' . $threatsToday . ' Bedrohungen heute';
+                } elseif ($threatsToday > 0) {
+                    $labelClass = 'label-warning'; // Gelb bei wenigen Bedrohungen
+                    $tooltip = $addon->i18n('upkeep_indicator_security') . ' - ' . $threatsToday . ' Bedrohungen heute';
+                } else {
+                    $labelClass = 'label-success'; // Grün wenn alles ruhig
+                    $tooltip = $addon->i18n('upkeep_indicator_security');
+                }
+                
+                if ($blockedIps > 0) {
+                    $tooltip .= ' - ' . $blockedIps . ' IPs gesperrt';
+                }
+            } catch (\Exception $e) {
+                $labelClass = 'label-success'; // Fallback
+                $tooltip = $addon->i18n('upkeep_indicator_security');
+            }
+            
+            $page['title'] .= ' <span class="label ' . $labelClass . '" title="' . htmlspecialchars($tooltip) . '">S</span>';
         }
 
         $addon->setProperty('page', $page);
