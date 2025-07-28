@@ -212,13 +212,18 @@ class IntrusionPrevention
         $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
         $referer = rex_server('HTTP_REFERER', 'string', '');
         
+        // DEBUG: Logging für Troubleshooting
+        rex_logger::factory()->log('debug', "IPS Check: IP={$clientIp}, URI={$requestUri}, Active=" . (self::isActive() ? 'true' : 'false'));
+        
         // Whitelist-Prüfung
         if (self::isOnPositivliste($clientIp)) {
+            rex_logger::factory()->log('debug', "IPS: IP {$clientIp} is on Positivliste - allowing");
             return;
         }
         
         // Bereits gesperrte IP?
         if (self::isBlocked($clientIp)) {
+            rex_logger::factory()->log('info', "IPS: IP {$clientIp} is already blocked");
             self::blockRequest('IP bereits gesperrt', $clientIp, $requestUri);
         }
         
@@ -226,11 +231,15 @@ class IntrusionPrevention
         $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
         
         if ($threat) {
+            rex_logger::factory()->log('warning', "IPS: Threat detected from {$clientIp} - " . json_encode($threat));
             self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
+        } else {
+            rex_logger::factory()->log('debug', "IPS: No threat detected for {$clientIp}");
         }
         
         // Rate Limiting prüfen
         if (self::isRateLimitExceeded($clientIp)) {
+            rex_logger::factory()->log('warning', "IPS: Rate limit exceeded for {$clientIp}");
             self::handleThreat([
                 'type' => 'rate_limit',
                 'severity' => 'medium',
@@ -362,6 +371,7 @@ class IntrusionPrevention
         foreach ($allowedIps as $allowedIp) {
             $allowedIp = trim($allowedIp);
             if ($allowedIp === $ip) {
+                rex_logger::factory()->log('debug', "IPS: IP {$ip} found in maintenance allowed_ips");
                 return true;
             }
         }
@@ -371,26 +381,32 @@ class IntrusionPrevention
             $sql = rex_sql::factory();
             $sql->setQuery('SELECT ip_address, ip_range FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1');
             
+            rex_logger::factory()->log('debug', "IPS: Checking {$ip} against " . $sql->getRows() . " Positivliste entries");
+            
             while ($sql->hasNext()) {
                 $positivlisteIp = $sql->getValue('ip_address');
                 $ipRange = $sql->getValue('ip_range');
                 
                 // Exakte IP-Übereinstimmung
                 if ($positivlisteIp && $positivlisteIp === $ip) {
+                    rex_logger::factory()->log('debug', "IPS: IP {$ip} found in Positivliste (exact match)");
                     return true;
                 }
                 
                 // CIDR-Bereich prüfen
                 if ($ipRange && self::ipInRange($ip, $ipRange)) {
+                    rex_logger::factory()->log('debug', "IPS: IP {$ip} found in Positivliste (CIDR range: {$ipRange})");
                     return true;
                 }
                 
                 $sql->next();
             }
         } catch (Exception $e) {
+            rex_logger::factory()->log('error', "IPS: Error checking Positivliste: " . $e->getMessage());
             // Fehler beim Datenbankzugriff ignorieren (Tabelle existiert möglicherweise noch nicht)
         }
         
+        rex_logger::factory()->log('debug', "IPS: IP {$ip} NOT found in any Positivliste");
         return false;
     }
 
@@ -687,8 +703,8 @@ class IntrusionPrevention
      */
     private static function getBlockedPageContent(string $reason, string $ip): string
     {
-        $title = self::getAddon()->getConfig('ips_block_title', 'Access Denied');
-        $message = self::getAddon()->getConfig('ips_block_message', 'Your request has been blocked by our security system.');
+        $title = self::getAddon()->getConfig('ips_block_title', 'Zugriff verweigert');
+        $message = self::getAddon()->getConfig('ips_block_message', 'Ihr Request wurde von unserem Sicherheitssystem blockiert.');
         $contact = self::getAddon()->getConfig('ips_contact_info', '');
         
         $html = '<!DOCTYPE html>
@@ -699,55 +715,136 @@ class IntrusionPrevention
     <title>' . rex_escape($title) . '</title>
     <style>
         body { 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            padding: 50px; 
-            background: #f5f5f5; 
-            color: #333;
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+            background: #ecf0f1;
+            margin: 0;
+            padding: 20px;
+            color: #2c3e50;
         }
         .container {
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 800px;
+            margin: 50px auto 0;
             background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         }
-        h1 { color: #d32f2f; margin-bottom: 20px; }
-        p { margin: 15px 0; line-height: 1.6; }
-        .reason { 
-            background: #ffebee; 
-            padding: 15px; 
-            border-radius: 5px; 
-            margin: 20px 0;
-            border-left: 4px solid #d32f2f;
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
         }
-        .footer { 
-            margin-top: 30px; 
-            font-size: 0.9em; 
-            color: #666; 
+        .panel-danger {
+            border-color: #d43f3a;
+        }
+        .panel-heading {
+            padding: 10px 15px;
+            border-bottom: 1px solid transparent;
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+            background-color: #d9534f;
+            border-color: #d43f3a;
+            color: white;
+        }
+        .panel-body {
+            padding: 15px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .alert-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        .fa {
+            margin-right: 5px;
+        }
+        .fa-shield:before { content: "🛡️"; }
+        .fa-exclamation-triangle:before { content: "⚠️"; }
+        .fa-clock-o:before { content: "🕐"; }
+        .fa-info-circle:before { content: "ℹ️"; }
+        .fa-envelope:before { content: "✉️"; }
+        h1 {
+            color: white;
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .detail-row {
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            min-width: 120px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>' . rex_escape($title) . '</h1>
-        <p>' . rex_escape($message) . '</p>
-        
-        <div class="reason">
-            <strong>Grund:</strong> ' . rex_escape($reason) . '
-        </div>
-        
-        <p>Ihre IP-Adresse: <code>' . rex_escape($ip) . '</code></p>
-        <p>Zeitpunkt: ' . date('d.m.Y H:i:s') . '</p>';
+        <div class="panel panel-danger">
+            <div class="panel-heading">
+                <h1><i class="fa fa-shield"></i> ' . rex_escape($title) . '</h1>
+            </div>
+            <div class="panel-body">
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    <strong>Sicherheitshinweis:</strong> ' . rex_escape($message) . '
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Grund:</span>
+                    ' . rex_escape($reason) . '
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Ihre IP-Adresse:</span>
+                    <strong>' . rex_escape($ip) . '</strong>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fa fa-clock-o"></i> Zeitpunkt:</span>
+                    ' . date('d.m.Y H:i:s') . '
+                </div>';
         
         if (!empty($contact)) {
-            $html .= '<p>Bei Fragen wenden Sie sich an: ' . rex_escape($contact) . '</p>';
+            $html .= '
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    <i class="fa fa-info-circle"></i>
+                    <strong>Support:</strong><br>
+                    <i class="fa fa-envelope"></i> Bei Fragen wenden Sie sich an: ' . rex_escape($contact) . '
+                </div>';
         }
         
         $html .= '
+            </div>
+        </div>
+        
         <div class="footer">
-            <p>Powered by REDAXO Upkeep AddOn - Intrusion Prevention System</p>
+            <i class="fa fa-shield"></i> Powered by REDAXO Upkeep AddOn - Intrusion Prevention System
         </div>
     </div>
 </body>
