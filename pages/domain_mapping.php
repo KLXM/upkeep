@@ -20,28 +20,40 @@ if (rex_post('save_global_settings', 'bool')) {
 
 // Handle form submission
 if (rex_post('save', 'bool')) {
-    $data = [
-        'id' => rex_post('id', 'int'),
-        'source_domain' => trim(rex_post('source_domain', 'string')),
-        'source_path' => trim(rex_post('source_path', 'string')),
-        'target_url' => trim(rex_post('target_url', 'string')),
-        'redirect_code' => rex_post('redirect_code', 'int', 301),
-        'is_wildcard' => rex_post('is_wildcard', 'bool') ? 1 : 0,
-        'status' => rex_post('status', 'bool') ? 1 : 0,
-        'description' => trim(rex_post('description', 'string'))
+        $data = [
+        'id' => rex_request('id', 'int', 0),
+        'source_domain' => trim(rex_request('source_domain', 'string', '')),
+        'source_path' => trim(rex_request('source_path', 'string', '')),
+        'target_url' => trim(rex_request('target_url', 'string', '')),
+        'redirect_code' => rex_request('redirect_code', 'int', 301),
+        'is_wildcard' => rex_request('is_wildcard', 'boolean', false),
+        'status' => rex_request('status', 'boolean', true),
+        'description' => trim(rex_request('description', 'string', ''))
     ];
+    
+    // Leere source_path zu NULL normalisieren für konsistente Behandlung
+    if ($data['source_path'] === '') {
+        $data['source_path'] = null;
+    }
     
     // Validation
     $errors = [];
     
     if (empty($data['source_domain'])) {
         $errors[] = 'Source Domain ist erforderlich';
-    } elseif (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\-\.]*[a-zA-Z0-9]$/', $data['source_domain'])) {
-        $errors[] = 'Ungültige Domain';
+    } elseif (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/', $data['source_domain']) || strlen($data['source_domain']) > 253) {
+        $errors[] = 'Ungültige Domain (RFC-konform erforderlich)';
     }
     
-    // Pfad-Validierung für Wildcards
-    if (!empty($data['source_path'])) {
+    // Wildcard-spezifische Validierung
+    if ($data['is_wildcard'] && empty($data['source_path'])) {
+        $errors[] = 'Source Path ist erforderlich für Wildcard-Redirects';
+    } elseif (!empty($data['source_path'])) {
+        // Pfad-Sicherheit: Verhindere Path Traversal
+        if (str_contains($data['source_path'], '..') || str_contains($data['source_path'], '\\')) {
+            $errors[] = 'Pfade dürfen keine ".." oder Backslashes enthalten';
+        }
+        
         if ($data['is_wildcard'] && !str_ends_with($data['source_path'], '/*')) {
             $errors[] = 'Wildcard-Pfade müssen mit /* enden';
         }
@@ -52,22 +64,43 @@ if (rex_post('save', 'bool')) {
     
     if (empty($data['target_url'])) {
         $errors[] = 'Target URL ist erforderlich';
-    } elseif (!filter_var($data['target_url'], FILTER_VALIDATE_URL) && !str_contains($data['target_url'], '*')) {
-        $errors[] = 'Ungültige URL (außer bei Wildcard-URLs mit *)';
-    }
-    
-    // Check for duplicate domain+path combination
-    if (empty($errors)) {
-        $sql = rex_sql::factory();
-        $where = 'source_domain = ? AND source_path = ?';
-        $params = [$data['source_domain'], $data['source_path']];
-        
-        if (!empty($data['id'])) {
-            $where .= ' AND id != ?';
-            $params[] = $data['id'];
+    } else {
+        // Wildcard-URLs validieren
+        if (str_contains($data['target_url'], '*')) {
+            // Bei Wildcard-URLs: Prüfe URL-Format ohne das *
+            $testUrl = str_replace('*', 'test', $data['target_url']);
+            if (!filter_var($testUrl, FILTER_VALIDATE_URL)) {
+                $errors[] = 'Ungültige Wildcard-URL (Format mit * muss gültige URL ergeben)';
+            }
+        } else {
+            // Normale URL-Validierung
+            if (!filter_var($data['target_url'], FILTER_VALIDATE_URL)) {
+                $errors[] = 'Ungültige Target URL';
+            }
         }
         
-        $sql->setQuery('SELECT id FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE ' . $where, $params);
+        // Zusätzliche Sicherheitscheck für erlaubte Schemas
+        if (!preg_match('/^https?:\/\//', $data['target_url']) && !str_contains($data['target_url'], '*')) {
+            $errors[] = 'Target URL muss mit http:// oder https:// beginnen';
+        }
+    }
+    
+    // Check for duplicate domain+path combination with NULL handling
+    if (empty($errors)) {
+        $sql = rex_sql::factory();
+        
+        // Bessere NULL-Behandlung für source_path
+        $duplicateQuery = 'SELECT id FROM ' . rex::getTable('upkeep_domain_mapping') . 
+                         ' WHERE source_domain = ? AND ' .
+                         '(source_path = ? OR (source_path IS NULL AND ? IS NULL) OR (source_path = "" AND ? = ""))';
+        $duplicateParams = [$data['source_domain'], $data['source_path'], $data['source_path'], $data['source_path']];
+        
+        if (!empty($data['id'])) {
+            $duplicateQuery .= ' AND id != ?';
+            $duplicateParams[] = $data['id'];
+        }
+        
+        $sql->setQuery($duplicateQuery, $duplicateParams);
         
         if ($sql->getRows() > 0) {
             $errors[] = 'Diese Domain+Pfad-Kombination ist bereits konfiguriert';

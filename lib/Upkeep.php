@@ -270,7 +270,7 @@ public static function checkFrontend(): void
 
         // Erst exakte Domain-Mappings prüfen (ohne Wildcard)
         $sql = rex_sql::factory();
-        $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND (source_path = "" OR source_path IS NULL) AND status = 1 ORDER BY id', [$currentDomain]);
+        $sql->setQuery('SELECT target_url, redirect_code FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND (source_path = "" OR source_path IS NULL) AND status = 1 ORDER BY id', [$currentDomain]);
 
         if ($sql->getRows() > 0) {
             $targetUrl = $sql->getValue('target_url');
@@ -281,7 +281,7 @@ public static function checkFrontend(): void
 
         // Dann Wildcard-Mappings prüfen
         $sql = rex_sql::factory();
-        $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND source_path != "" AND source_path IS NOT NULL AND status = 1 ORDER BY LENGTH(source_path) DESC', [$currentDomain]);
+        $sql->setQuery('SELECT target_url, redirect_code, source_path, is_wildcard FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND source_path != "" AND source_path IS NOT NULL AND status = 1 ORDER BY LENGTH(source_path) DESC', [$currentDomain]);
 
         while ($sql->hasNext()) {
             $sourcePath = $sql->getValue('source_path');
@@ -328,8 +328,21 @@ public static function checkFrontend(): void
     {
         if (str_ends_with($sourcePath, '/*') && str_contains($targetUrl, '*')) {
             $basePattern = rtrim($sourcePath, '/*');
-            $remainingPath = substr($currentPath, strlen($basePattern));
-            $remainingPath = ltrim($remainingPath, '/');
+            
+            // Sicherheitscheck: Pfad muss mit basePattern beginnen
+            if (!str_starts_with($currentPath, $basePattern)) {
+                return $targetUrl; // Kein Replacement, wenn Pattern nicht passt
+            }
+            
+            $remainingPathStartIndex = strlen($basePattern);
+            
+            // Bounds-Check für substr
+            if ($remainingPathStartIndex >= strlen($currentPath)) {
+                $remainingPath = '';
+            } else {
+                $remainingPath = substr($currentPath, $remainingPathStartIndex);
+                $remainingPath = ltrim($remainingPath, '/');
+            }
             
             return str_replace('*', $remainingPath, $targetUrl);
         }
