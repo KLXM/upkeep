@@ -255,7 +255,7 @@ IntrusionPrevention::addCustomPattern($pattern, $description, $severity);
 IntrusionPrevention::addToPositivliste($ip, $description);
 ```
 
-## � Konsolen-Kommandos
+## Konsolen-Kommandos
 
 ### Wartungsmodi verwalten
 ```bash
@@ -280,7 +280,7 @@ php bin/console upkeep:ips:cleanup
 - Bedrohungs-Logs älter als 30 Tage  
 - Rate-Limit-Daten älter als 2 Stunden
 
-## �📈 Changelog
+## Changelog
 
 ### Version 1.3.0
 - **UI-Optimierungen**: Verbessertes Design ohne problematische `<code>`-Tags
@@ -328,15 +328,6 @@ GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
 curl "https://example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
 ```
 
-## Konsolen-Befehle
-
-```bash
-# Frontend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode frontend on|off
-
-# Backend-Wartungsmodus aktivieren/deaktivieren
-php redaxo/bin/console upkeep:mode backend on|off
-```
 
 ## Extension Points
 
