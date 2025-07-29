@@ -1,7 +1,7 @@
 <?php
 
-// Update-Script für Upkeep AddOn v1.3.0
-// Führt Database-Updates für IPS durch
+// Update-Script für Upkeep AddOn v1.4.0
+// Führt Database-Updates für IPS durch und erstellt fehlende Tabellen
 
 $sql = rex_sql::factory();
 
@@ -61,6 +61,23 @@ try {
         ->ensureIndex(new rex_sql_index('ip_window', ['ip_address', 'window_start']))
         ->ensure();
 
+    // IPS Positivliste Tabelle erstellen (v1.4.0+)
+    rex_sql_table::get(rex::getTable('upkeep_ips_positivliste'))
+        ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+        ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
+        ->ensureColumn(new rex_sql_column('ip_range', 'varchar(50)', true)) // CIDR-Notation für IP-Bereiche
+        ->ensureColumn(new rex_sql_column('description', 'varchar(255)', true))
+        ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted","captcha_verified_temp")', false, 'trusted'))
+        ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent, sonst Ablaufzeit
+        ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+        ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+        ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+        ->setPrimaryKey('id')
+        ->ensureIndex(new rex_sql_index('ip_lookup', ['ip_address', 'status']))
+        ->ensureIndex(new rex_sql_index('range_lookup', ['ip_range', 'status']))
+        ->ensureIndex(new rex_sql_index('expires_lookup', ['expires_at']))
+        ->ensure();
+
     echo rex_view::success('IPS-Datenbanktabellen erfolgreich erstellt/aktualisiert!');
 
 } catch (Exception $e) {
@@ -101,4 +118,27 @@ if ($addon->getConfig('ips_strict_limit') === null) {
 
 if ($addon->getConfig('ips_burst_window') === null) {
     $addon->setConfig('ips_burst_window', 60); // 60 Sekunden Fenster
+}
+
+// Aktuelle Admin-IP automatisch zur Positivliste hinzufügen (falls nicht vorhanden)
+$currentIp = rex_server('REMOTE_ADDR', 'string', '');
+if ($currentIp) {
+    try {
+        $sql = rex_sql::factory();
+        $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$currentIp]);
+        
+        if ((int) $sql->getValue('count') === 0) {
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
+            $sql->setValue('ip_address', $currentIp);
+            $sql->setValue('description', 'Automatisch hinzugefügte Admin-IP bei Update auf v1.4.0');
+            $sql->setValue('category', 'admin');
+            $sql->setValue('status', 1);
+            $sql->setValue('created_at', date('Y-m-d H:i:s'));
+            $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+            $sql->insert();
+        }
+    } catch (Exception $e) {
+        // Fehler bei Positivliste-Erstellung ignorieren (Tabelle wird danach erstellt)
+    }
 }

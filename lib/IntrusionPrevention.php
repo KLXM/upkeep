@@ -406,8 +406,7 @@ class IntrusionPrevention
         // Prüfe IPS-Positivliste aus Datenbank (berücksichtige Ablaufzeiten)
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, ip_range, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' 
-                           WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW())');
+            $sql->setQuery('SELECT ip_address, ip_range, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW())');
             
             self::debugLog("IPS: Checking {$ip} against " . $sql->getRows() . " active Positivliste entries");
             
