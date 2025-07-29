@@ -26,6 +26,16 @@ class IntrusionPrevention
 {
     private static ?rex_addon $addon = null;
     
+    /**
+     * Debug-Logging nur wenn Debug-Modus aktiviert ist
+     */
+    private static function debugLog(string $message): void
+    {
+        if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+            rex_logger::factory()->log('debug', $message);
+        }
+    }
+    
     // Standard-Patterns für verschiedene CMS und Angriffe
     private static array $defaultPatterns = [
         // WordPress-spezifische Pfade
@@ -213,11 +223,11 @@ class IntrusionPrevention
         $referer = rex_server('HTTP_REFERER', 'string', '');
         
         // DEBUG: Logging für Troubleshooting
-        rex_logger::factory()->log('debug', "IPS Check: IP={$clientIp}, URI={$requestUri}, Active=" . (self::isActive() ? 'true' : 'false'));
+        self::debugLog("IPS Check: IP={$clientIp}, URI={$requestUri}, Active=" . (self::isActive() ? 'true' : 'false'));
         
         // Whitelist-Prüfung
         if (self::isOnPositivliste($clientIp)) {
-            rex_logger::factory()->log('debug', "IPS: IP {$clientIp} is on Positivliste - allowing");
+            self::debugLog("IPS: IP {$clientIp} is on Positivliste - allowing");
             return;
         }
         
@@ -234,11 +244,11 @@ class IntrusionPrevention
             rex_logger::factory()->log('warning', "IPS: Threat detected from {$clientIp} - " . json_encode($threat));
             self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
         } else {
-            rex_logger::factory()->log('debug', "IPS: No threat detected for {$clientIp}");
+            self::debugLog("IPS: No threat detected for {$clientIp}");
         }
         
-        // Rate Limiting prüfen
-        if (self::isRateLimitExceeded($clientIp)) {
+        // Rate Limiting prüfen (nur wenn aktiviert)
+        if (self::isRateLimitingEnabled() && self::isRateLimitExceeded($clientIp)) {
             rex_logger::factory()->log('warning', "IPS: Rate limit exceeded for {$clientIp}");
             self::handleThreat([
                 'type' => 'rate_limit',
@@ -371,6 +381,14 @@ class IntrusionPrevention
     }
 
     /**
+     * Prüft ob Rate-Limiting aktiviert ist
+     */
+    private static function isRateLimitingEnabled(): bool
+    {
+        return (bool) self::getAddon()->getConfig('ips_rate_limiting_enabled', false);
+    }
+
+    /**
      * Prüft ob IP in Whitelist steht
      */
     private static function isOnPositivliste(string $ip): bool
@@ -380,31 +398,35 @@ class IntrusionPrevention
         foreach ($allowedIps as $allowedIp) {
             $allowedIp = trim($allowedIp);
             if ($allowedIp === $ip) {
-                rex_logger::factory()->log('debug', "IPS: IP {$ip} found in maintenance allowed_ips");
+                self::debugLog("IPS: IP {$ip} found in maintenance allowed_ips");
                 return true;
             }
         }
         
-        // Prüfe IPS-Positivliste aus Datenbank
+        // Prüfe IPS-Positivliste aus Datenbank (berücksichtige Ablaufzeiten)
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, ip_range FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1');
+            $sql->setQuery('SELECT ip_address, ip_range, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' 
+                           WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW())');
             
-            rex_logger::factory()->log('debug', "IPS: Checking {$ip} against " . $sql->getRows() . " Positivliste entries");
+            self::debugLog("IPS: Checking {$ip} against " . $sql->getRows() . " active Positivliste entries");
             
             while ($sql->hasNext()) {
                 $positivlisteIp = $sql->getValue('ip_address');
                 $ipRange = $sql->getValue('ip_range');
+                $expiresAt = $sql->getValue('expires_at');
                 
                 // Exakte IP-Übereinstimmung
                 if ($positivlisteIp && $positivlisteIp === $ip) {
-                    rex_logger::factory()->log('debug', "IPS: IP {$ip} found in Positivliste (exact match)");
+                    $expiry = $expiresAt ? " (expires: {$expiresAt})" : " (permanent)";
+                    self::debugLog("IPS: IP {$ip} found in Positivliste (exact match){$expiry}");
                     return true;
                 }
                 
                 // CIDR-Bereich prüfen
                 if ($ipRange && self::ipInRange($ip, $ipRange)) {
-                    rex_logger::factory()->log('debug', "IPS: IP {$ip} found in Positivliste (CIDR range: {$ipRange})");
+                    $expiry = $expiresAt ? " (expires: {$expiresAt})" : " (permanent)";
+                    self::debugLog("IPS: IP {$ip} found in Positivliste (CIDR range: {$ipRange}){$expiry}");
                     return true;
                 }
                 
@@ -415,7 +437,7 @@ class IntrusionPrevention
             // Fehler beim Datenbankzugriff ignorieren (Tabelle existiert möglicherweise noch nicht)
         }
         
-        rex_logger::factory()->log('debug', "IPS: IP {$ip} NOT found in any Positivliste");
+        self::debugLog("IPS: IP {$ip} NOT found in any Positivliste");
         return false;
     }
 
@@ -558,10 +580,15 @@ class IntrusionPrevention
     }
     
     /**
-     * Prüft Rate Limiting
+     * Prüft Rate Limiting mit intelligenten Limits
      */
     private static function isRateLimitExceeded(string $ip): bool
     {
+        // Rate-Limiting optional - normalerweise macht das der Webserver
+        if (!self::isRateLimitingEnabled()) {
+            return false;
+        }
+        
         $sql = rex_sql::factory();
         $now = new DateTime();
         $windowStart = $now->modify('-1 minute')->format('Y-m-d H:i:s');
@@ -573,13 +600,136 @@ class IntrusionPrevention
         $sql->setQuery($query, [$ip, $windowStart]);
         $requestCount = (int) $sql->getValue('total');
         
-        // Auch aktuellen Request miteinbeziehen
-        self::updateRateLimit($ip);
+        // Auch aktuellen Request miteinbeziehen (nur wenn Rate-Limiting aktiv)
+        if (self::isRateLimitingEnabled()) {
+            self::updateRateLimit($ip);
+        }
         
-        // Limits aus Config holen
-        $burstLimit = (int) self::getAddon()->getConfig('ips_burst_limit', 10);
+        // Intelligente Limits - sehr hoch für DoS-Schutz, nicht normale Nutzung
+        $burstLimit = (int) self::getAddon()->getConfig('ips_burst_limit', 600);       // 600 pro Minute (10 pro Sekunde)
+        $burstWindow = (int) self::getAddon()->getConfig('ips_burst_window', 60);      // 60 Sekunden
+        $strictLimit = (int) self::getAddon()->getConfig('ips_strict_limit', 200);    // 200 für kritische Pfade
         
-        return $requestCount >= $burstLimit;
+        // Intelligente Limits basierend auf URI und Benutzerverhalten
+        $currentUri = rex_server('REQUEST_URI', 'string', '');
+        $effectiveLimit = self::getEffectiveLimitForUri($currentUri, $burstLimit, $strictLimit);
+        
+        // Bot-Erkennung: Noch höhere Limits für erkannte gute Bots
+        if (self::isGoodBot()) {
+            $effectiveLimit = $effectiveLimit * 2; // Double limit für gute Bots (reicht bei hohen Basis-Limits)
+            self::debugLog("IPS: Good bot detected for {$ip} - doubling rate limit to {$effectiveLimit}");
+        }
+        
+        // Debug-Log für Rate-Limiting
+        if ($requestCount > ($effectiveLimit * 0.8)) { // Log wenn 80% erreicht
+            self::debugLog("IPS: Rate limit warning for {$ip} - {$requestCount}/{$effectiveLimit} requests");
+        }
+        
+        return $requestCount >= $effectiveLimit;
+    }
+    
+    /**
+     * Bestimmt effektive Rate-Limits basierend auf URI
+     */
+    private static function getEffectiveLimitForUri(string $uri, int $defaultLimit, int $strictLimit): int
+    {
+        // Kritische Pfade mit strengeren Limits
+        $strictPaths = [
+            '/wp-admin/', '/wp-login.php', '/admin/', '/login',
+            '/phpmyadmin/', '/pma/', '/xmlrpc.php'
+        ];
+        
+        // API-Pfade mit moderaten Limits
+        $apiPaths = [
+            '/api/', '/wp-json/', '/jsonapi/', '/graphql'
+        ];
+        
+        // Statische Ressourcen mit höheren Limits
+        $staticPaths = [
+            '/assets/', '/media/', '/css/', '/js/', '/images/', '/img/',
+            '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
+            '.woff', '.woff2', '.ttf', '.eot', '.pdf'
+        ];
+        
+        foreach ($strictPaths as $path) {
+            if (stripos($uri, $path) !== false) {
+                return $strictLimit; // Strenge Limits für kritische Bereiche
+            }
+        }
+        
+        foreach ($staticPaths as $path) {
+            if (stripos($uri, $path) !== false) {
+                return (int) ($defaultLimit * 1.5); // Nur 50% mehr für statische Ressourcen
+            }
+        }
+        
+        foreach ($apiPaths as $path) {
+            if (stripos($uri, $path) !== false) {
+                return (int) ($defaultLimit * 0.8); // 80% des Standard-Limits für APIs
+            }
+        }
+        
+        return $defaultLimit; // Standard-Limit für normale Seiten
+    }
+    
+    /**
+     * Erkennt gute/legitime Bots (Google, Bing, etc.)
+     */
+    private static function isGoodBot(): bool
+    {
+        $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
+        
+        // Bekannte gute Bots
+        $goodBots = [
+            'Googlebot',
+            'Bingbot', 
+            'Slurp',           // Yahoo
+            'DuckDuckBot',     // DuckDuckGo
+            'Baiduspider',     // Baidu
+            'YandexBot',       // Yandex
+            'facebookexternalhit', // Facebook
+            'Twitterbot',      // Twitter
+            'LinkedInBot',     // LinkedIn
+            'WhatsApp',        // WhatsApp Link Preview
+            'Applebot',        // Apple
+            'SemrushBot',      // SEO Tools
+            'AhrefsBot',       // SEO Tools
+            'MJ12bot',         // Majestic
+            'DotBot'           // Moz
+        ];
+        
+        foreach ($goodBots as $bot) {
+            if (stripos($userAgent, $bot) !== false) {
+                // Zusätzliche Verifikation für kritische Bots wie Google
+                if (in_array($bot, ['Googlebot', 'Bingbot'])) {
+                    return self::verifyGoogleBot(); // Reverse DNS Verifikation
+                }
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Verifiziert Google/Bing Bot durch Reverse DNS
+     */
+    private static function verifyGoogleBot(): bool
+    {
+        $ip = self::getClientIp();
+        
+        // Reverse DNS Lookup
+        $hostname = gethostbyaddr($ip);
+        
+        // Google IPs enden mit .googlebot.com oder .google.com
+        // Bing IPs enden mit .search.msn.com
+        if (preg_match('/\.(googlebot\.com|google\.com|search\.msn\.com)$/i', $hostname)) {
+            // Forward DNS Lookup zur Verifikation
+            $verifyIp = gethostbyname($hostname);
+            return $verifyIp === $ip;
+        }
+        
+        return false;
     }
     
     /**
@@ -1119,11 +1269,20 @@ class IntrusionPrevention
         
         // Antwort prüfen
         if ($userAnswer === $correctAnswer) {
-            // IP entsperren
-            self::unblockIp($ip);
+            rex_logger::factory()->log('info', "IPS: CAPTCHA verification successful for IP {$ip}");
             
-            // Log der manuellen Entsperrung
-            rex_logger::factory()->log('info', "IPS: IP {$ip} unlocked via CAPTCHA verification");
+            // 1. IP komplett entsperren und rehabilitieren
+            $unblockSuccess = self::unblockIp($ip);
+            $clearSuccess = self::clearThreatHistory($ip);
+            
+            // 2. IP temporär zur Positivliste hinzufügen (Standard: 24 Stunden)
+            $trustDuration = (int) self::getAddon()->getConfig('ips_captcha_trust_duration', 24); // Stunden
+            $addToPositivliste = self::addToTemporaryPositivliste($ip, $trustDuration, 'CAPTCHA verified user');
+            
+            // Detailliertes Logging der Rehabilitation
+            rex_logger::factory()->log('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
+                                               ", clear_history: " . ($clearSuccess ? 'success' : 'failed') . 
+                                               ", temp_positivliste: " . ($addToPositivliste ? "success ({$trustDuration}h)" : 'failed'));
             
             // Zur Startseite weiterleiten (relative URL)
             header('Location: /');
@@ -1196,6 +1355,54 @@ class IntrusionPrevention
     }
 
     /**
+     * Fügt IP temporär zur Positivliste hinzu (mit Ablaufzeit)
+     */
+    public static function addToTemporaryPositivliste(string $ip, int $durationHours = 24, string $description = ''): bool
+    {
+        try {
+            // Erst prüfen, ob die IP bereits in der Positivliste steht
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT id FROM " . rex::getTable('upkeep_ips_positivliste') . " WHERE ip_address = ?", [$ip]);
+            
+            $expiresAt = (new DateTime())->modify("+{$durationHours} hours")->format('Y-m-d H:i:s');
+            $fullDescription = $description . " (Temporär bis {$expiresAt})";
+            
+            if ($sql->getRows() > 0) {
+                // IP ist bereits in Positivliste - aktualisiere sie
+                $id = $sql->getValue('id');
+                $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
+                $sql->setValue('description', $fullDescription);
+                $sql->setValue('category', 'captcha_verified_temp');
+                $sql->setValue('expires_at', $expiresAt);
+                $sql->setValue('status', 1);
+                $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+                $sql->setWhere(['id' => $id]);
+                $sql->update();
+                
+                rex_logger::factory()->log('info', "IPS: Updated existing Positivliste entry for {$ip} with expiry {$expiresAt}");
+            } else {
+                // Neue temporäre Positivliste-Eintrag erstellen
+                $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
+                $sql->setValue('ip_address', $ip);
+                $sql->setValue('description', $fullDescription);
+                $sql->setValue('category', 'captcha_verified_temp');
+                $sql->setValue('expires_at', $expiresAt);
+                $sql->setValue('status', 1);
+                $sql->setValue('created_at', date('Y-m-d H:i:s'));
+                $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+                $sql->insert();
+                
+                rex_logger::factory()->log('info', "IPS: Added {$ip} to temporary Positivliste until {$expiresAt}");
+            }
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+
+    /**
      * Entfernt IP aus Positivliste
      */
     public static function removeFromPositivliste(int $id): bool
@@ -1255,8 +1462,137 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
+            
+            // Prüfe zuerst, ob die IP überhaupt gesperrt ist
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
+            $blockedCount = (int) $sql->getValue('count');
+            
+            if ($blockedCount === 0) {
+                rex_logger::factory()->log('info', "IPS: IP {$ip} was not in blocked list");
+                return true; // Schon entsperrt
+            }
+            
+            // IP aus Sperrliste entfernen
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
-            rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked");
+            $deletedRows = $sql->getRows();
+            
+            rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
+            
+            return $deletedRows > 0;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+    
+    /**
+     * Löscht Bedrohungshistorie und Rate-Limit-Daten für eine IP (CAPTCHA-Rehabilitation)
+     */
+    public static function clearThreatHistory(string $ip): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $cleanup = [
+                'threat_logs' => 0,
+                'rate_limits' => 0
+            ];
+            
+            // 1. Alle Bedrohungs-Logs für diese IP löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ?", [$ip]);
+            $cleanup['threat_logs'] = $sql->getRows();
+            
+            // 2. Rate-Limit-Daten für diese IP löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " WHERE ip_address = ?", [$ip]);
+            $cleanup['rate_limits'] = $sql->getRows();
+            
+            // Log der Rehabilitation
+            rex_logger::factory()->log('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+    
+    /**
+     * Debug-Methode: Zeigt alle Einträge für eine IP in allen IPS-Tabellen
+     */
+    public static function debugIpStatus(string $ip): array
+    {
+        $sql = rex_sql::factory();
+        $debug = [];
+        
+        try {
+            // 1. Gesperrte IPs
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
+            $debug['blocked_ips'] = $sql->getArray();
+            
+            // 2. Positivliste (mit Ablaufzeiten)
+            $sql->setQuery("SELECT *, CASE WHEN expires_at IS NULL THEN 'permanent' 
+                                            WHEN expires_at > NOW() THEN 'active' 
+                                            ELSE 'expired' END as status_type 
+                           FROM " . rex::getTable('upkeep_ips_positivliste') . " WHERE ip_address = ?", [$ip]);
+            $debug['positivliste'] = $sql->getArray();
+            
+            // 3. Bedrohungshistorie
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? ORDER BY created_at DESC LIMIT 10", [$ip]);
+            $debug['threat_history'] = $sql->getArray();
+            
+            // 4. Rate-Limit-Daten
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_rate_limit') . " WHERE ip_address = ?", [$ip]);
+            $debug['rate_limits'] = $sql->getArray();
+            
+            // 5. Wartungsmodus erlaubte IPs
+            $allowedIps = explode("\n", self::getAddon()->getConfig('allowed_ips', ''));
+            $debug['maintenance_allowed'] = in_array($ip, array_map('trim', $allowedIps));
+            
+            // 6. Aktuelle Rate-Limit-Konfiguration
+            $debug['rate_limit_config'] = [
+                'enabled' => self::isRateLimitingEnabled(),
+                'burst_limit' => self::getAddon()->getConfig('ips_burst_limit', 600),
+                'strict_limit' => self::getAddon()->getConfig('ips_strict_limit', 200),
+                'burst_window' => self::getAddon()->getConfig('ips_burst_window', 60),
+                'is_good_bot' => self::isGoodBot(),
+                'user_agent' => rex_server('HTTP_USER_AGENT', 'string', ''),
+                'effective_limit' => self::isRateLimitingEnabled() ? self::getEffectiveLimitForUri(rex_server('REQUEST_URI', 'string', ''), 600, 200) : 'disabled',
+                'note' => self::isRateLimitingEnabled() ? 'DoS-Protection active - Patterns are primary security' : 'Rate limiting disabled - Server/Proxy should handle this'
+            ];
+            
+            // 7. Aktuelle Request-Zählung (letzte Minute)
+            $now = new DateTime();
+            $windowStart = $now->modify('-1 minute')->format('Y-m-d H:i:s');
+            $sql->setQuery("SELECT SUM(request_count) as total FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
+                           WHERE ip_address = ? AND window_start >= ?", [$ip, $windowStart]);
+            $debug['current_request_count'] = (int) $sql->getValue('total');
+            
+        } catch (Exception $e) {
+            $debug['error'] = $e->getMessage();
+        }
+        
+        return $debug;
+    }
+    
+    /**
+     * Setzt Rate-Limit-Konfiguration
+     */
+    public static function setRateLimitConfig(array $config): bool
+    {
+        try {
+            $addon = self::getAddon();
+            
+            if (isset($config['burst_limit'])) {
+                $addon->setConfig('ips_burst_limit', (int) $config['burst_limit']);
+            }
+            
+            if (isset($config['strict_limit'])) {
+                $addon->setConfig('ips_strict_limit', (int) $config['strict_limit']);
+            }
+            
+            if (isset($config['burst_window'])) {
+                $addon->setConfig('ips_burst_window', (int) $config['burst_window']);
+            }
+            
             return true;
         } catch (Exception $e) {
             rex_logger::logException($e);
@@ -1311,7 +1647,8 @@ class IntrusionPrevention
         $cleanup = [
             'expired_ips' => 0,
             'old_threats' => 0,
-            'old_rate_limits' => 0
+            'old_rate_limits' => 0,
+            'expired_positivliste' => 0
         ];
         
         try {
@@ -1320,18 +1657,24 @@ class IntrusionPrevention
                            WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < NOW()");
             $cleanup['expired_ips'] = $sql->getRows();
             
-            // 2. Alte Bedrohungs-Logs löschen (älter als 30 Tage)
+            // 2. Abgelaufene temporäre Positivliste-Einträge löschen
+            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_positivliste') . " 
+                           WHERE expires_at IS NOT NULL AND expires_at < NOW()");
+            $cleanup['expired_positivliste'] = $sql->getRows();
+            
+            // 3. Alte Bedrohungs-Logs löschen (älter als 30 Tage)
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " 
                            WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
             $cleanup['old_threats'] = $sql->getRows();
             
-            // 3. Alte Rate-Limit-Daten löschen (älter als 2 Stunden)
+            // 4. Alte Rate-Limit-Daten löschen (älter als 2 Stunden)
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
                            WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
             $cleanup['old_rate_limits'] = $sql->getRows();
             
             // Log der Bereinigung
-            if ($cleanup['expired_ips'] > 0 || $cleanup['old_threats'] > 0 || $cleanup['old_rate_limits'] > 0) {
+            $totalCleaned = array_sum($cleanup);
+            if ($totalCleaned > 0) {
                 rex_logger::factory()->log('info', 'IPS Cleanup: ' . json_encode($cleanup), [], __FILE__, __LINE__);
             }
             
