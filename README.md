@@ -110,7 +110,9 @@ Gesperrte Benutzer können sich per CAPTCHA entsperren:
 
 #### Bot-Management 🔍
 - **Gute Bots**: Automatische Erkennung von Google, Bing, Facebook, etc.
-- **Reverse DNS**: Verifikation kritischer Bots durch DNS-Lookup
+- **Reverse DNS**: Timeout-geschützte Verifikation kritischer Bots (max 3s)
+- **Forward DNS**: Doppelte Verifikation mit A/AAAA Record Lookup
+- **DNS-Caching**: 24h Cache für verifizierte, 1h für negative Ergebnisse
 - **Erhöhte Limits**: Legitime Bots erhalten doppelte Rate-Limits
 
 #### Rate-Limiting (Optional) ⚠️
@@ -358,7 +360,9 @@ php bin/console upkeep:ips:cleanup
 - **CAPTCHA-Entsperrung**: Menschliche Verifikation mit mathematischen Aufgaben
 - **Multilingual Support**: Deutsch/Englisch mit automatischer Spracherkennung und Sprachumschalter
 - **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, Facebook, etc.)
-- **Reverse DNS**: Verifikation kritischer Bots durch DNS-Lookup zur Fälschungsverhinderung
+- **Reverse DNS**: Timeout-geschützte Verifikation (3s max) mit dns_get_record() + gethostbyaddr() Fallback
+- **Forward DNS**: Robuste A/AAAA Record Lookups mit gethostbyname() Fallback  
+- **DNS-Caching**: Intelligentes Caching (24h positive, 1h negative) zur Performance-Optimierung
 - **Temporäre Positivliste**: 24h automatische Vertrauensstellung nach CAPTCHA-Entsperrung
 - **Optionales Rate-Limiting**: Standardmäßig deaktiviert (Webserver sollte das übernehmen)
 - **Intelligente URI-Limits**: Pfad-basierte Rate-Limits (normal/admin/assets/api)

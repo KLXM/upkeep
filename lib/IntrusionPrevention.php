@@ -854,30 +854,85 @@ class IntrusionPrevention
     private static function forwardDnsLookup(string $hostname): ?string
     {
         try {
+            // Bevorzuge dns_get_record für A/AAAA Records mit besserer Kontrolle
+            if (function_exists('dns_get_record')) {
+                $startTime = microtime(true);
+                
+                // Error Handler setzen
+                set_error_handler(function() { return true; });
+                
+                // A Record für IPv4
+                $records = @dns_get_record($hostname, DNS_A);
+                
+                restore_error_handler();
+                
+                $duration = microtime(true) - $startTime;
+                
+                // Timeout-Check (max 3 Sekunden)
+                if ($duration > 3.0) {
+                    self::debugLog("DNS A Record Lookup Timeout für Hostname: $hostname (${duration}s)");
+                    return null;
+                }
+                
+                if (!empty($records) && isset($records[0]['ip'])) {
+                    $ip = $records[0]['ip'];
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                        return $ip;
+                    }
+                }
+                
+                // Fallback zu AAAA Record für IPv6 (falls kein A Record gefunden)
+                if (empty($records)) {
+                    $startTime = microtime(true);
+                    
+                    set_error_handler(function() { return true; });
+                    
+                    $records = @dns_get_record($hostname, DNS_AAAA);
+                    
+                    restore_error_handler();
+                    
+                    $duration = microtime(true) - $startTime;
+                    
+                    if ($duration <= 3.0 && !empty($records) && isset($records[0]['ipv6'])) {
+                        $ip = $records[0]['ipv6'];
+                        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                            return $ip;
+                        }
+                    }
+                }
+            }
+            
+            // Fallback zu gethostbyname mit Timeout-Simulation
             $startTime = microtime(true);
             
-            // Error Handler setzen
             set_error_handler(function() { return true; });
+            
+            // Verwende ignore_user_abort für bessere Timeout-Kontrolle
+            $oldAbort = ignore_user_abort(true);
             
             $ip = @gethostbyname($hostname);
             
+            ignore_user_abort($oldAbort);
             restore_error_handler();
             
             $duration = microtime(true) - $startTime;
             
             // Timeout-Check (max 3 Sekunden)
             if ($duration > 3.0) {
-                self::debugLog("Forward DNS Lookup Timeout für Hostname: $hostname (${duration}s)");
+                self::debugLog("gethostbyname Forward Lookup Timeout für Hostname: $hostname (${duration}s)");
                 return null;
             }
             
-            // Validierung der IP
+            // Validierung der IP (gethostbyname gibt bei Fehlern den Hostname zurück)
             if ($ip && $ip !== $hostname && filter_var($ip, FILTER_VALIDATE_IP)) {
                 return $ip;
             }
             
         } catch (Exception $e) {
             self::debugLog("Forward DNS Lookup Error für Hostname $hostname: " . $e->getMessage());
+        } catch (\Error $e) {
+            // Für PHP-Fehler (z.B. DNS-Funktionen nicht verfügbar)
+            self::debugLog("Forward DNS Function Error für Hostname $hostname: " . $e->getMessage());
         }
         
         return null;
