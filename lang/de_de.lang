@@ -106,10 +106,14 @@ upkeep_ips_is_regex = RegEx
 upkeep_ips_type = Typ
 upkeep_ips_created = Erstellt
 upkeep_ips_pattern_added = Pattern erfolgreich hinzugefügt
+upkeep_ips_pattern_updated = Pattern erfolgreich aktualisiert
 upkeep_ips_pattern_add_error = Fehler beim Hinzufügen des Patterns
+upkeep_ips_pattern_update_error = Fehler beim Aktualisieren des Patterns
 upkeep_ips_pattern_empty = Pattern darf nicht leer sein
 upkeep_ips_pattern_deleted = Pattern erfolgreich gelöscht
 upkeep_ips_pattern_delete_error = Fehler beim Löschen des Patterns
+upkeep_ips_pattern_status_changed = Pattern-Status erfolgreich geändert
+upkeep_ips_pattern_status_error = Fehler beim Ändern des Pattern-Status
 upkeep_ips_delete_confirm = Sind Sie sicher, dass Sie dieses Pattern löschen möchten?
 upkeep_ips_no_patterns = Keine Custom Patterns vorhanden
 upkeep_ips_pattern_examples = Pattern-Beispiele
@@ -130,6 +134,8 @@ upkeep_edit = Bearbeiten
 upkeep_update = Aktualisieren
 upkeep_cancel = Abbrechen
 upkeep_delete = Löschen
+upkeep_activate = Aktivieren
+upkeep_deactivate = Deaktivieren
 
 # Permissions
 upkeep[security] = IPS & Security

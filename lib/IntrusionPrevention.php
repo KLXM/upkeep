@@ -591,7 +591,7 @@ class IntrusionPrevention
         
         $sql = rex_sql::factory();
         $now = new DateTime();
-        $windowStart = $now->modify('-1 minute')->format('Y-m-d H:i:s');
+        $windowStart = (clone $now)->modify('-1 minute')->format('Y-m-d H:i:s');
         
         // Requests in letzter Minute zählen
         $query = "SELECT SUM(request_count) as total FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
@@ -965,7 +965,7 @@ class IntrusionPrevention
         }
         
         // Alte Einträge aufräumen (älter als 1 Stunde)
-        $cleanupTime = $now->modify('-1 hour')->format('Y-m-d H:i:s');
+        $cleanupTime = (clone $now)->modify('-1 hour')->format('Y-m-d H:i:s');
         $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " WHERE window_start < ?", [$cleanupTime]);
     }
     
@@ -1769,7 +1769,7 @@ class IntrusionPrevention
             
             // 7. Aktuelle Request-Zählung (letzte Minute)
             $now = new DateTime();
-            $windowStart = $now->modify('-1 minute')->format('Y-m-d H:i:s');
+            $windowStart = (clone $now)->modify('-1 minute')->format('Y-m-d H:i:s');
             $sql->setQuery("SELECT SUM(request_count) as total FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
                            WHERE ip_address = ? AND window_start >= ?", [$ip, $windowStart]);
             $debug['current_request_count'] = (int) $sql->getValue('total');
