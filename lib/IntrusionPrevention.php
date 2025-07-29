@@ -1692,6 +1692,82 @@ class IntrusionPrevention
             return false;
         }
     }
+
+    /**
+     * Sperrt IP-Adresse manuell
+     */
+    public static function blockIpManually(string $ip, string $duration = 'permanent', string $reason = ''): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            
+            // Prüfe zuerst, ob die IP bereits gesperrt ist
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
+            $alreadyBlocked = (int) $sql->getValue('count') > 0;
+            
+            if ($alreadyBlocked) {
+                return false; // IP ist bereits gesperrt
+            }
+            
+            // IP validieren
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                return false;
+            }
+            
+            // Ablaufzeit berechnen
+            $expiresAt = null;
+            $blockType = 'permanent';
+            
+            if ($duration !== 'permanent') {
+                $blockType = 'temporary';
+                $now = new DateTime();
+                
+                switch ($duration) {
+                    case '1h':
+                        $expiresAt = $now->modify('+1 hour')->format('Y-m-d H:i:s');
+                        break;
+                    case '6h':
+                        $expiresAt = $now->modify('+6 hours')->format('Y-m-d H:i:s');
+                        break;
+                    case '24h':
+                        $expiresAt = $now->modify('+24 hours')->format('Y-m-d H:i:s');
+                        break;
+                    case '7d':
+                        $expiresAt = $now->modify('+7 days')->format('Y-m-d H:i:s');
+                        break;
+                    case '30d':
+                        $expiresAt = $now->modify('+30 days')->format('Y-m-d H:i:s');
+                        break;
+                    default:
+                        $blockType = 'permanent';
+                        $expiresAt = null;
+                }
+            }
+            
+            // Grund standardisieren
+            if (empty($reason)) {
+                $reason = 'Manually blocked by administrator';
+            }
+            
+            // IP in Datenbank sperren
+            $sql->setTable(rex::getTable('upkeep_ips_blocked_ips'));
+            $sql->setValue('ip_address', $ip);
+            $sql->setValue('block_type', $blockType);
+            $sql->setValue('expires_at', $expiresAt);
+            $sql->setValue('reason', $reason);
+            $sql->setValue('threat_level', 'high'); // Manuelle Sperrungen sind immer 'high'
+            $sql->setValue('created_at', date('Y-m-d H:i:s'));
+            $sql->insert();
+            
+            $expiryInfo = $expiresAt ? " until {$expiresAt}" : " permanently";
+            rex_logger::factory()->log('info', "IPS: IP {$ip} manually blocked{$expiryInfo} - reason: {$reason}");
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
     
     /**
      * Löscht Bedrohungshistorie und Rate-Limit-Daten für eine IP (CAPTCHA-Rehabilitation)
