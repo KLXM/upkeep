@@ -181,10 +181,24 @@ Directory Traversal
 Shell-Injection
 ```
 
-### Rate Limiting
-- **Standard**: 100 Requests pro Minute
-- **Burst-Schutz**: Temporäre Sperrung bei Überschreitung
-- **Konfigurierbar**: Anpassbare Limits per IP
+### Rate Limiting (Experten-Einstellungen)
+- **Standard**: Deaktiviert (Webserver sollte Rate Limiting übernehmen)
+- **Aktivierung**: Nur über Konfiguration für Experten
+- **DoS-Schutz**: Sehr hohe Limits nur für extreme Angriffe
+- **Konfiguration**: Über `rex_config::set()` - siehe Dokumentation unten
+
+#### Rate Limiting Konfiguration (nur für Experten):
+```php
+// Rate Limiting aktivieren (Standard: false)
+rex_config::set('upkeep', 'ips_rate_limiting_enabled', true);
+
+// Limits konfigurieren (Standard-Werte)
+rex_config::set('upkeep', 'ips_burst_limit', 600);      // 600 Requests/Minute (10/Sekunde)
+rex_config::set('upkeep', 'ips_strict_limit', 200);     // 200 für kritische Bereiche
+rex_config::set('upkeep', 'ips_burst_window', 60);      // 60 Sekunden Zeitfenster
+```
+
+⚠️ **Wichtig**: Rate Limiting sollte normalerweise auf Webserver-Ebene erfolgen!
 
 ## 📊 Status-Indikatoren
 
@@ -238,6 +252,35 @@ Das AddOn erstellt folgende Tabellen:
 - `rex_upkeep_ips_custom_patterns`: Benutzerdefinierte Patterns
 - `rex_upkeep_ips_rate_limit`: Rate-Limiting-Daten
 - `rex_upkeep_ips_positivliste`: Vertrauenswürdige IPs
+
+## 🔧 Erweiterte Konfiguration
+
+### IPS Rate Limiting (nur für Experten)
+
+Rate Limiting ist standardmäßig **deaktiviert** und sollte normalerweise auf Webserver-Ebene erfolgen. Für spezielle Anforderungen kann es über die Konfiguration aktiviert werden:
+
+```php
+// Rate Limiting aktivieren
+rex_config::set('upkeep', 'ips_rate_limiting_enabled', true);
+
+// Burst Limit (Requests pro Minute) - Standard: 600
+rex_config::set('upkeep', 'ips_burst_limit', 600);
+
+// Strict Limit für kritische Bereiche - Standard: 200  
+rex_config::set('upkeep', 'ips_strict_limit', 200);
+
+// Zeitfenster in Sekunden - Standard: 60
+rex_config::set('upkeep', 'ips_burst_window', 60);
+
+// Rate Limiting wieder deaktivieren
+rex_config::set('upkeep', 'ips_rate_limiting_enabled', false);
+```
+
+**Hinweise:**
+- Diese Einstellungen sind nicht über das Backend-Interface verfügbar
+- Rate Limiting sollte normalerweise über Apache/Nginx erfolgen
+- Die Limits sind bewusst sehr hoch für DoS-Schutz, nicht normale Nutzung
+- Gute Bots erhalten automatisch doppelte Limits
 
 ## Anpassen der Wartungsseite
 

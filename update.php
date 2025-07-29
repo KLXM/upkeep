@@ -66,3 +66,43 @@ try {
 } catch (Exception $e) {
     echo rex_view::error('Fehler beim Erstellen der IPS-Tabellen: ' . $e->getMessage());
 }
+
+// Konfiguration auf aktuelle Standards setzen (v1.3.0+)
+$addon = rex_addon::get('upkeep');
+
+// IPS standardmäßig aktivieren
+if ($addon->getConfig('ips_active') === null) {
+    $addon->setConfig('ips_active', true);
+}
+
+// Rate-Limiting standardmäßig DEAKTIVIERT (Webserver sollte das machen)
+if ($addon->getConfig('ips_rate_limiting_enabled') === null) {
+    $addon->setConfig('ips_rate_limiting_enabled', false);
+}
+
+// CAPTCHA-Vertrauensdauer konfigurieren (Standard: 24 Stunden)
+if ($addon->getConfig('ips_captcha_trust_duration') === null) {
+    $addon->setConfig('ips_captcha_trust_duration', 24);
+}
+
+// Rate-Limiting Konfiguration (sehr hoch - nur für DoS-Schutz)
+if ($addon->getConfig('ips_burst_limit') === null) {
+    $addon->setConfig('ips_burst_limit', 600); // 10 Requests pro Sekunde = echte DoS-Schwelle
+}
+
+if ($addon->getConfig('ips_strict_limit') === null) {
+    $addon->setConfig('ips_strict_limit', 200); // Auch Admin-Bereiche sehr großzügig
+}
+
+if ($addon->getConfig('ips_burst_window') === null) {
+    $addon->setConfig('ips_burst_window', 60); // 60 Sekunden Fenster
+}
+
+// Standard-Blockierungseinstellungen
+if ($addon->getConfig('ips_block_title') === null) {
+    $addon->setConfig('ips_block_title', 'Access Denied');
+}
+
+if ($addon->getConfig('ips_block_message') === null) {
+    $addon->setConfig('ips_block_message', 'Your request has been blocked by our security system.');
+}
