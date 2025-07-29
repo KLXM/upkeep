@@ -94,6 +94,7 @@ upkeep_ips_showing_results = Zeige %d Ergebnisse (%d - %d)
 
 # IPS Patterns
 upkeep_ips_add_pattern = Pattern hinzufügen
+upkeep_ips_edit_pattern = Pattern bearbeiten
 upkeep_ips_custom_patterns = Benutzerdefinierte Patterns
 upkeep_ips_pattern = Pattern
 upkeep_ips_description = Beschreibung
