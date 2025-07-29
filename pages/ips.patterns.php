@@ -226,7 +226,7 @@ if ($sql->getRows() > 0) {
         echo '<td>';
         echo $status ? '<span class="label label-success">' . $addon->i18n('upkeep_active') . '</span>' : '<span class="label label-danger">' . $addon->i18n('upkeep_inactive') . '</span>';
         echo '</td>';
-        echo '<td>' . rex_formatter::date($createdAt, 'date') . '</td>';
+        echo '<td>' . date('d.m.Y H:i', strtotime($createdAt)) . '</td>';
         echo '<td class="text-center">';
         
         // Bearbeiten-Button

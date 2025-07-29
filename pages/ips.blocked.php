@@ -83,8 +83,8 @@ if ($sql->getRows() > 0) {
         echo '<span class="label ' . $severityClass . '">' . ucfirst($threatLevel) . '</span>';
         echo '</td>';
         echo '<td>' . rex_escape(substr($reason, 0, 50)) . (strlen($reason) > 50 ? '...' : '') . '</td>';
-        echo '<td>' . ($expiresAt ? rex_formatter::date($expiresAt, 'datetime') : 'Permanent') . '</td>';
-        echo '<td>' . rex_formatter::date($createdAt, 'datetime') . '</td>';
+        echo '<td>' . ($expiresAt ? date('d.m.Y H:i', strtotime($expiresAt)) : 'Permanent') . '</td>';
+        echo '<td>' . date('d.m.Y H:i', strtotime($createdAt)) . '</td>';
         echo '<td class="text-center">';
         echo '<a href="' . rex_url::currentBackendPage(['action' => 'unblock', 'ip' => $ip]) . '" class="btn btn-xs btn-success" onclick="return confirm(\'IP ' . rex_escape($ip) . ' entsperren?\')">';
         echo '<i class="fa fa-unlock"></i> Entsperren';
