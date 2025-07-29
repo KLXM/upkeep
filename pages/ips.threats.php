@@ -166,7 +166,7 @@ if ($sql->getRows() > 0) {
         $actionTaken = $sql->getValue('action_taken');
         
         echo '<tr>';
-        echo '<td>' . rex_formatter::date($createdAt, 'datetime') . '</td>';
+        echo '<td>' . date('d.m.Y H:i', strtotime($createdAt)) . '</td>';
         echo '<td><span class="label label-default">' . rex_escape($ipAddress) . '</span></td>';
         echo '<td><span class="label label-default">' . rex_escape($threatType) . '</span></td>';
         echo '<td>';

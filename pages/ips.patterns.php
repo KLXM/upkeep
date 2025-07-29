@@ -109,7 +109,9 @@ $form .= '<div class="row">';
 
 $form .= '<div class="col-md-4">';
 $form .= '<div class="form-group">';
-$form .= '<label for="pattern">' . $addon->i18n('upkeep_ips_pattern') . '</label>';
+$form .= '<label for="pattern">' . $addon->i18n('upkeep_ips_pattern') . ' ';
+$form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_pattern_tooltip') . '" data-toggle="tooltip"></i>';
+$form .= '</label>';
 $form .= '<input type="text" class="form-control" id="pattern" name="pattern" value="' . rex_escape($editPattern['pattern'] ?? '') . '" required>';
 $form .= '<small class="help-block">' . $addon->i18n('upkeep_ips_pattern_help') . '</small>';
 $form .= '</div>';
@@ -117,21 +119,26 @@ $form .= '</div>';
 
 $form .= '<div class="col-md-3">';
 $form .= '<div class="form-group">';
-$form .= '<label for="description">' . $addon->i18n('upkeep_ips_description') . '</label>';
+$form .= '<label for="description">' . $addon->i18n('upkeep_ips_description') . ' ';
+$form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_description_tooltip') . '" data-toggle="tooltip"></i>';
+$form .= '</label>';
 $form .= '<input type="text" class="form-control" id="description" name="description" value="' . rex_escape($editPattern['description'] ?? '') . '">';
 $form .= '</div>';
 $form .= '</div>';
 
 $form .= '<div class="col-md-2">';
 $form .= '<div class="form-group">';
-$form .= '<label for="severity">' . $addon->i18n('upkeep_ips_severity') . '</label>';
+$form .= '<label for="severity">' . $addon->i18n('upkeep_ips_severity') . ' ';
+$form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_severity_tooltip') . '" data-toggle="tooltip"></i>';
+$form .= '</label>';
 $form .= '<select class="form-control" id="severity" name="severity">';
 $currentSeverity = $editPattern['severity'] ?? 'medium';
-$form .= '<option value="low"' . ($currentSeverity === 'low' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_low') . '</option>';
-$form .= '<option value="medium"' . ($currentSeverity === 'medium' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_medium') . '</option>';
-$form .= '<option value="high"' . ($currentSeverity === 'high' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_high') . '</option>';
-$form .= '<option value="critical"' . ($currentSeverity === 'critical' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_critical') . '</option>';
+$form .= '<option value="low"' . ($currentSeverity === 'low' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_low_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_low') . ' (Log only)</option>';
+$form .= '<option value="medium"' . ($currentSeverity === 'medium' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_medium_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_medium') . ' (15min)</option>';
+$form .= '<option value="high"' . ($currentSeverity === 'high' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_high_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_high') . ' (1h)</option>';
+$form .= '<option value="critical"' . ($currentSeverity === 'critical' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_critical_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_critical') . ' (Permanent)</option>';
 $form .= '</select>';
+$form .= '<small class="help-block text-muted">' . $addon->i18n('upkeep_ips_severity_help') . '</small>';
 $form .= '</div>';
 $form .= '</div>';
 
@@ -140,12 +147,18 @@ $form .= '<div class="form-group">';
 $form .= '<label>&nbsp;</label><br>';
 $form .= '<div class="checkbox">';
 $isRegexChecked = isset($editPattern) && $editPattern['is_regex'] ? ' checked' : '';
-$form .= '<label><input type="checkbox" name="is_regex" value="1"' . $isRegexChecked . '> ' . $addon->i18n('upkeep_ips_is_regex') . '</label>';
+$form .= '<label>';
+$form .= '<input type="checkbox" name="is_regex" value="1"' . $isRegexChecked . '> ' . $addon->i18n('upkeep_ips_is_regex') . ' ';
+$form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_is_regex_tooltip') . '" data-toggle="tooltip"></i>';
+$form .= '</label>';
 $form .= '</div>';
 if ($editPattern) {
     $form .= '<div class="checkbox">';
     $statusChecked = isset($editPattern) && $editPattern['status'] ? ' checked' : '';
-    $form .= '<label><input type="checkbox" name="status" value="1"' . $statusChecked . '> ' . $addon->i18n('upkeep_active') . '</label>';
+    $form .= '<label>';
+    $form .= '<input type="checkbox" name="status" value="1"' . $statusChecked . '> ' . $addon->i18n('upkeep_active') . ' ';
+    $form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_pattern_status_tooltip') . '" data-toggle="tooltip"></i>';
+    $form .= '</label>';
     $form .= '</div>';
 }
 $form .= '</div>';
@@ -226,7 +239,7 @@ if ($sql->getRows() > 0) {
         echo '<td>';
         echo $status ? '<span class="label label-success">' . $addon->i18n('upkeep_active') . '</span>' : '<span class="label label-danger">' . $addon->i18n('upkeep_inactive') . '</span>';
         echo '</td>';
-        echo '<td>' . rex_formatter::date($createdAt, 'date') . '</td>';
+        echo '<td>' . date('d.m.Y H:i', strtotime($createdAt)) . '</td>';
         echo '<td class="text-center">';
         
         // Bearbeiten-Button
@@ -269,6 +282,30 @@ echo '<div class="panel-heading">';
 echo '<i class="fa fa-info-circle"></i> ' . $addon->i18n('upkeep_ips_pattern_examples');
 echo '</div>';
 echo '<div class="panel-body">';
+
+// Schweregrade Erklärung
+echo '<div class="alert alert-info">';
+echo '<h4><i class="fa fa-shield"></i> Schweregrade und ihre Auswirkungen</h4>';
+echo '<div class="row">';
+echo '<div class="col-md-3">';
+echo '<span class="label label-default">LOW</span><br>';
+echo '<small><strong>Nur Protokollierung</strong><br>Keine Sperrung, nur Logging für Analyse</small>';
+echo '</div>';
+echo '<div class="col-md-3">';
+echo '<span class="label label-info">MEDIUM</span><br>';
+echo '<small><strong>15 Minuten Sperrung</strong><br>Temporäre Blockierung bei verdächtigen Aktivitäten</small>';
+echo '</div>';
+echo '<div class="col-md-3">';
+echo '<span class="label label-warning">HIGH</span><br>';
+echo '<small><strong>1 Stunde Sperrung</strong><br>Längere Blockierung bei Angriffsversuchen</small>';
+echo '</div>';
+echo '<div class="col-md-3">';
+echo '<span class="label label-danger">CRITICAL</span><br>';
+echo '<small><strong>Permanente Sperrung</strong><br>Dauerhafte Blockierung bei schweren Bedrohungen</small>';
+echo '</div>';
+echo '</div>';
+echo '</div>';
+
 echo '<h4>' . $addon->i18n('upkeep_ips_string_patterns') . '</h4>';
 echo '<ul>';
 echo '<li><span class="text-monospace text-primary">/evil.php</span> - Blockiert Zugriffe auf evil.php</li>';
@@ -281,5 +318,27 @@ echo '<li><span class="text-monospace text-success">/\.(php|asp|jsp)$/</span> - 
 echo '<li><span class="text-monospace text-success">/union\s+select/i</span> - SQL Injection Pattern</li>';
 echo '<li><span class="text-monospace text-success">/\b(wget|curl)\b/i</span> - Command Injection Tools</li>';
 echo '</ul>';
+
+echo '<div class="alert alert-warning">';
+echo '<h5><i class="fa fa-exclamation-triangle"></i> Wichtige Hinweise</h5>';
+echo '<ul class="mb-0">';
+echo '<li><strong>RegEx-Patterns</strong> beginnen und enden mit Schrägstrichen: <code>/pattern/flags</code></li>';
+echo '<li><strong>String-Patterns</strong> sind einfache Textsuchen ohne Schrägstriche</li>';
+echo '<li><strong>Test vor Aktivierung</strong> empfohlen - falsche Patterns können legitime Benutzer blockieren</li>';
+echo '<li><strong>Schweregrad CRITICAL</strong> sollte nur für eindeutige Angriffe verwendet werden</li>';
+echo '</ul>';
+echo '</div>';
+
 echo '</div>';
 echo '</div>';
+
+// JavaScript für Bootstrap Tooltips
+echo '<script>';
+echo '$(document).ready(function() {';
+echo '    $("[data-toggle=\'tooltip\']").tooltip({';
+echo '        placement: "top",';
+echo '        html: true,';
+echo '        container: "body"';
+echo '    });';
+echo '});';
+echo '</script>';

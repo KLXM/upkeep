@@ -37,6 +37,11 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
         
         // CSS für das Backend laden
         rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
+        
+        // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
+        if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
+            rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
+        }
     }
     
     // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)

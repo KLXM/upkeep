@@ -239,6 +239,7 @@ Backend → Upkeep → IPS → Datenbereinigung
 - **Automatische Bereinigung**: 1% Wahrscheinlichkeit bei jedem Frontend-Request
 - **Manuelle Bereinigung**: Admin-Interface mit Live-Statistiken
 - **Konsolen-Kommando**: `php bin/console upkeep:ips:cleanup`
+- **Cronjob-Bereinigung**: Automatisch über das REDAXO Cronjob-AddOn (empfohlen)
 
 #### Was wird bereinigt:
 - **Abgelaufene IP-Sperrungen**: Temporäre Sperrungen nach Ablaufzeit
@@ -257,6 +258,27 @@ Das AddOn erstellt folgende Tabellen:
 - `rex_upkeep_ips_custom_patterns`: Benutzerdefinierte Patterns
 - `rex_upkeep_ips_rate_limit`: Rate-Limiting-Daten
 - `rex_upkeep_ips_positivliste`: Vertrauenswürdige IPs
+
+### Cronjob-Integration 🕒
+
+Für optimale Performance und Datenbank-Hygiene wird die Verwendung des REDAXO Cronjob-AddOns empfohlen:
+
+1. **Cronjob-AddOn installieren** (falls nicht vorhanden)
+2. **Backend → AddOns → Cronjob → Neuer Cronjob**
+3. **Typ auswählen**: "Upkeep IPS: Bereinigung veralteter Sicherheitsdaten"
+4. **Konfiguration**:
+   - **Ausführung**: Täglich um 02:00 Uhr (empfohlen)
+   - **Threat Log Aufbewahrung**: 30 Tage (Standard)
+5. **Aktivieren**
+
+#### Cronjob-Bereinigung umfasst:
+- **Abgelaufene temporäre IP-Sperren** (automatisch)
+- **Alte Threat-Log-Einträge** (konfigurierbare Aufbewahrungszeit)
+- **Veraltete Rate-Limiting-Daten** (älter als 24h)
+- **Abgelaufene CAPTCHA-Vertrauenseinträge** (automatisch)
+- **Tabellen-Optimierung** (OPTIMIZE TABLE für bessere Performance)
+
+> **Hinweis**: Der Cronjob ersetzt die 1%-Chance-Bereinigung bei Frontend-Requests und reduziert die Server-Last erheblich.
 
 ## 🔧 Erweiterte Konfiguration
 

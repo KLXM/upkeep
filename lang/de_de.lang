@@ -105,6 +105,8 @@ upkeep_ips_severity_critical = Kritisch
 upkeep_ips_is_regex = RegEx
 upkeep_ips_type = Typ
 upkeep_ips_created = Erstellt
+upkeep_ips_created_at = Erstellt am
+upkeep_ips_updated_at = Aktualisiert am
 upkeep_ips_pattern_added = Pattern erfolgreich hinzugefügt
 upkeep_ips_pattern_updated = Pattern erfolgreich aktualisiert
 upkeep_ips_pattern_add_error = Fehler beim Hinzufügen des Patterns
@@ -116,6 +118,18 @@ upkeep_ips_pattern_status_changed = Pattern-Status erfolgreich geändert
 upkeep_ips_pattern_status_error = Fehler beim Ändern des Pattern-Status
 upkeep_ips_delete_confirm = Sind Sie sicher, dass Sie dieses Pattern löschen möchten?
 upkeep_ips_no_patterns = Keine Custom Patterns vorhanden
+
+# Tooltips für Pattern-Formulare
+upkeep_ips_pattern_tooltip = URL-Pfad oder RegEx-Pattern für Bedrohungserkennung. Beispiele: /evil.php, ../../../, /union\s+select/i
+upkeep_ips_description_tooltip = Optionale Beschreibung zur Dokumentation des Patterns (z.B. 'SQL Injection Schutz')
+upkeep_ips_severity_tooltip = LOW: Nur Protokollierung | MEDIUM: 15min Sperrung | HIGH: 1h Sperrung | CRITICAL: Permanente Sperrung
+upkeep_ips_severity_low_tooltip = Nur Protokollierung, keine Sperrung
+upkeep_ips_severity_medium_tooltip = 15 Minuten temporäre Sperrung
+upkeep_ips_severity_high_tooltip = 1 Stunde temporäre Sperrung
+upkeep_ips_severity_critical_tooltip = Permanente Sperrung
+upkeep_ips_severity_help = Bestimmt die Konsequenz bei Pattern-Match
+upkeep_ips_is_regex_tooltip = Aktiviert reguläre Ausdrücke. Ohne: einfache String-Suche (z.B. 'exploit'). Mit: RegEx-Pattern (z.B. '/\.(php|asp)$/i')
+upkeep_ips_pattern_status_tooltip = Aktiviert/deaktiviert dieses Pattern. Deaktivierte Patterns werden nicht geprüft.
 upkeep_ips_pattern_examples = Pattern-Beispiele
 upkeep_ips_string_patterns = String-Patterns
 upkeep_ips_regex_patterns = RegEx-Patterns
@@ -245,3 +259,10 @@ upkeep_ips_cleanup_manual = Manuelle Bereinigung
 upkeep_ips_cleanup_auto = Automatische Bereinigung
 upkeep_ips_cleanup_success = Datenbank erfolgreich bereinigt
 upkeep_ips_cleanup_nothing = Keine Bereinigung notwendig - alle Daten sind aktuell
+
+# Cronjob Texte
+upkeep_ips_cronjob_name = Upkeep IPS: Bereinigung veralteter Sicherheitsdaten
+upkeep_ips_cronjob_description = Entfernt automatisch abgelaufene IP-Sperren, alte Threat-Logs, veraltete Rate-Limiting-Einträge und CAPTCHA-Vertrauenseinträge
+upkeep_ips_cronjob_retention_label = Threat Log Aufbewahrung (Tage)
+upkeep_ips_cronjob_success = IPS-Datenbereinigung erfolgreich durchgeführt
+upkeep_ips_cronjob_error = Fehler bei der IPS-Datenbereinigung
