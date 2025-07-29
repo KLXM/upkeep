@@ -1,4 +1,4 @@
-# REDAXO Upkeep AddOn v1.4.0
+# REDAXO Upkeep AddOn
 
 Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Backend-Wartungsmodi, URL-Redirects und integriertem Intrusion Prevention System (IPS).
 
@@ -23,6 +23,7 @@ Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Ba
 - **CMS-spezifische Patterns**: Schutz vor WordPress, TYPO3, Drupal und Joomla Exploits
 - **Scanner-Erkennung**: Erkennt Pentest-Tools (Nikto, SQLMap, Burp Suite, etc.)
 - **Positivliste mit Ablaufzeiten**: Ausnahmen für vertrauenswürdige IPs (permanent oder temporär)
+- **Manuelle IP-Blockierung**: Gezielte Sperrung mit konfigurierbarer Dauer
 - **CAPTCHA-Entsperrung**: Menschliche Verifikation mit automatischer Rehabilitation
 - **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, etc.)
 - **Optionales Rate Limiting**: DoS-Schutz (standardmäßig deaktiviert - Server sollte das machen)
@@ -32,14 +33,14 @@ Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Ba
 
 ### Backend-Integration
 - **Status-Indikatoren**: Live-Anzeige der aktiven Systeme (B/F/R/S)
-- **Benutzerfreundliche Oberfläche**: Intuitive Bootstrap-basierte UI
+- **Frontend-Tooltips**: Benutzerfreundliche Inline-Hilfen für alle Konfigurationsfelder
 - **Responsive Design**: Optimiert für Desktop und Mobile
 - **Konsolen-Befehle**: Für Remote-Management
 - **REST-API**: Zur Steuerung aus der Ferne
 
 ## 📋 Systemvoraussetzungen
 
-- **REDAXO**: Version 5.18 oder höher
+- **REDAXO**: Version 5.15 oder höher
 - **PHP**: Version 8.0 oder höher
 - **MySQL**: Version 5.7 oder höher
 
@@ -101,6 +102,15 @@ Das IPS läuft automatisch und prüft alle eingehenden Requests auf:
 - Verdächtige User-Agents und Request-Patterns
 - Optionale Rate-Limiting-Verstöße (standardmäßig deaktiviert)
 
+#### Manuelle IP-Blockierung
+```
+Backend → Upkeep → IPS → Gesperrte IPs
+```
+- Gezielte Sperrung einzelner IP-Adressen
+- Konfigurierbare Sperrdauer (1h, 24h, 7d, permanent)
+- Begründung erforderlich für bessere Dokumentation
+- Integration in bestehende IPS-Architektur
+
 #### CAPTCHA-Entsperrung 🤖
 Gesperrte Benutzer können sich per CAPTCHA entsperren:
 - Einfache mathematische Aufgaben
@@ -148,6 +158,208 @@ Backend → Upkeep → IPS → Patterns
 /wp-admin/
 /wp-content/plugins/
 /wp-includes/
+
+```
+
+#### TYPO3-Exploits
+```
+/typo3_src/
+/typo3conf/
+/fileadmin/
+```
+
+#### Drupal-Exploits
+```
+/sites/default/
+/modules/
+/install.php
+```
+
+#### Joomla-Exploits
+```
+/administrator/
+/components/
+/web.config.txt
+```
+
+#### Path-Traversal-Angriffe
+```
+../
+%2e%2e%2f
+%252e%252e%252f
+```
+
+#### Scanner-Tools
+```
+Nikto, SQLMap, Burp Suite, OWASP ZAP
+Nmap, Masscan, Dirb, Gobuster
+Hydra, Metasploit, W3AF
+```
+
+## 🔧 API-Integration
+
+### REST-API
+```
+GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
+```
+
+**Verfügbare Aktionen:**
+- `action=status` - Wartungsmodus-Status abfragen
+- `action=set_frontend&status=1|0` - Frontend-Wartung aktivieren/deaktivieren
+- `action=set_backend&status=1|0` - Backend-Wartung aktivieren/deaktivieren
+
+**Beispiel:**
+```bash
+# Wartungsmodus aktivieren
+curl "https://example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
+```
+
+### Konsolen-Befehle
+
+#### Wartungsmodi
+```bash
+# Frontend-Wartungsmodus aktivieren/deaktivieren
+php bin/console upkeep:mode frontend on|off
+
+# Backend-Wartungsmodus aktivieren/deaktivieren
+php bin/console upkeep:mode backend on|off
+
+# Status abfragen
+php bin/console upkeep:status
+```
+
+#### IPS-Management
+```bash
+# IPS-Bereinigung (abgelaufene Sperren, alte Logs)
+php bin/console upkeep:ips-cleanup
+
+# IPS-Status einer IP prüfen
+php bin/console upkeep:ips-status <IP-ADRESSE>
+```
+
+## Extension Points
+
+- `UPKEEP_ALLOWED_PATHS`: Pfade vom Wartungsmodus ausnehmen
+
+## 📚 Class-Referenz
+
+### KLXM\Upkeep\Upkeep
+
+Haupt-Klasse für Wartungsmodi und Konfiguration.
+
+```php
+// Wartungsmodus-Status prüfen
+$isMaintenanceActive = Upkeep::isFrontendMaintenanceActive();
+$isBackendBlocked = Upkeep::isBackendMaintenanceActive();
+
+// Erlaubte IPs verwalten
+$allowedIps = Upkeep::getAllowedIps();
+$isIpAllowed = Upkeep::isIpAllowed('192.168.1.1');
+
+// Domain-spezifische Prüfungen
+$isDomainBlocked = Upkeep::isDomainBlocked('example.com');
+```
+
+### KLXM\Upkeep\IntrusionPrevention
+
+Intrusion Prevention System für Bedrohungserkennung und IP-Management.
+
+```php
+// Request-Analyse und Schutz
+IntrusionPrevention::checkRequest(); // Automatische Prüfung bei jedem Request
+
+// IP-Management
+$isBlocked = IntrusionPrevention::isBlocked('192.168.1.100');
+$isOnWhitelist = IntrusionPrevention::isOnPositivliste('192.168.1.50');
+
+// Manuelle IP-Blockierung
+IntrusionPrevention::blockIpManually('192.168.1.200', 'permanent', 'Malicious activity detected');
+
+// Positivliste verwalten
+IntrusionPrevention::addToPositivliste('192.168.1.10', 'Trusted admin IP', 'admin');
+IntrusionPrevention::addToTemporaryPositivliste('192.168.1.20', 24, 'CAPTCHA verified');
+IntrusionPrevention::removeFromPositivliste(1);
+
+// Custom Patterns
+IntrusionPrevention::addCustomPattern('/malicious-path', 'Custom threat pattern', 'high');
+IntrusionPrevention::removeCustomPattern(5);
+
+// Bot-Erkennung und DNS-Verifikation
+$isGoodBot = IntrusionPrevention::isGoodBot();
+$isVerifiedBot = IntrusionPrevention::verifyGoogleBot();
+
+// IP-Status debuggen
+$status = IntrusionPrevention::debugIpStatus('192.168.1.100');
+```
+
+### KLXM\Upkeep\DomainMapping
+
+URL-Redirect-System mit Wildcard-Unterstützung.
+
+```php
+// Redirect-Mapping prüfen und ausführen
+$redirect = DomainMapping::getRedirectForUrl('https://old-site.com/blog/article-1');
+if ($redirect) {
+    DomainMapping::executeRedirect($redirect['target'], $redirect['status_code']);
+}
+
+// Wildcard-Unterstützung
+$mappedUrl = DomainMapping::mapWildcardUrl('/blog/category/tech', '/blog/*', '/articles/*');
+// Ergebnis: '/articles/category/tech'
+```
+
+### KLXM\Upkeep\MaintenanceView
+
+Template-System für Wartungsseiten.
+
+```php
+// Wartungsseite rendern
+$content = MaintenanceView::renderMaintenancePage([
+    'title' => 'Website im Wartungsmodus',
+    'message' => 'Wir arbeiten an Verbesserungen...',
+    'retry_after' => 3600
+]);
+
+// Custom Templates
+MaintenanceView::setCustomTemplate('/path/to/custom-template.php');
+```
+
+### Konfiguration über rex_config
+
+```php
+// IPS-Einstellungen
+rex_config::set('upkeep', 'ips_active', true);
+rex_config::set('upkeep', 'ips_rate_limiting_enabled', false);
+rex_config::set('upkeep', 'ips_burst_limit', 600);
+rex_config::set('upkeep', 'ips_captcha_trust_duration', 24);
+
+// Wartungsmodus-Einstellungen
+rex_config::set('upkeep', 'frontend_maintenance_active', true);
+rex_config::set('upkeep', 'maintenance_retry_after', 3600);
+rex_config::set('upkeep', 'allowed_ips', "192.168.1.1\n10.0.0.1");
+
+// URL-Redirect-Einstellungen
+rex_config::set('upkeep', 'redirect_cache_enabled', true);
+rex_config::set('upkeep', 'redirect_log_enabled', false);
+```
+
+## 🤝 Support
+
+- **Issues**: Über GitHub Issues melden
+- **Dokumentation**: Siehe REDAXO-Community
+- **Community**: REDAXO Slack-Channel
+
+## 📄 Lizenz
+
+MIT License
+
+## 👥 Autor
+
+**Thomas Skerbis** - KLXM Crossmedia
+
+---
+
+**Upkeep** - Zuverlässiger Partner für REDAXO-Wartung und -Sicherheit! 🛡️
 xmlrpc.php
 ```
 
