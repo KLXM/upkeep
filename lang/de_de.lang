@@ -126,6 +126,10 @@ upkeep_settings_saved = Einstellungen gespeichert
 # Actions
 upkeep_actions = Aktionen
 upkeep_add = Hinzufügen
+upkeep_edit = Bearbeiten
+upkeep_update = Aktualisieren
+upkeep_cancel = Abbrechen
+upkeep_delete = Löschen
 
 # Permissions
 upkeep[security] = IPS & Security

@@ -712,24 +712,175 @@ class IntrusionPrevention
     }
     
     /**
-     * Verifiziert Google/Bing Bot durch Reverse DNS
+     * Verifiziert Google/Bing Bot durch Reverse DNS mit Timeout-Schutz
      */
     private static function verifyGoogleBot(): bool
     {
         $ip = self::getClientIp();
         
-        // Reverse DNS Lookup
-        $hostname = gethostbyaddr($ip);
+        // DNS Cache prüfen (24h Cache) - verwende REDAXO Config als einfachen Cache
+        $cacheKey = 'upkeep_dns_verify_' . md5($ip);
+        $cacheData = \rex_config::get('upkeep', $cacheKey);
         
-        // Google IPs enden mit .googlebot.com oder .google.com
-        // Bing IPs enden mit .search.msn.com
-        if (preg_match('/\.(googlebot\.com|google\.com|search\.msn\.com)$/i', $hostname)) {
-            // Forward DNS Lookup zur Verifikation
-            $verifyIp = gethostbyname($hostname);
-            return $verifyIp === $ip;
+        if ($cacheData && isset($cacheData['expires']) && $cacheData['expires'] > time()) {
+            return $cacheData['verified'] === true;
         }
         
+        // Reverse DNS Lookup mit Timeout-Schutz
+        $hostname = self::reverseDnsLookup($ip);
+        if (!$hostname) {
+            // Cache negative Ergebnisse für 1h
+            \rex_config::set('upkeep', $cacheKey, [
+                'verified' => false,
+                'expires' => time() + 3600
+            ]);
+            return false;
+        }
+        
+        // Prüfe auf legitime Bot-Hostnames
+        $validPatterns = [
+            '/\.googlebot\.com$/i',
+            '/\.google\.com$/i', 
+            '/\.search\.msn\.com$/i',
+            '/\.crawl\.yahoo\.net$/i',
+            '/\.crawl\.baidu\.com$/i',
+            '/\.yandex\.com$/i',
+            '/\.facebook\.com$/i',
+            '/\.twttr\.com$/i'  // Twitter
+        ];
+        
+        $isValidBot = false;
+        foreach ($validPatterns as $pattern) {
+            if (preg_match($pattern, $hostname)) {
+                $isValidBot = true;
+                break;
+            }
+        }
+        
+        if ($isValidBot) {
+            // Forward DNS Lookup zur Verifikation mit Timeout
+            $verifyIp = self::forwardDnsLookup($hostname);
+            $verified = ($verifyIp === $ip);
+            
+            // Cache Ergebnis für 24h
+            \rex_config::set('upkeep', $cacheKey, [
+                'verified' => $verified,
+                'expires' => time() + 86400
+            ]);
+            return $verified;
+        }
+        
+        // Cache negative Ergebnisse für 1h
+        \rex_config::set('upkeep', $cacheKey, [
+            'verified' => false,
+            'expires' => time() + 3600
+        ]);
         return false;
+    }
+    
+    /**
+     * Reverse DNS Lookup mit Timeout-Schutz
+     */
+    private static function reverseDnsLookup(string $ip): ?string
+    {
+        try {
+            // Bevorzuge dns_get_record für bessere Performance und Kontrolle
+            if (function_exists('dns_get_record')) {
+                // PTR Record für Reverse DNS
+                $startTime = microtime(true);
+                
+                // Error Handler setzen
+                set_error_handler(function() { return true; });
+                
+                $records = @dns_get_record($ip, DNS_PTR);
+                
+                restore_error_handler();
+                
+                $duration = microtime(true) - $startTime;
+                
+                // Timeout-Check (max 3 Sekunden)
+                if ($duration > 3.0) {
+                    self::debugLog("DNS PTR Lookup Timeout für IP: $ip (${duration}s)");
+                    return null;
+                }
+                
+                if (!empty($records) && isset($records[0]['target'])) {
+                    $hostname = rtrim($records[0]['target'], '.');
+                    if (filter_var($hostname, FILTER_VALIDATE_DOMAIN)) {
+                        return $hostname;
+                    }
+                }
+            }
+            
+            // Fallback zu gethostbyaddr mit Timeout-Simulation
+            $startTime = microtime(true);
+            
+            set_error_handler(function() { return true; });
+            
+            // Verwende eine einfache Timeout-Simulation mit ignore_user_abort
+            $oldAbort = ignore_user_abort(true);
+            
+            $hostname = @gethostbyaddr($ip);
+            
+            ignore_user_abort($oldAbort);
+            restore_error_handler();
+            
+            $duration = microtime(true) - $startTime;
+            
+            // Timeout-Check (max 3 Sekunden)
+            if ($duration > 3.0) {
+                self::debugLog("gethostbyaddr Timeout für IP: $ip (${duration}s)");
+                return null;
+            }
+            
+            // Validierung des Hostnames
+            if ($hostname && $hostname !== $ip && filter_var($hostname, FILTER_VALIDATE_DOMAIN)) {
+                return $hostname;
+            }
+            
+        } catch (Exception $e) {
+            self::debugLog("DNS Lookup Error für IP $ip: " . $e->getMessage());
+        } catch (\Error $e) {
+            // Für PHP-Fehler (z.B. DNS-Funktionen nicht verfügbar)
+            self::debugLog("DNS Function Error für IP $ip: " . $e->getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Forward DNS Lookup mit Timeout-Schutz
+     */
+    private static function forwardDnsLookup(string $hostname): ?string
+    {
+        try {
+            $startTime = microtime(true);
+            
+            // Error Handler setzen
+            set_error_handler(function() { return true; });
+            
+            $ip = @gethostbyname($hostname);
+            
+            restore_error_handler();
+            
+            $duration = microtime(true) - $startTime;
+            
+            // Timeout-Check (max 3 Sekunden)
+            if ($duration > 3.0) {
+                self::debugLog("Forward DNS Lookup Timeout für Hostname: $hostname (${duration}s)");
+                return null;
+            }
+            
+            // Validierung der IP
+            if ($ip && $ip !== $hostname && filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
+            }
+            
+        } catch (Exception $e) {
+            self::debugLog("Forward DNS Lookup Error für Hostname $hostname: " . $e->getMessage());
+        }
+        
+        return null;
     }
     
     /**
@@ -1650,7 +1801,8 @@ class IntrusionPrevention
             'expired_ips' => 0,
             'old_threats' => 0,
             'old_rate_limits' => 0,
-            'expired_positivliste' => 0
+            'expired_positivliste' => 0,
+            'dns_cache_entries' => 0
         ];
         
         try {
@@ -1674,6 +1826,9 @@ class IntrusionPrevention
                            WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
             $cleanup['old_rate_limits'] = $sql->getRows();
             
+            // 5. Abgelaufene DNS-Cache-Einträge bereinigen
+            $cleanup['dns_cache_entries'] = self::cleanupDnsCache();
+            
             // Log der Bereinigung
             $totalCleaned = array_sum($cleanup);
             if ($totalCleaned > 0) {
@@ -1685,6 +1840,34 @@ class IntrusionPrevention
         }
         
         return $cleanup;
+    }
+    
+    /**
+     * Bereinigt abgelaufene DNS-Cache-Einträge
+     */
+    private static function cleanupDnsCache(): int
+    {
+        try {
+            $config = \rex_config::get('upkeep');
+            $cleaned = 0;
+            $now = time();
+            
+            foreach ($config as $key => $value) {
+                // Prüfe auf DNS-Cache-Einträge
+                if (strpos($key, 'upkeep_dns_verify_') === 0 && is_array($value)) {
+                    if (isset($value['expires']) && $value['expires'] < $now) {
+                        \rex_config::remove('upkeep', $key);
+                        $cleaned++;
+                    }
+                }
+            }
+            
+            return $cleaned;
+            
+        } catch (Exception $e) {
+            self::debugLog("DNS Cache cleanup error: " . $e->getMessage());
+            return 0;
+        }
     }
     
     /**
