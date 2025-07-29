@@ -51,6 +51,17 @@ upkeep_enter_password = Passwort eingeben
 upkeep_wrong_password = Falsches Passwort
 upkeep_submit = Absenden
 
+# Frontend-Tooltips
+upkeep_frontend_active_tooltip = Aktiviert/deaktiviert den Wartungsmodus für das Frontend. Bei Aktivierung sehen Besucher eine Wartungsseite.
+upkeep_page_title_tooltip = Der Titel der Wartungsseite, der im Browser-Tab und als Seitenüberschrift angezeigt wird.
+upkeep_page_message_tooltip = Nachricht für Besucher während der Wartung. Kann HTML enthalten. Erklärt den Grund und voraussichtliche Dauer.
+upkeep_frontend_password_tooltip = Optional: Passwort-geschützter Zugang zum Frontend während der Wartung. Leer lassen für öffentliche Wartungsseite.
+upkeep_bypass_logged_in_tooltip = Wenn aktiviert, können angemeldete REDAXO-Benutzer das Frontend trotz Wartungsmodus normal nutzen.
+upkeep_allowed_ips_tooltip = Komma-getrennte Liste von IP-Adressen, die das Frontend trotz Wartungsmodus nutzen können. Unterstützt CIDR-Notation (z.B. 192.168.1.0/24).
+upkeep_http_status_code_tooltip = HTTP-Statuscode für die Wartungsseite. 503 empfohlen für temporäre Wartung, 403 für Zugriffssperren.
+upkeep_retry_after_tooltip = Teilt Suchmaschinen und Clients mit, nach wie vielen Sekunden sie es erneut versuchen sollen. 3600 = 1 Stunde.
+upkeep_api_token_tooltip = Token für API-Zugriff zur externen Steuerung des Wartungsmodus. Leer lassen deaktiviert die API komplett.
+
 # Backend-Einstellungen
 upkeep_backend_active = Backend-Wartungsmodus
 upkeep_backend_settings = Backend-Einstellungen
