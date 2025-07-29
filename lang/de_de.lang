@@ -118,6 +118,15 @@ upkeep_ips_pattern_status_changed = Pattern-Status erfolgreich geändert
 upkeep_ips_pattern_status_error = Fehler beim Ändern des Pattern-Status
 upkeep_ips_delete_confirm = Sind Sie sicher, dass Sie dieses Pattern löschen möchten?
 upkeep_ips_no_patterns = Keine Custom Patterns vorhanden
+
+# Tooltips für Pattern-Formulare
+upkeep_ips_pattern_tooltip = URL-Pfad oder RegEx-Pattern für Bedrohungserkennung. Beispiele: /evil.php, ../../../, /union\s+select/i
+upkeep_ips_description_tooltip = Optionale Beschreibung zur Dokumentation des Patterns (z.B. 'SQL Injection Schutz')
+upkeep_ips_severity_tooltip = LOW: Nur Protokollierung | MEDIUM: 15min Sperrung | HIGH: 1h Sperrung | CRITICAL: Permanente Sperrung
+upkeep_ips_severity_low_tooltip = Nur Protokollierung, keine Sperrung
+upkeep_ips_severity_medium_tooltip = 15 Minuten temporäre Sperrung
+upkeep_ips_severity_high_tooltip = 1 Stunde temporäre Sperrung
+upkeep_ips_severity_critical_tooltip = Permanente Sperrung
 upkeep_ips_pattern_examples = Pattern-Beispiele
 upkeep_ips_string_patterns = String-Patterns
 upkeep_ips_regex_patterns = RegEx-Patterns

@@ -12,7 +12,7 @@
             $sql->setValue('severity', $severity);
             $sql->setValue('is_regex', $isRegex ? 1 : 0);
             $sql->setValue('status', $status ? 1 : 0);
-            $sql->setValue('updated_at', (new DateTime())->format('Y-m-d H:i:s'));
+            $sql->setRawValue('updated_at', 'NOW()');
             $sql->update();
             return true;
         } catch (Exception $e) {
