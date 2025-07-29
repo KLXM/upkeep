@@ -45,6 +45,9 @@ requires:
     redaxo: ^5.18.1
     php: '>=8.2'
 
+suggests:
+    cronjob: '^2.8'  # Für automatische IPS-Datenbereinigung
+
 permissions:
     upkeep[]: 'translate:upkeep[]'
     upkeep[frontend]: 'translate:upkeep[frontend]'

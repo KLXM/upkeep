@@ -256,3 +256,10 @@ upkeep_ips_cleanup_manual = Manuelle Bereinigung
 upkeep_ips_cleanup_auto = Automatische Bereinigung
 upkeep_ips_cleanup_success = Datenbank erfolgreich bereinigt
 upkeep_ips_cleanup_nothing = Keine Bereinigung notwendig - alle Daten sind aktuell
+
+# Cronjob Texte
+upkeep_ips_cronjob_name = Upkeep IPS: Bereinigung veralteter Sicherheitsdaten
+upkeep_ips_cronjob_description = Entfernt automatisch abgelaufene IP-Sperren, alte Threat-Logs, veraltete Rate-Limiting-Einträge und CAPTCHA-Vertrauenseinträge
+upkeep_ips_cronjob_retention_label = Threat Log Aufbewahrung (Tage)
+upkeep_ips_cronjob_success = IPS-Datenbereinigung erfolgreich durchgeführt
+upkeep_ips_cronjob_error = Fehler bei der IPS-Datenbereinigung
