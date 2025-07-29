@@ -11,56 +11,7 @@ class rex_upkeep_ips_cleanup_cronjob extends rex_cronjob
 {
     public function execute()
     {
-        $sql = rex_sql::factory();
-        $cleanupCount = 0;
-
-        try {
-            // 1. Entferne abgelaufene temporäre IP-Sperren
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
-                           WHERE block_type = 'temporary' AND expires_at < NOW()");
-            $cleanupCount += $sql->getRows();
-
-            // 2. Bereinige alte Threat Log Einträge (älter als 30 Tage)
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                           WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
-            $cleanupCount += $sql->getRows();
-
-            // 3. Entferne veraltete Rate-Limiting-Einträge (älter als 24 Stunden)
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
-                           WHERE last_request < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-            $cleanupCount += $sql->getRows();
-
-            // 4. Bereinige abgelaufene CAPTCHA-Vertrauenseinträge
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_positivliste') . " 
-                           WHERE category = 'captcha_verified_temp' AND expires_at < NOW()");
-            $cleanupCount += $sql->getRows();
-
-            // 5. Optimiere die Tabellen nach der Bereinigung
-            $tables = [
-                'upkeep_ips_blocked_ips',
-                'upkeep_ips_threat_log', 
-                'upkeep_ips_rate_limit',
-                'upkeep_ips_positivliste'
-            ];
-
-            foreach ($tables as $table) {
-                $sql->setQuery("OPTIMIZE TABLE " . rex::getTable($table));
-            }
-
-            // Logging für Administratoren
-            if ($cleanupCount > 0) {
-                rex_logger::factory()->info("IPS Cleanup: {$cleanupCount} veraltete Einträge entfernt und Tabellen optimiert.");
-            }
-
-            return true;
-
-        } catch (rex_sql_exception $e) {
-            rex_logger::logException($e);
-            return false;
-        } catch (Exception $e) {
-            rex_logger::logException($e);
-            return false;
-        }
+        return $this->performCleanup();
     }
 
     public function getTypeName()
@@ -93,38 +44,89 @@ class rex_upkeep_ips_cleanup_cronjob extends rex_cronjob
     protected function executeWithParams()
     {
         $retentionDays = (int) $this->getParam('threat_log_retention_days', 30);
-        
+        return $this->performCleanup($retentionDays);
+    }
+
+    /**
+     * Zentrale Bereinigungslogik
+     */
+    private function performCleanup(int $threatLogRetentionDays = 30): bool
+    {
         $sql = rex_sql::factory();
         $cleanupCount = 0;
 
         try {
-            // Angepasste Bereinigung des Threat Logs
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                           WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)", [$retentionDays]);
-            $cleanupCount += $sql->getRows();
+            // 1. Entferne abgelaufene temporäre IP-Sperren
+            $cleanupCount += $this->cleanupExpiredBlocks($sql);
 
-            // Restliche Bereinigung wie in execute()
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
-                           WHERE block_type = 'temporary' AND expires_at < NOW()");
-            $cleanupCount += $sql->getRows();
+            // 2. Bereinige alte Threat Log Einträge
+            $cleanupCount += $this->cleanupThreatLog($sql, $threatLogRetentionDays);
 
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
-                           WHERE last_request < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-            $cleanupCount += $sql->getRows();
+            // 3. Entferne veraltete Rate-Limiting-Einträge
+            $cleanupCount += $this->cleanupRateLimitData($sql);
 
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_positivliste') . " 
-                           WHERE category = 'captcha_verified_temp' AND expires_at < NOW()");
-            $cleanupCount += $sql->getRows();
+            // 4. Bereinige abgelaufene CAPTCHA-Vertrauenseinträge
+            $cleanupCount += $this->cleanupExpiredCaptchaTrust($sql);
 
+            // 5. Optimiere die Tabellen
+            $this->optimizeTables($sql);
+
+            // Logging für Administratoren
             if ($cleanupCount > 0) {
-                rex_logger::factory()->info("IPS Cleanup (angepasst): {$cleanupCount} veraltete Einträge entfernt (Threat Log: {$retentionDays} Tage Aufbewahrung).");
+                $retentionInfo = $threatLogRetentionDays !== 30 ? " (Threat Log: {$threatLogRetentionDays} Tage)" : '';
+                rex_logger::factory()->info("IPS Cleanup: {$cleanupCount} veraltete Einträge entfernt{$retentionInfo}.");
             }
 
             return true;
 
+        } catch (rex_sql_exception $e) {
+            rex_logger::logException($e);
+            return false;
         } catch (Exception $e) {
             rex_logger::logException($e);
             return false;
+        }
+    }
+
+    private function cleanupExpiredBlocks(rex_sql $sql): int
+    {
+        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
+                       WHERE block_type = 'temporary' AND expires_at < NOW()");
+        return $sql->getRows();
+    }
+
+    private function cleanupThreatLog(rex_sql $sql, int $retentionDays): int
+    {
+        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                       WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)", [$retentionDays]);
+        return $sql->getRows();
+    }
+
+    private function cleanupRateLimitData(rex_sql $sql): int
+    {
+        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_rate_limit') . " 
+                       WHERE last_request < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+        return $sql->getRows();
+    }
+
+    private function cleanupExpiredCaptchaTrust(rex_sql $sql): int
+    {
+        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_positivliste') . " 
+                       WHERE category = 'captcha_verified_temp' AND expires_at < NOW()");
+        return $sql->getRows();
+    }
+
+    private function optimizeTables(rex_sql $sql): void
+    {
+        $tables = [
+            'upkeep_ips_blocked_ips',
+            'upkeep_ips_threat_log', 
+            'upkeep_ips_rate_limit',
+            'upkeep_ips_positivliste'
+        ];
+
+        foreach ($tables as $table) {
+            $sql->setQuery("OPTIMIZE TABLE " . rex::getTable($table));
         }
     }
 }

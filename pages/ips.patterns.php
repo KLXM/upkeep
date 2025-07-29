@@ -138,7 +138,7 @@ $form .= '<option value="medium"' . ($currentSeverity === 'medium' ? ' selected'
 $form .= '<option value="high"' . ($currentSeverity === 'high' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_high_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_high') . ' (1h)</option>';
 $form .= '<option value="critical"' . ($currentSeverity === 'critical' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_critical_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_critical') . ' (Permanent)</option>';
 $form .= '</select>';
-$form .= '<small class="help-block text-muted">Bestimmt die Konsequenz bei Pattern-Match</small>';
+$form .= '<small class="help-block text-muted">' . $addon->i18n('upkeep_ips_severity_help') . '</small>';
 $form .= '</div>';
 $form .= '</div>';
 
@@ -149,7 +149,7 @@ $form .= '<div class="checkbox">';
 $isRegexChecked = isset($editPattern) && $editPattern['is_regex'] ? ' checked' : '';
 $form .= '<label>';
 $form .= '<input type="checkbox" name="is_regex" value="1"' . $isRegexChecked . '> ' . $addon->i18n('upkeep_ips_is_regex') . ' ';
-$form .= '<i class="fa fa-question-circle text-info" title="Aktiviert reguläre Ausdrücke. Ohne: einfache String-Suche (z.B. \'exploit\'). Mit: RegEx-Pattern (z.B. \'/\.(php|asp)$/i\')" data-toggle="tooltip"></i>';
+$form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_is_regex_tooltip') . '" data-toggle="tooltip"></i>';
 $form .= '</label>';
 $form .= '</div>';
 if ($editPattern) {
@@ -157,7 +157,7 @@ if ($editPattern) {
     $statusChecked = isset($editPattern) && $editPattern['status'] ? ' checked' : '';
     $form .= '<label>';
     $form .= '<input type="checkbox" name="status" value="1"' . $statusChecked . '> ' . $addon->i18n('upkeep_active') . ' ';
-    $form .= '<i class="fa fa-question-circle text-info" title="Aktiviert/deaktiviert dieses Pattern. Deaktivierte Patterns werden nicht geprüft." data-toggle="tooltip"></i>';
+    $form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_pattern_status_tooltip') . '" data-toggle="tooltip"></i>';
     $form .= '</label>';
     $form .= '</div>';
 }
