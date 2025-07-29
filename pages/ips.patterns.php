@@ -243,7 +243,7 @@ if ($sql->getRows() > 0) {
         echo '<td class="text-center">';
         
         // Bearbeiten-Button
-        echo '<a href="' . rex_url::currentBackendPage(['action' => 'edit', 'id' => $id]) . '" class="btn btn-xs btn-default" title="' . $addon->i18n('upkeep_edit') . '">';
+        echo '<a href="' . rex_url::currentBackendPage(['action' => 'edit', 'id' => $id]) . '" class="btn btn-xs btn-success" title="' . $addon->i18n('upkeep_edit') . '">';
         echo '<i class="fa fa-edit"></i>';
         echo '</a> ';
         

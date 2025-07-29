@@ -51,6 +51,17 @@ upkeep_enter_password = Passwort eingeben
 upkeep_wrong_password = Falsches Passwort
 upkeep_submit = Absenden
 
+# Frontend-Tooltips
+upkeep_frontend_active_tooltip = Aktiviert/deaktiviert den Wartungsmodus für das Frontend. Bei Aktivierung sehen Besucher eine Wartungsseite.
+upkeep_page_title_tooltip = Der Titel der Wartungsseite, der im Browser-Tab und als Seitenüberschrift angezeigt wird.
+upkeep_page_message_tooltip = Nachricht für Besucher während der Wartung. Kann HTML enthalten. Erklärt den Grund und voraussichtliche Dauer.
+upkeep_frontend_password_tooltip = Optional: Passwort-geschützter Zugang zum Frontend während der Wartung. Leer lassen für öffentliche Wartungsseite.
+upkeep_bypass_logged_in_tooltip = Wenn aktiviert, können angemeldete REDAXO-Benutzer das Frontend trotz Wartungsmodus normal nutzen.
+upkeep_allowed_ips_tooltip = Komma-getrennte Liste von IP-Adressen, die das Frontend trotz Wartungsmodus nutzen können. Unterstützt CIDR-Notation (z.B. 192.168.1.0/24).
+upkeep_http_status_code_tooltip = HTTP-Statuscode für die Wartungsseite. 503 empfohlen für temporäre Wartung, 403 für Zugriffssperren.
+upkeep_retry_after_tooltip = Teilt Suchmaschinen und Clients mit, nach wie vielen Sekunden sie es erneut versuchen sollen. 3600 = 1 Stunde.
+upkeep_api_token_tooltip = Token für API-Zugriff zur externen Steuerung des Wartungsmodus. Leer lassen deaktiviert die API komplett.
+
 # Backend-Einstellungen
 upkeep_backend_active = Backend-Wartungsmodus
 upkeep_backend_settings = Backend-Einstellungen
@@ -140,6 +151,27 @@ upkeep_ips_reason = Grund
 upkeep_ips_expires = Läuft ab
 upkeep_ips_active = IPS aktiviert
 upkeep_settings_saved = Einstellungen gespeichert
+
+# Manuelle IP-Sperrung
+upkeep_ips_blocked_add = IP manuell sperren
+upkeep_ips_blocked_add_info = Manuelle IP-Sperrung
+upkeep_ips_blocked_help = Hier können Sie IP-Adressen manuell sperren. Dies ist nützlich für bekannte Angreifer oder bei Verdacht auf Missbrauch.
+upkeep_ips_blocked_entries = Gesperrte IP-Einträge
+upkeep_ips_blocked_added = IP erfolgreich gesperrt
+upkeep_ips_blocked_removed = IP erfolgreich entsperrt
+upkeep_ips_blocked_ip_required = IP-Adresse ist erforderlich
+upkeep_ips_no_blocked_entries = Keine gesperrten IPs vorhanden
+upkeep_ips_block_duration = Sperrdauer
+upkeep_ips_block_duration_permanent = Permanent
+upkeep_ips_block_duration_1h = 1 Stunde
+upkeep_ips_block_duration_6h = 6 Stunden
+upkeep_ips_block_duration_24h = 24 Stunden
+upkeep_ips_block_duration_7d = 7 Tage
+upkeep_ips_block_duration_30d = 30 Tage
+upkeep_ips_block_reason_manual = Manuell gesperrt
+upkeep_ips_confirm_unblock = Sind Sie sicher, dass Sie diese IP entsperren möchten?
+upkeep_ips_error_blocking = Fehler beim Sperren der IP-Adresse
+upkeep_ips_error_unblocking = Fehler beim Entsperren der IP-Adresse
 
 # Actions
 upkeep_actions = Aktionen

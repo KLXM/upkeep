@@ -13,19 +13,19 @@ $field = $form->addFieldset($addon->i18n('upkeep_general_settings'));
 
 // Frontend-Wartungsmodus aktivieren/deaktivieren
 $field = $form->addSelectField('frontend_active');
-$field->setLabel($addon->i18n('upkeep_frontend_active'));
+$field->setLabel($addon->i18n('upkeep_frontend_active') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_frontend_active_tooltip')) . '"></i>');
 $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_active'), 1);
 $select->addOption($addon->i18n('upkeep_inactive'), 0);
 
 // Überschrift für die Wartungsseite
 $field = $form->addTextField('maintenance_page_title');
-$field->setLabel($addon->i18n('upkeep_page_title'));
+$field->setLabel($addon->i18n('upkeep_page_title') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_page_title_tooltip')) . '"></i>');
 $field->setAttribute('class', 'form-control');
 
 // Nachricht für die Wartungsseite
 $field = $form->addTextAreaField('maintenance_page_message');
-$field->setLabel($addon->i18n('upkeep_page_message'));
+$field->setLabel($addon->i18n('upkeep_page_message') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_page_message_tooltip')) . '"></i>');
 $field->setAttribute('class', 'form-control');
 $field->setAttribute('rows', 5);
 
@@ -34,20 +34,20 @@ $field = $form->addFieldset($addon->i18n('upkeep_access_settings'));
 
 // Passwort für Frontend-Zugang
 $field = $form->addTextField('frontend_password');
-$field->setLabel($addon->i18n('upkeep_frontend_password'));
+$field->setLabel($addon->i18n('upkeep_frontend_password') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_frontend_password_tooltip')) . '"></i>');
 $field->setAttribute('class', 'form-control');
 $field->setNotice($addon->i18n('upkeep_frontend_password_notice'));
 
 // Angemeldte Benutzer vom Wartungsmodus ausnehmen
 $field = $form->addSelectField('bypass_logged_in');
-$field->setLabel($addon->i18n('upkeep_bypass_logged_in'));
+$field->setLabel($addon->i18n('upkeep_bypass_logged_in') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_bypass_logged_in_tooltip')) . '"></i>');
 $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_yes'), 1);
 $select->addOption($addon->i18n('upkeep_no'), 0);
 
 // Liste der erlaubten IP-Adressen
 $field = $form->addTextField('allowed_ips');
-$field->setLabel($addon->i18n('upkeep_allowed_ips'));
+$field->setLabel($addon->i18n('upkeep_allowed_ips') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_allowed_ips_tooltip')) . '"></i>');
 $field->setAttribute('class', 'form-control');
 $field->setAttribute('id', 'upkeep-allowed-ips');
 
@@ -75,7 +75,7 @@ $field = $form->addFieldset($addon->i18n('upkeep_http_settings'));
 
 // HTTP-Statuscode
 $field = $form->addSelectField('http_status_code');
-$field->setLabel($addon->i18n('upkeep_http_status_code'));
+$field->setLabel($addon->i18n('upkeep_http_status_code') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_http_status_code_tooltip')) . '"></i>');
 $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_http_503'), rex_response::HTTP_SERVICE_UNAVAILABLE);
 $select->addOption($addon->i18n('upkeep_http_503_no_cache'), '503');
@@ -84,7 +84,7 @@ $select->addOption($addon->i18n('upkeep_http_403'), rex_response::HTTP_FORBIDDEN
 
 // Retry-After Header
 $field = $form->addInputField('number', 'retry_after', null, ['min' => '0']);
-$field->setLabel($addon->i18n('upkeep_retry_after'));
+$field->setLabel($addon->i18n('upkeep_retry_after') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_retry_after_tooltip')) . '"></i>');
 $field->setNotice($addon->i18n('upkeep_retry_after_notice'));
 $field->setAttribute('class', 'form-control');
 
@@ -94,7 +94,7 @@ $field = $form->addFieldset($addon->i18n('upkeep_api_settings'));
 
 // API Token
 $field = $form->addTextField('api_token');
-$field->setLabel($addon->i18n('upkeep_api_token'));
+$field->setLabel($addon->i18n('upkeep_api_token') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_api_token_tooltip')) . '"></i>');
 $field->setAttribute('class', 'form-control');
 $field->setNotice($addon->i18n('upkeep_api_token_notice'));
 
@@ -111,6 +111,9 @@ echo $fragment->parse('core/page/section.php');
 ?>
 <script type="text/javascript">
 $(document).on('rex:ready', function() {
+    // Bootstrap-Tooltips aktivieren
+    $('[data-toggle="tooltip"]').tooltip();
+    
     // Funktion zum Hinzufügen einer IP-Adresse zum Whitelist-Feld
     function addIpToWhitelist(ip) {
         var ipField = $('#upkeep-allowed-ips');
