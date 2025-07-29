@@ -688,5 +688,5 @@ MIT License
 
 ---
 
-**Upkeep v1.3.0** - Ihr zuverlässiger Partner für REDAXO-Wartung und -Sicherheit! 🛡️ 
+**Upkeep** - ADDON für REDAXO-Wartung und -Sicherheit! 🛡️ 
 
