@@ -13,3 +13,48 @@ if (array_key_exists('setup_addons', $config) && in_array('upkeep', $config['set
     });
     rex_file::putConfig($configFile, $config);
 }
+
+// Alle vom AddOn erstellten Tabellen löschen
+$tables = [
+    'upkeep_domain_mapping',
+    'upkeep_ips_blocked_ips',
+    'upkeep_ips_threat_log',
+    'upkeep_ips_custom_patterns',
+    'upkeep_ips_rate_limit',
+    'upkeep_ips_positivliste'
+];
+
+foreach ($tables as $table) {
+    $fullTableName = rex::getTable($table);
+    $sql = rex_sql::factory();
+    
+    try {
+        // Tabelle löschen (IF EXISTS verhindert Fehler bei bereits gelöschten Tabellen)
+        $sql->setQuery("DROP TABLE IF EXISTS `{$fullTableName}`");
+        rex_logger::factory()->info("Tabelle {$fullTableName} erfolgreich gelöscht.");
+    } catch (Exception $e) {
+        rex_logger::factory()->error("Fehler beim Löschen der Tabelle {$fullTableName}: " . $e->getMessage());
+    }
+}
+
+// Alle AddOn-Konfigurationen löschen
+$addon = rex_addon::get('upkeep');
+if ($addon->isInstalled()) {
+    // Alle Config-Werte löschen
+    $configKeys = [
+        'allowed_ips',
+        'frontend_password',
+        'ips_active',
+        'ips_rate_limiting_enabled',
+        'ips_captcha_trust_duration',
+        'ips_burst_limit',
+        'ips_strict_limit',
+        'ips_burst_window'
+    ];
+    
+    foreach ($configKeys as $key) {
+        $addon->removeConfig($key);
+    }
+    
+    rex_logger::factory()->info("Alle Upkeep AddOn-Konfigurationen erfolgreich gelöscht.");
+}
