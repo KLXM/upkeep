@@ -85,6 +85,11 @@ if ($addon->getConfig('ips_captcha_trust_duration') === null) {
     $addon->setConfig('ips_captcha_trust_duration', 24);
 }
 
+// Debug-Modus standardmäßig deaktiviert
+if ($addon->getConfig('ips_debug_mode') === null) {
+    $addon->setConfig('ips_debug_mode', false);
+}
+
 // Rate-Limiting Konfiguration (sehr hoch - nur für DoS-Schutz)
 if ($addon->getConfig('ips_burst_limit') === null) {
     $addon->setConfig('ips_burst_limit', 600); // 10 Requests pro Sekunde = echte DoS-Schwelle

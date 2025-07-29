@@ -40,6 +40,35 @@ if (rex_post('add_pattern', 'bool')) {
     }
 }
 
+// Pattern bearbeiten
+if (rex_post('edit_pattern', 'bool')) {
+    $id = rex_post('id', 'int');
+    $pattern = rex_post('pattern', 'string');
+    $description = rex_post('description', 'string');
+    $severity = rex_post('severity', 'string', 'medium');
+    $isRegex = rex_post('is_regex', 'bool');
+    $status = rex_post('status', 'bool', true);
+    
+    if (!empty($pattern) && $id > 0) {
+        if (IntrusionPrevention::updateCustomPattern($id, $pattern, $description, $severity, $isRegex, $status)) {
+            echo rex_view::success($addon->i18n('upkeep_ips_pattern_updated'));
+        } else {
+            echo rex_view::error($addon->i18n('upkeep_ips_pattern_update_error'));
+        }
+    } else {
+        echo rex_view::error($addon->i18n('upkeep_ips_pattern_empty'));
+    }
+}
+
+// Pattern Status umschalten
+if (rex_get('action') === 'toggle' && rex_get('id', 'int')) {
+    if (IntrusionPrevention::toggleCustomPatternStatus(rex_get('id', 'int'))) {
+        echo rex_view::success($addon->i18n('upkeep_ips_pattern_status_changed'));
+    } else {
+        echo rex_view::error($addon->i18n('upkeep_ips_pattern_status_error'));
+    }
+}
+
 // Pattern löschen
 if (rex_get('action') === 'delete' && rex_get('id', 'int')) {
     if (IntrusionPrevention::removeCustomPattern(rex_get('id', 'int'))) {
@@ -52,21 +81,36 @@ if (rex_get('action') === 'delete' && rex_get('id', 'int')) {
 // Bestehende Patterns laden
 $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_custom_patterns') . " ORDER BY created_at DESC");
 
+// Prüfen ob Pattern bearbeitet werden soll
+$editPattern = null;
+if (rex_get('action') === 'edit' && rex_get('id', 'int')) {
+    $editPattern = IntrusionPrevention::getCustomPattern(rex_get('id', 'int'));
+}
+
 // Formular für neues Pattern
 echo '<div class="panel panel-default">';
 echo '<div class="panel-heading">';
-echo '<i class="fa fa-plus"></i> ' . $addon->i18n('upkeep_ips_add_pattern');
+if ($editPattern) {
+    echo '<i class="fa fa-edit"></i> ' . $addon->i18n('upkeep_ips_edit_pattern');
+} else {
+    echo '<i class="fa fa-plus"></i> ' . $addon->i18n('upkeep_ips_add_pattern');
+}
 echo '</div>';
 echo '<div class="panel-body">';
 
 $form = '<form method="post">';
-$form .= '<input type="hidden" name="add_pattern" value="1">';
+if ($editPattern) {
+    $form .= '<input type="hidden" name="edit_pattern" value="1">';
+    $form .= '<input type="hidden" name="id" value="' . $editPattern['id'] . '">';
+} else {
+    $form .= '<input type="hidden" name="add_pattern" value="1">';
+}
 $form .= '<div class="row">';
 
 $form .= '<div class="col-md-4">';
 $form .= '<div class="form-group">';
 $form .= '<label for="pattern">' . $addon->i18n('upkeep_ips_pattern') . '</label>';
-$form .= '<input type="text" class="form-control" id="pattern" name="pattern" required>';
+$form .= '<input type="text" class="form-control" id="pattern" name="pattern" value="' . rex_escape($editPattern['pattern'] ?? '') . '" required>';
 $form .= '<small class="help-block">' . $addon->i18n('upkeep_ips_pattern_help') . '</small>';
 $form .= '</div>';
 $form .= '</div>';
@@ -74,7 +118,7 @@ $form .= '</div>';
 $form .= '<div class="col-md-3">';
 $form .= '<div class="form-group">';
 $form .= '<label for="description">' . $addon->i18n('upkeep_ips_description') . '</label>';
-$form .= '<input type="text" class="form-control" id="description" name="description">';
+$form .= '<input type="text" class="form-control" id="description" name="description" value="' . rex_escape($editPattern['description'] ?? '') . '">';
 $form .= '</div>';
 $form .= '</div>';
 
@@ -82,10 +126,11 @@ $form .= '<div class="col-md-2">';
 $form .= '<div class="form-group">';
 $form .= '<label for="severity">' . $addon->i18n('upkeep_ips_severity') . '</label>';
 $form .= '<select class="form-control" id="severity" name="severity">';
-$form .= '<option value="low">' . $addon->i18n('upkeep_ips_severity_low') . '</option>';
-$form .= '<option value="medium" selected>' . $addon->i18n('upkeep_ips_severity_medium') . '</option>';
-$form .= '<option value="high">' . $addon->i18n('upkeep_ips_severity_high') . '</option>';
-$form .= '<option value="critical">' . $addon->i18n('upkeep_ips_severity_critical') . '</option>';
+$currentSeverity = $editPattern['severity'] ?? 'medium';
+$form .= '<option value="low"' . ($currentSeverity === 'low' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_low') . '</option>';
+$form .= '<option value="medium"' . ($currentSeverity === 'medium' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_medium') . '</option>';
+$form .= '<option value="high"' . ($currentSeverity === 'high' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_high') . '</option>';
+$form .= '<option value="critical"' . ($currentSeverity === 'critical' ? ' selected' : '') . '>' . $addon->i18n('upkeep_ips_severity_critical') . '</option>';
 $form .= '</select>';
 $form .= '</div>';
 $form .= '</div>';
@@ -94,17 +139,33 @@ $form .= '<div class="col-md-2">';
 $form .= '<div class="form-group">';
 $form .= '<label>&nbsp;</label><br>';
 $form .= '<div class="checkbox">';
-$form .= '<label><input type="checkbox" name="is_regex" value="1"> ' . $addon->i18n('upkeep_ips_is_regex') . '</label>';
+$isRegexChecked = isset($editPattern) && $editPattern['is_regex'] ? ' checked' : '';
+$form .= '<label><input type="checkbox" name="is_regex" value="1"' . $isRegexChecked . '> ' . $addon->i18n('upkeep_ips_is_regex') . '</label>';
 $form .= '</div>';
+if ($editPattern) {
+    $form .= '<div class="checkbox">';
+    $statusChecked = isset($editPattern) && $editPattern['status'] ? ' checked' : '';
+    $form .= '<label><input type="checkbox" name="status" value="1"' . $statusChecked . '> ' . $addon->i18n('upkeep_active') . '</label>';
+    $form .= '</div>';
+}
 $form .= '</div>';
 $form .= '</div>';
 
 $form .= '<div class="col-md-1">';
 $form .= '<div class="form-group">';
 $form .= '<label>&nbsp;</label><br>';
-$form .= '<button type="submit" class="btn btn-primary" title="' . $addon->i18n('upkeep_add') . '">';
-$form .= '<i class="fa fa-plus"></i>';
-$form .= '</button>';
+if ($editPattern) {
+    $form .= '<button type="submit" class="btn btn-success" title="' . $addon->i18n('upkeep_update') . '">';
+    $form .= '<i class="fa fa-save"></i>';
+    $form .= '</button>';
+    $form .= ' <a href="' . rex_url::currentBackendPage() . '" class="btn btn-default" title="' . $addon->i18n('upkeep_cancel') . '">';
+    $form .= '<i class="fa fa-times"></i>';
+    $form .= '</a>';
+} else {
+    $form .= '<button type="submit" class="btn btn-primary" title="' . $addon->i18n('upkeep_add') . '">';
+    $form .= '<i class="fa fa-plus"></i>';
+    $form .= '</button>';
+}
 $form .= '</div>';
 $form .= '</div>';
 
@@ -167,9 +228,24 @@ if ($sql->getRows() > 0) {
         echo '</td>';
         echo '<td>' . rex_formatter::date($createdAt, 'date') . '</td>';
         echo '<td class="text-center">';
-        echo '<a href="' . rex_url::currentBackendPage(['action' => 'delete', 'id' => $id]) . '" class="btn btn-xs btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_ips_delete_confirm') . '\')">';
+        
+        // Bearbeiten-Button
+        echo '<a href="' . rex_url::currentBackendPage(['action' => 'edit', 'id' => $id]) . '" class="btn btn-xs btn-default" title="' . $addon->i18n('upkeep_edit') . '">';
+        echo '<i class="fa fa-edit"></i>';
+        echo '</a> ';
+        
+        // Status umschalten
+        $toggleTitle = $status ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate');
+        $toggleIcon = $status ? 'fa-pause' : 'fa-play';
+        echo '<a href="' . rex_url::currentBackendPage(['action' => 'toggle', 'id' => $id]) . '" class="btn btn-xs btn-warning" title="' . $toggleTitle . '">';
+        echo '<i class="fa ' . $toggleIcon . '"></i>';
+        echo '</a> ';
+        
+        // Löschen-Button
+        echo '<a href="' . rex_url::currentBackendPage(['action' => 'delete', 'id' => $id]) . '" class="btn btn-xs btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_ips_delete_confirm') . '\')" title="' . $addon->i18n('upkeep_delete') . '">';
         echo '<i class="fa fa-trash"></i>';
         echo '</a>';
+        
         echo '</td>';
         echo '</tr>';
         
