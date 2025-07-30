@@ -65,8 +65,16 @@ rex_extension::register('UPKEEP_IPS_THREAT_DETECTED', function($ep) {
     $data = $ep->getSubject();
     // $data enthält: ip, uri, threat_type, severity, pattern, etc.
     
-    // Beispiel: Grafana Logging
+    // Beispiel 1: Grafana/InfluxDB Logging
     sendToGrafana($data);
+    
+    // Beispiel 2: Elasticsearch
+    sendToElasticsearch($data);
+    
+    // Beispiel 3: Slack/Discord Alerts
+    if ($data['severity'] === 'CRITICAL') {
+        sendSlackAlert($data);
+    }
 });
 
 // fail2ban-kompatibles Logging
@@ -74,6 +82,137 @@ rex_extension::register('UPKEEP_IPS_FAIL2BAN_LOG', function($ep) {
     $params = $ep->getSubject();
     // Custom fail2ban logging
     myCustomLogger($params['message'], $params['logData']);
+});
+```
+
+#### Grafana/InfluxDB Integration
+
+```php
+function sendToGrafana($data) {
+    $influxData = [
+        'measurement' => 'redaxo_security',
+        'tags' => [
+            'severity' => $data['severity'],
+            'threat_type' => $data['threat_type'],
+            'server' => gethostname()
+        ],
+        'fields' => [
+            'ip' => $data['ip'],
+            'uri' => $data['uri'],
+            'pattern' => $data['pattern'],
+            'user_agent' => $data['user_agent'] ?? '',
+            'count' => 1
+        ],
+        'timestamp' => time() * 1000000000 // nanoseconds
+    ];
+    
+    // InfluxDB REST API
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => 'http://influxdb:8086/write?db=monitoring',
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => formatInfluxLine($influxData),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+}
+```
+
+#### Elasticsearch Integration
+
+```php
+function sendToElasticsearch($data) {
+    $document = [
+        '@timestamp' => date('c'),
+        'source' => 'redaxo-ips',
+        'severity' => $data['severity'],
+        'threat_type' => $data['threat_type'],
+        'client_ip' => $data['ip'],
+        'request_uri' => $data['uri'],
+        'pattern_matched' => $data['pattern'],
+        'user_agent' => $data['user_agent'] ?? '',
+        'server' => gethostname(),
+        'geoip' => getGeoIP($data['ip'])
+    ];
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => 'http://elasticsearch:9200/security-logs/_doc',
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($document),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+}
+```
+
+#### Slack/Discord Alerts
+
+```php
+function sendSlackAlert($data) {
+    $webhook = 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL';
+    
+    $message = [
+        'text' => "🚨 REDAXO Security Alert",
+        'attachments' => [[
+            'color' => $data['severity'] === 'CRITICAL' ? 'danger' : 'warning',
+            'fields' => [
+                ['title' => 'IP Address', 'value' => $data['ip'], 'short' => true],
+                ['title' => 'Threat Type', 'value' => $data['threat_type'], 'short' => true],
+                ['title' => 'URI', 'value' => $data['uri'], 'short' => false],
+                ['title' => 'Pattern', 'value' => $data['pattern'], 'short' => false],
+                ['title' => 'Server', 'value' => gethostname(), 'short' => true],
+                ['title' => 'Time', 'value' => date('Y-m-d H:i:s'), 'short' => true]
+            ]
+        ]]
+    ];
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $webhook,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($message),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+}
+```
+
+#### Syslog Integration
+
+```php
+rex_extension::register('UPKEEP_IPS_THREAT_DETECTED', function($ep) {
+    $data = $ep->getSubject();
+    
+    // RFC3164 Syslog format
+    $priority = $data['severity'] === 'CRITICAL' ? 2 : 4; // critical : warning
+    $facility = 16; // local0
+    $syslogPriority = $facility * 8 + $priority;
+    
+    $message = sprintf(
+        "<%d>%s %s redaxo-ips[%d]: %s threat from %s to %s (pattern: %s)",
+        $syslogPriority,
+        date('M d H:i:s'),
+        gethostname(),
+        getmypid(),
+        $data['severity'],
+        $data['ip'],
+        $data['uri'],
+        $data['pattern']
+    );
+    
+    // Send to syslog server
+    $sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+    socket_sendto($sock, $message, strlen($message), 0, '127.0.0.1', 514);
+    socket_close($sock);
 });
 ```
 
@@ -103,6 +242,15 @@ maxretry = 3
 bantime = 3600
 findtime = 600
 ```
+
+#### Extension Points für Entwickler
+
+Zusätzlich zum File-Logging können Extension Points verwendet werden:
+
+- `UPKEEP_IPS_THREAT_DETECTED` - Für jede erkannte Bedrohung
+- `UPKEEP_IPS_FAIL2BAN_LOG` - Für fail2ban-spezifisches Logging
+
+Diese ermöglichen flexibles externes Logging ohne Dateisystem-Zugriff.
 
 ### Console Commands
 
@@ -439,42 +587,7 @@ php bin/console upkeep:ips:cleanup
 - Bedrohungs-Logs älter als 30 Tage  
 - Rate-Limit-Daten älter als 2 Stunden
 
-## �📈 Changelog
 
-### Version 1.3.0 - Erweiterte Sicherheit 🛡️
-- **CAPTCHA-Entsperrung**: Menschliche Verifikation mit mathematischen Aufgaben
-- **Multilingual Support**: Deutsch/Englisch mit automatischer Spracherkennung und Sprachumschalter
-- **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, Facebook, etc.)
-- **Reverse DNS**: Timeout-geschützte Verifikation (3s max) mit dns_get_record() + gethostbyaddr() Fallback
-- **Forward DNS**: Robuste A/AAAA Record Lookups mit gethostbyname() Fallback  
-- **DNS-Caching**: Intelligentes Caching (24h positive, 1h negative) zur Performance-Optimierung
-- **Temporäre Positivliste**: 24h automatische Vertrauensstellung nach CAPTCHA-Entsperrung
-- **Optionales Rate-Limiting**: Standardmäßig deaktiviert (Webserver sollte das übernehmen)
-- **Intelligente URI-Limits**: Pfad-basierte Rate-Limits (normal/admin/assets/api)
-- **CAPTCHA-Rehabilitation**: Komplette IP-Bereinigung inkl. Bedrohungshistorie
-- **Automatische Bereinigung**: Selbstreinigende Datenbank mit 1% Chance pro Request
-- **Erweiterte Konsolen-Befehle**: IPS-Cleanup und detaillierte Status-Abfragen
-- **UI-Optimierungen**: Verbessertes Design ohne problematische `<code>`-Tags
-- **Verbesserte Logs**: Detaillierte Protokollierung aller Sicherheitsereignisse
-
-### Version 1.2.0
-- **Vollständiges IPS**: Intrusion Prevention System mit Echtzeit-Schutz
-- **CMS-Patterns**: Spezifische Bedrohungserkennung für WordPress, TYPO3, Drupal, Joomla
-- **Positivliste-System**: Ausnahmen für vertrauenswürdige IP-Adressen
-- **Rate-Limiting**: Schutz vor Brute-Force-Angriffen
-- **Status-Indikatoren**: Live-Anzeige im Backend-Menü (B/F/R/S)
-- **Umfassende Protokollierung**: Detaillierte Logs aller Sicherheitsereignisse
-
-### Version 1.1.0
-- **Wildcard-Redirects**: URL-Redirects mit Wildcard-Unterstützung (`/*`)
-- **Pfad-Ersetzung**: Dynamische Parameter-Übertragung bei Redirects
-- **HTTP-Status-Codes**: Konfigurierbare Redirect-Codes (301, 302, 303, 307, 308)
-- **Path-Traversal-Schutz**: RFC-konforme Domain-Validierung
-
-### Version 1.0.0
-- **Grundlegende Wartungsmodi**: Frontend- und Backend-Sperrung
-- **Benutzerrechte-Integration**: Admin-Bypass und rollenbasierte Zugriffe
-- **Domain-spezifische Sperren**: Multidomains mit YRewrite-Unterstützung
 
 ## API
 
