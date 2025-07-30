@@ -16,27 +16,58 @@ $func = rex_request('func', 'string', '');
 
 switch ($func) {
     case 'live_stats':
-        $stats = IntrusionPrevention::getStatistics();
-        
-        // Erweiterte Statistiken
-        $addon = rex_addon::get('upkeep');
-        $allowedIps = $addon->getConfig('allowed_ips', '');
-        $allowedIpCount = !empty(trim($allowedIps)) ? count(array_filter(explode("\n", $allowedIps))) : 0;
-        
-        $sql = rex_sql::factory();
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_domain_mapping') . " WHERE status = 1");
-        $activeRedirects = (int) $sql->getValue('count');
-        
-        $stats['allowed_ips'] = $allowedIpCount;
-        $stats['active_redirects'] = $activeRedirects;
-        
-        header('Content-Type: application/json');
-        echo json_encode($stats);
+        try {
+            $stats = IntrusionPrevention::getStatistics();
+            
+            // Erweiterte Statistiken
+            $addon = rex_addon::get('upkeep');
+            $allowedIps = $addon->getConfig('allowed_ips', '');
+            $allowedIpCount = !empty(trim($allowedIps)) ? count(array_filter(explode("\n", $allowedIps))) : 0;
+            
+            // Prüfe ob Domain-Mapping-Tabelle existiert
+            $sql = rex_sql::factory();
+            try {
+                $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_domain_mapping') . " WHERE status = 1");
+                $activeRedirects = (int) $sql->getValue('count');
+            } catch (Exception $e) {
+                // Tabelle existiert noch nicht
+                $activeRedirects = 0;
+            }
+            
+            $stats['allowed_ips'] = $allowedIpCount;
+            $stats['active_redirects'] = $activeRedirects;
+            
+            header('Content-Type: application/json');
+            echo json_encode($stats);
+            
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'error' => 'Fehler beim Laden der Statistiken',
+                'message' => $e->getMessage(),
+                'blocked_ips' => 0,
+                'threats_today' => 0,
+                'threats_week' => 0,
+                'allowed_ips' => 0,
+                'active_redirects' => 0,
+                'top_threats' => []
+            ]);
+        }
         exit;
         
     case 'recent_activities':
-        $activities = getRecentActivities();
-        echo renderActivityFeed($activities);
+        try {
+            $activities = getRecentActivities();
+            echo renderActivityFeed($activities);
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            echo '<div class="alert alert-warning">
+                    <i class="rex-icon fa-exclamation-triangle"></i> 
+                    Fehler beim Laden der Aktivitäten: ' . rex_escape($e->getMessage()) . '
+                  </div>';
+        }
         exit;
         
     case 'toggle_module':
@@ -123,31 +154,38 @@ function toggleUpkeepModule(string $module, bool $enabled): array
  */
 function getRecentActivities(): array
 {
-    $sql = rex_sql::factory();
-    $query = "SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-              ORDER BY created_at DESC 
-              LIMIT 20";
-    
-    $sql->setQuery($query);
-    $activities = [];
-    
-    while ($sql->hasNext()) {
-        $activities[] = [
-            'id' => $sql->getValue('id'),
-            'ip_address' => $sql->getValue('ip_address'),
-            'threat_type' => $sql->getValue('threat_type'),
-            'threat_category' => $sql->getValue('threat_category'),
-            'severity' => $sql->getValue('severity'),
-            'pattern_matched' => $sql->getValue('pattern_matched'),
-            'request_uri' => $sql->getValue('request_uri'),
-            'user_agent' => $sql->getValue('user_agent'),
-            'action_taken' => $sql->getValue('action_taken'),
-            'created_at' => $sql->getValue('created_at')
-        ];
-        $sql->next();
+    try {
+        $sql = rex_sql::factory();
+        $query = "SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                  ORDER BY created_at DESC 
+                  LIMIT 20";
+        
+        $sql->setQuery($query);
+        $activities = [];
+        
+        while ($sql->hasNext()) {
+            $activities[] = [
+                'id' => $sql->getValue('id'),
+                'ip_address' => $sql->getValue('ip_address'),
+                'threat_type' => $sql->getValue('threat_type'),
+                'threat_category' => $sql->getValue('threat_category'),
+                'severity' => $sql->getValue('severity'),
+                'pattern_matched' => $sql->getValue('pattern_matched'),
+                'request_uri' => $sql->getValue('request_uri'),
+                'user_agent' => $sql->getValue('user_agent'),
+                'action_taken' => $sql->getValue('action_taken'),
+                'created_at' => $sql->getValue('created_at')
+            ];
+            $sql->next();
+        }
+        
+        return $activities;
+        
+    } catch (Exception $e) {
+        // Tabelle existiert noch nicht oder anderer Fehler
+        rex_logger::factory()->log('warning', 'Dashboard: Cannot load activities: ' . $e->getMessage());
+        return [];
     }
-    
-    return $activities;
 }
 
 /**

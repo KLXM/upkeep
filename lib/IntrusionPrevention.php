@@ -1983,32 +1983,51 @@ class IntrusionPrevention
     public static function getStatistics(): array
     {
         $sql = rex_sql::factory();
-        $stats = [];
+        $stats = [
+            'blocked_ips' => 0,
+            'threats_today' => 0,
+            'threats_week' => 0,
+            'top_threats' => []
+        ];
         
-        // Gesperrte IPs
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE expires_at IS NULL OR expires_at > NOW()");
-        $stats['blocked_ips'] = (int) $sql->getValue('count');
+        try {
+            // Gesperrte IPs
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE expires_at IS NULL OR expires_at > NOW()");
+            $stats['blocked_ips'] = (int) $sql->getValue('count');
+        } catch (Exception $e) {
+            // Tabelle existiert noch nicht
+            self::debugLog("Statistics: upkeep_ips_blocked_ips table not available: " . $e->getMessage());
+            $stats['blocked_ips'] = 0;
+        }
         
-        // Bedrohungen heute
-        $today = date('Y-m-d');
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) = ?", [$today]);
-        $stats['threats_today'] = (int) $sql->getValue('count');
-        
-        // Bedrohungen diese Woche
-        $weekStart = date('Y-m-d', strtotime('monday this week'));
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) >= ?", [$weekStart]);
-        $stats['threats_week'] = (int) $sql->getValue('count');
-        
-        // Top Bedrohungstypen
-        $sql->setQuery("SELECT threat_type, COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                       WHERE DATE(created_at) >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5", [$weekStart]);
-        $stats['top_threats'] = [];
-        while ($sql->hasNext()) {
-            $stats['top_threats'][] = [
-                'type' => $sql->getValue('threat_type'),
-                'count' => (int) $sql->getValue('count')
-            ];
-            $sql->next();
+        try {
+            // Bedrohungen heute
+            $today = date('Y-m-d');
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) = ?", [$today]);
+            $stats['threats_today'] = (int) $sql->getValue('count');
+            
+            // Bedrohungen diese Woche
+            $weekStart = date('Y-m-d', strtotime('monday this week'));
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) >= ?", [$weekStart]);
+            $stats['threats_week'] = (int) $sql->getValue('count');
+            
+            // Top Bedrohungstypen
+            $sql->setQuery("SELECT threat_type, COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                           WHERE DATE(created_at) >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5", [$weekStart]);
+            $stats['top_threats'] = [];
+            while ($sql->hasNext()) {
+                $stats['top_threats'][] = [
+                    'type' => $sql->getValue('threat_type'),
+                    'count' => (int) $sql->getValue('count')
+                ];
+                $sql->next();
+            }
+        } catch (Exception $e) {
+            // Tabelle existiert noch nicht
+            self::debugLog("Statistics: upkeep_ips_threat_log table not available: " . $e->getMessage());
+            $stats['threats_today'] = 0;
+            $stats['threats_week'] = 0;
+            $stats['top_threats'] = [];
         }
         
         return $stats;

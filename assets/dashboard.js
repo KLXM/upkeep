@@ -1,12 +1,15 @@
 /**
  * Dashboard JavaScript für das Upkeep AddOn
- * Vanilla JS mit REDAXO-Kompatibilität
+ * REDAXO-kompatibel mit jQuery und rex:ready
  */
 
-(function() {
+// Warten auf rex:ready Event
+jQuery(document).on('rex:ready', function($) {
     'use strict';
     
-    const Dashboard = {
+    console.log('Dashboard: rex:ready event fired');
+    
+    var Dashboard = {
         config: {
             autoRefreshInterval: 30000, // 30 Sekunden
             endpoints: {
@@ -17,174 +20,250 @@
         
         state: {
             autoRefreshActive: false,
-            intervalId: null
+            intervalId: null,
+            isInitialized: false
         },
         
         elements: {},
         
-        init() {
-            this.cacheElements();
-            this.bindEvents();
-            this.updateLiveTime();
-            this.loadRecentActivities();
-            this.startLiveTimeUpdate();
+        init: function() {
+            var self = this;
             
-            // Auto-start refresh wenn gewünscht
-            if (localStorage.getItem('upkeep_dashboard_autorefresh') === 'true') {
-                this.startAutoRefresh();
+            if (this.state.isInitialized) {
+                console.log('Dashboard: Already initialized, skipping...');
+                return;
             }
+            
+            console.log('Dashboard: Starting initialization...');
+            
+            // Warte kurz, um sicherzustellen dass DOM vollständig ist
+            setTimeout(function() {
+                self.cacheElements();
+                self.bindEvents();
+                self.updateLiveTime();
+                self.loadRecentActivities();
+                self.loadLiveStats();
+                self.startLiveTimeUpdate();
+                
+                // Auto-start refresh wenn gewünscht
+                if (localStorage.getItem('upkeep_dashboard_autorefresh') === 'true') {
+                    self.startAutoRefresh();
+                }
+                
+                self.state.isInitialized = true;
+                console.log('Dashboard: Initialization completed successfully');
+            }, 100);
         },
         
-        cacheElements() {
+        cacheElements: function() {
+            console.log('Dashboard: Caching elements...');
+            
             this.elements = {
-                liveTime: document.getElementById('live-time'),
-                autoRefreshBtn: document.getElementById('auto-refresh'),
-                refreshActivitiesBtn: document.getElementById('refresh-activities'),
-                recentActivities: document.getElementById('recent-activities'),
-                blockedIpsCount: document.getElementById('blocked-ips-count'),
-                threatsToday: document.getElementById('threats-today-count'),
-                allowedIpsCount: document.getElementById('allowed-ips-count'),
-                statusCards: document.querySelectorAll('.status-card')
+                $liveTime: $('#live-time'),
+                $autoRefreshBtn: $('#auto-refresh'),
+                $refreshActivitiesBtn: $('#refresh-activities'),
+                $recentActivities: $('#recent-activities'),
+                $blockedIpsCount: $('#blocked-ips-count'),
+                $threatsToday: $('#threats-today-count'),
+                $allowedIpsCount: $('#allowed-ips-count'),
+                $statusCards: $('.status-card')
             };
+            
+            // Debug: Zeige gefundene Elemente
+            console.log('Dashboard: Found elements:', {
+                liveTime: this.elements.$liveTime.length,
+                autoRefreshBtn: this.elements.$autoRefreshBtn.length,
+                refreshActivitiesBtn: this.elements.$refreshActivitiesBtn.length,
+                recentActivities: this.elements.$recentActivities.length,
+                blockedIpsCount: this.elements.$blockedIpsCount.length,
+                threatsToday: this.elements.$threatsToday.length,
+                statusCards: this.elements.$statusCards.length
+            });
         },
         
-        bindEvents() {
+        
+        bindEvents: function() {
+            var self = this;
+            
             // Auto-Refresh Toggle
-            if (this.elements.autoRefreshBtn) {
-                this.elements.autoRefreshBtn.addEventListener('click', (e) => {
+            if (this.elements.$autoRefreshBtn.length) {
+                this.elements.$autoRefreshBtn.on('click', function(e) {
                     e.preventDefault();
-                    this.toggleAutoRefresh();
+                    self.toggleAutoRefresh();
                 });
             }
             
             // Manual Activity Refresh
-            if (this.elements.refreshActivitiesBtn) {
-                this.elements.refreshActivitiesBtn.addEventListener('click', (e) => {
+            if (this.elements.$refreshActivitiesBtn.length) {
+                this.elements.$refreshActivitiesBtn.on('click', function(e) {
                     e.preventDefault();
-                    this.loadRecentActivities();
+                    self.loadRecentActivities();
                 });
             }
             
             // Keyboard Shortcuts
-            document.addEventListener('keydown', (e) => {
+            $(document).on('keydown', function(e) {
                 if (e.ctrlKey || e.metaKey) {
-                    switch(e.key) {
-                        case 'r':
+                    switch(e.which) {
+                        case 82: // R
                             e.preventDefault();
-                            this.refreshAll();
+                            self.refreshAll();
                             break;
-                        case 'l':
+                        case 76: // L
                             e.preventDefault();
-                            this.toggleAutoRefresh();
+                            self.toggleAutoRefresh();
                             break;
                     }
                 }
             });
             
             // Visibility API für Pause bei inaktivem Tab
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden && this.state.autoRefreshActive) {
-                    this.pauseAutoRefresh();
-                } else if (!document.hidden && this.state.autoRefreshActive) {
-                    this.resumeAutoRefresh();
+            $(document).on('visibilitychange', function() {
+                if (document.hidden && self.state.autoRefreshActive) {
+                    self.pauseAutoRefresh();
+                } else if (!document.hidden && self.state.autoRefreshActive) {
+                    self.resumeAutoRefresh();
                 }
             });
         },
         
-        updateLiveTime() {
-            if (!this.elements.liveTime) return;
+        updateLiveTime: function() {
+            if (!this.elements.$liveTime.length) return;
             
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('de-DE', {
+            var now = new Date();
+            var timeString = now.toLocaleTimeString('de-DE', {
                 hour12: false,
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit'
             });
             
-            this.elements.liveTime.textContent = timeString;
+            this.elements.$liveTime.text(timeString);
         },
         
-        startLiveTimeUpdate() {
+        startLiveTimeUpdate: function() {
+            var self = this;
             // Update time every second
-            setInterval(() => {
-                this.updateLiveTime();
+            setInterval(function() {
+                self.updateLiveTime();
             }, 1000);
         },
         
-        async loadRecentActivities() {
-            if (!this.elements.recentActivities) return;
+        loadRecentActivities: function() {
+            var self = this;
             
-            this.showLoading(this.elements.recentActivities);
+            if (!this.elements.$recentActivities.length) {
+                console.warn('Dashboard: #recent-activities element not found');
+                return;
+            }
             
-            try {
-                const response = await this.fetchWithTimeout(this.config.endpoints.recentActivities);
-                
-                if (response.ok) {
-                    const html = await response.text();
-                    this.elements.recentActivities.innerHTML = html;
-                    this.animateUpdate(this.elements.recentActivities);
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
+            console.log('Dashboard: Loading recent activities...');
+            this.showLoading(this.elements.$recentActivities);
+            
+            $.ajax({
+                url: this.config.endpoints.recentActivities,
+                type: 'GET',
+                dataType: 'html',
+                timeout: 15000,
+                success: function(html) {
+                    console.log('Dashboard: Activities loaded successfully');
+                    if (html && html.trim() !== '') {
+                        self.elements.$recentActivities.html(html);
+                        self.animateUpdate(self.elements.$recentActivities);
+                    } else {
+                        self.elements.$recentActivities.html('<div class="text-center text-muted">Keine Daten verfügbar</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Dashboard: Error loading activities:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText
+                    });
+                    self.showError(self.elements.$recentActivities, 'Fehler beim Laden der Aktivitäten: ' + error);
                 }
-            } catch (error) {
-                console.error('Error loading activities:', error);
-                this.showError(this.elements.recentActivities, 'Fehler beim Laden der Aktivitäten');
-            }
-        },
-        
-        async refreshStats() {
-            try {
-                const response = await this.fetchWithTimeout(this.config.endpoints.liveStats);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    this.updateStats(data);
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-            } catch (error) {
-                console.error('Error refreshing stats:', error);
-                this.showNotification('Fehler beim Aktualisieren der Statistiken', 'error');
-            }
-        },
-        
-        updateStats(data) {
-            // Update counters with animation
-            if (this.elements.blockedIpsCount && data.blocked_ips !== undefined) {
-                this.animateCounter(this.elements.blockedIpsCount, data.blocked_ips);
-            }
-            
-            if (this.elements.threatsToday && data.threats_today !== undefined) {
-                this.animateCounter(this.elements.threatsToday, data.threats_today);
-            }
-            
-            if (this.elements.allowedIpsCount && data.allowed_ips !== undefined) {
-                this.animateCounter(this.elements.allowedIpsCount, data.allowed_ips);
-            }
-            
-            // Animate status cards
-            this.elements.statusCards.forEach(card => {
-                card.classList.add('updated');
-                setTimeout(() => card.classList.remove('updated'), 600);
             });
         },
         
-        animateCounter(element, newValue) {
-            const currentValue = parseInt(element.textContent) || 0;
+        loadLiveStats: function() {
+            var self = this;
+            
+            console.log('Dashboard: Loading live stats...');
+            
+            $.ajax({
+                url: this.config.endpoints.liveStats,
+                type: 'GET',
+                dataType: 'json',
+                timeout: 15000,
+                success: function(data) {
+                    console.log('Dashboard: Stats loaded successfully', data);
+                    if (data && typeof data === 'object') {
+                        self.updateStats(data);
+                    } else {
+                        console.warn('Dashboard: Invalid stats data received', data);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Dashboard: Error loading stats:', {
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText
+                    });
+                    self.showNotification('Fehler beim Laden der Statistiken: ' + error, 'error');
+                }
+            });
+        },
+        
+        updateStats: function(data) {
+            var self = this;
+            
+            console.log('Dashboard: Updating stats with data:', data);
+            
+            // Update counters with animation - nur wenn Elemente existieren
+            if (this.elements.$blockedIpsCount.length && data.blocked_ips !== undefined) {
+                console.log('Dashboard: Updating blocked IPs count:', data.blocked_ips);
+                this.animateCounter(this.elements.$blockedIpsCount, data.blocked_ips);
+            }
+            
+            if (this.elements.$threatsToday.length && data.threats_today !== undefined) {
+                console.log('Dashboard: Updating threats today count:', data.threats_today);
+                this.animateCounter(this.elements.$threatsToday, data.threats_today);
+            }
+            
+            if (this.elements.$allowedIpsCount.length && data.allowed_ips !== undefined) {
+                console.log('Dashboard: Updating allowed IPs count:', data.allowed_ips);
+                this.animateCounter(this.elements.$allowedIpsCount, data.allowed_ips);
+            }
+            
+            // Animate status cards - nur wenn vorhanden
+            if (this.elements.$statusCards.length) {
+                this.elements.$statusCards.addClass('updated');
+                setTimeout(function() {
+                    self.elements.$statusCards.removeClass('updated');
+                }, 600);
+            }
+        },
+        
+        animateCounter: function($element, newValue) {
+            if (!$element || !$element.length) {
+                console.warn('Dashboard: animateCounter called with invalid element');
+                return;
+            }
+            
+            var currentValue = parseInt($element.text()) || 0;
             
             if (currentValue === newValue) return;
             
-            const duration = 800;
-            const steps = 20;
-            const stepValue = (newValue - currentValue) / steps;
-            const stepDuration = duration / steps;
+            var duration = 800;
+            var steps = 20;
+            var stepValue = (newValue - currentValue) / steps;
+            var stepDuration = duration / steps;
             
-            let step = 0;
-            const timer = setInterval(() => {
+            var step = 0;
+            var timer = setInterval(function() {
                 step++;
-                const value = Math.round(currentValue + (stepValue * step));
-                element.textContent = step === steps ? newValue : value;
+                var value = Math.round(currentValue + (stepValue * step));
+                $element.text(step === steps ? newValue : value);
                 
                 if (step === steps) {
                     clearInterval(timer);
@@ -192,7 +271,7 @@
             }, stepDuration);
         },
         
-        toggleAutoRefresh() {
+        toggleAutoRefresh: function() {
             if (this.state.autoRefreshActive) {
                 this.stopAutoRefresh();
             } else {
@@ -200,19 +279,20 @@
             }
         },
         
-        startAutoRefresh() {
+        startAutoRefresh: function() {
+            var self = this;
             this.state.autoRefreshActive = true;
             localStorage.setItem('upkeep_dashboard_autorefresh', 'true');
             
-            this.state.intervalId = setInterval(() => {
-                this.refreshAll();
+            this.state.intervalId = setInterval(function() {
+                self.refreshAll();
             }, this.config.autoRefreshInterval);
             
             this.updateAutoRefreshButton();
             this.showNotification('Auto-Refresh aktiviert', 'success');
         },
         
-        stopAutoRefresh() {
+        stopAutoRefresh: function() {
             this.state.autoRefreshActive = false;
             localStorage.setItem('upkeep_dashboard_autorefresh', 'false');
             
@@ -225,164 +305,136 @@
             this.showNotification('Auto-Refresh deaktiviert', 'info');
         },
         
-        pauseAutoRefresh() {
+        pauseAutoRefresh: function() {
             if (this.state.intervalId) {
                 clearInterval(this.state.intervalId);
                 this.state.intervalId = null;
             }
         },
         
-        resumeAutoRefresh() {
+        resumeAutoRefresh: function() {
+            var self = this;
             if (this.state.autoRefreshActive && !this.state.intervalId) {
-                this.state.intervalId = setInterval(() => {
-                    this.refreshAll();
+                this.state.intervalId = setInterval(function() {
+                    self.refreshAll();
                 }, this.config.autoRefreshInterval);
             }
         },
         
-        updateAutoRefreshButton() {
-            if (!this.elements.autoRefreshBtn) return;
+        updateAutoRefreshButton: function() {
+            if (!this.elements.$autoRefreshBtn.length) return;
             
-            const btn = this.elements.autoRefreshBtn;
+            var $btn = this.elements.$autoRefreshBtn;
             
             if (this.state.autoRefreshActive) {
-                btn.className = 'btn btn-xs btn-success active';
-                btn.innerHTML = '<i class="rex-icon fa-pause"></i> Stop';
-                btn.setAttribute('title', 'Auto-Refresh stoppen (Strg+L)');
+                $btn.removeClass('btn-default').addClass('btn-success active');
+                $btn.html('<i class="rex-icon fa-pause"></i> Stop');
+                $btn.attr('title', 'Auto-Refresh stoppen (Strg+L)');
             } else {
-                btn.className = 'btn btn-xs btn-default';
-                btn.innerHTML = '<i class="rex-icon fa-refresh"></i> Live';
-                btn.setAttribute('title', 'Auto-Refresh starten (Strg+L)');
+                $btn.removeClass('btn-success active').addClass('btn-default');
+                $btn.html('<i class="rex-icon fa-refresh"></i> Live');
+                $btn.attr('title', 'Auto-Refresh starten (Strg+L)');
             }
         },
         
-        refreshAll() {
+        refreshAll: function() {
             this.updateLiveTime();
-            this.refreshStats();
+            this.loadLiveStats();
             this.loadRecentActivities();
         },
         
-        async fetchWithTimeout(url, options = {}, timeout = 10000) {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-            
-            const defaultOptions = {
-                signal: controller.signal,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            };
-            
-            // Merge options
-            const finalOptions = {
-                ...defaultOptions,
-                ...options,
-                headers: {
-                    ...defaultOptions.headers,
-                    ...options.headers
-                }
-            };
-            
-            try {
-                const response = await fetch(url, finalOptions);
-                clearTimeout(id);
-                return response;
-            } catch (error) {
-                clearTimeout(id);
-                throw error;
-            }
+        showLoading: function($element) {
+            $element.html(
+                '<div class="text-center" style="padding: 40px;">' +
+                    '<div class="spinner"></div>' +
+                    '<p style="margin-top: 15px; color: var(--upkeep-text-secondary);">Lädt...</p>' +
+                '</div>'
+            );
         },
         
-        showLoading(element) {
-            element.innerHTML = `
-                <div class="text-center" style="padding: 40px;">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 15px; color: var(--upkeep-text-secondary);">Lädt...</p>
-                </div>
-            `;
+        showError: function($element, message) {
+            $element.html(
+                '<div class="alert alert-warning">' +
+                    '<i class="rex-icon fa-exclamation-triangle"></i> ' +
+                    message +
+                '</div>'
+            );
         },
         
-        showError(element, message) {
-            element.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="rex-icon fa-exclamation-triangle"></i> 
-                    ${message}
-                </div>
-            `;
-        },
-        
-        animateUpdate(element) {
-            element.style.opacity = '0.7';
-            element.style.transform = 'scale(0.98)';
+        animateUpdate: function($element) {
+            $element.css({
+                'opacity': '0.7',
+                'transform': 'scale(0.98)'
+            });
             
-            setTimeout(() => {
-                element.style.opacity = '1';
-                element.style.transform = 'scale(1)';
-                element.style.transition = 'all 0.3s ease';
+            setTimeout(function() {
+                $element.css({
+                    'opacity': '1',
+                    'transform': 'scale(1)',
+                    'transition': 'all 0.3s ease'
+                });
             }, 100);
             
-            setTimeout(() => {
-                element.style.transition = '';
+            setTimeout(function() {
+                $element.css('transition', '');
             }, 400);
         },
         
-        showNotification(message, type = 'info') {
+        showNotification: function(message, type) {
+            type = type || 'info';
+            
             // Verwende REDAXO's Notification System falls verfügbar
             if (typeof rex !== 'undefined' && rex.notification) {
                 rex.notification.show(message, type);
                 return;
             }
             
-            // Fallback: Simple Console Log
-            console.log(`Dashboard: ${message}`);
+            // Fallback: Console Log
+            console.log('Dashboard: ' + message);
             
             // Einfache visuelle Feedback
-            const notification = document.createElement('div');
-            notification.className = `alert alert-${type} dashboard-notification`;
-            notification.innerHTML = `<i class="rex-icon fa-info-circle"></i> ${message}`;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                min-width: 300px;
-                opacity: 0;
-                transform: translateX(100%);
-                transition: all 0.3s ease;
-            `;
+            var $notification = $('<div class="alert alert-' + type + ' dashboard-notification">' +
+                '<i class="rex-icon fa-info-circle"></i> ' + message +
+            '</div>');
             
-            document.body.appendChild(notification);
+            $notification.css({
+                'position': 'fixed',
+                'top': '20px',
+                'right': '20px',
+                'z-index': '9999',
+                'min-width': '300px',
+                'opacity': '0',
+                'transform': 'translateX(100%)',
+                'transition': 'all 0.3s ease'
+            });
+            
+            $('body').append($notification);
             
             // Animate in
-            setTimeout(() => {
-                notification.style.opacity = '1';
-                notification.style.transform = 'translateX(0)';
+            setTimeout(function() {
+                $notification.css({
+                    'opacity': '1',
+                    'transform': 'translateX(0)'
+                });
             }, 100);
             
             // Auto-remove
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
+            setTimeout(function() {
+                $notification.css({
+                    'opacity': '0',
+                    'transform': 'translateX(100%)'
+                });
+                setTimeout(function() {
+                    $notification.remove();
                 }, 300);
             }, 3000);
         }
     };
     
-    // Initialize Dashboard when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => Dashboard.init());
-    } else {
-        Dashboard.init();
-    }
-    
-    // REDAXO rex:ready compatibility
-    if (typeof jQuery !== 'undefined') {
-        jQuery(document).on('rex:ready', () => Dashboard.init());
-    }
+    // Initialize Dashboard
+    Dashboard.init();
     
     // Global access for debugging
     window.UpkeepDashboard = Dashboard;
     
-})();
+});
