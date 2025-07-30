@@ -302,15 +302,27 @@ class IntrusionPrevention
             return null;
         }
         
-        // 1. Standard-Patterns prüfen
-        foreach (self::$defaultPatterns as $category => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (stripos($decodedUri, $pattern) !== false) {
+        // 1. Standard-Patterns aus der Datenbank prüfen
+        $defaultPatterns = self::getDefaultPatterns();
+        foreach ($defaultPatterns as $pattern) {
+            if ($pattern['is_regex']) {
+                // RegEx Pattern
+                if (@preg_match($pattern['pattern'], $decodedUri)) {
                     return [
-                        'type' => 'suspicious_path',
-                        'category' => $category,
-                        'pattern' => $pattern,
-                        'severity' => self::getSeverityForCategory($category)
+                        'type' => 'default_pattern_regex',
+                        'category' => $pattern['category'],
+                        'pattern' => $pattern['pattern'],
+                        'severity' => $pattern['severity']
+                    ];
+                }
+            } else {
+                // String Pattern
+                if (stripos($decodedUri, $pattern['pattern']) !== false) {
+                    return [
+                        'type' => 'default_pattern',
+                        'category' => $pattern['category'],
+                        'pattern' => $pattern['pattern'],
+                        'severity' => $pattern['severity']
                     ];
                 }
             }
@@ -331,12 +343,24 @@ class IntrusionPrevention
         // 3. Custom Patterns prüfen
         $customPatterns = self::getCustomPatterns();
         foreach ($customPatterns as $pattern) {
-            if (stripos($decodedUri, $pattern['pattern']) !== false) {
-                return [
-                    'type' => 'custom_pattern',
-                    'pattern' => $pattern['pattern'],
-                    'severity' => $pattern['severity'] ?? 'medium'
-                ];
+            if ($pattern['is_regex']) {
+                // RegEx Pattern
+                if (@preg_match($pattern['pattern'], $decodedUri)) {
+                    return [
+                        'type' => 'custom_pattern_regex',
+                        'pattern' => $pattern['pattern'],
+                        'severity' => $pattern['severity'] ?? 'medium'
+                    ];
+                }
+            } else {
+                // String Pattern
+                if (stripos($decodedUri, $pattern['pattern']) !== false) {
+                    return [
+                        'type' => 'custom_pattern',
+                        'pattern' => $pattern['pattern'],
+                        'severity' => $pattern['severity'] ?? 'medium'
+                    ];
+                }
             }
         }
         
@@ -756,6 +780,41 @@ class IntrusionPrevention
                     'is_regex' => (bool) $sql->getValue('is_regex')
                 ];
                 $sql->next();
+            }
+        }
+        
+        return $patterns;
+    }
+
+    /**
+     * Holt Standard-Patterns aus der Datenbank
+     */
+    public static function getDefaultPatterns(): array
+    {
+        static $patterns = null;
+        
+        if ($patterns === null) {
+            $patterns = [];
+            try {
+                $sql = rex_sql::factory();
+                $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_default_patterns') . " WHERE status = 1 ORDER BY category, pattern");
+                
+                while ($sql->hasNext()) {
+                    $patterns[] = [
+                        'id' => (int) $sql->getValue('id'),
+                        'category' => $sql->getValue('category'),
+                        'pattern' => $sql->getValue('pattern'),
+                        'description' => $sql->getValue('description'),
+                        'severity' => $sql->getValue('severity'),
+                        'is_regex' => (bool) $sql->getValue('is_regex'),
+                        'is_default' => (bool) $sql->getValue('is_default')
+                    ];
+                    $sql->next();
+                }
+            } catch (Exception $e) {
+                // Fallback auf leeres Array falls Tabelle noch nicht existiert
+                rex_logger::logException($e);
+                $patterns = [];
             }
         }
         
@@ -1741,6 +1800,77 @@ class IntrusionPrevention
         } catch (Exception $e) {
             rex_logger::logException($e);
             return false;
+        }
+    }
+
+    /**
+     * Aktualisiert ein Default-Pattern
+     */
+    public static function updateDefaultPattern(int $id, string $pattern, string $description, string $severity, bool $isRegex, bool $status): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('upkeep_ips_default_patterns'));
+            $sql->setValue('pattern', $pattern);
+            $sql->setValue('description', $description);
+            $sql->setValue('severity', $severity);
+            $sql->setValue('is_regex', $isRegex ? 1 : 0);
+            $sql->setValue('status', $status ? 1 : 0);
+            $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+            $sql->setWhere(['id' => $id]);
+            $sql->update();
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+
+    /**
+     * Schaltet den Status eines Default-Patterns um
+     */
+    public static function toggleDefaultPatternStatus(int $id): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("UPDATE " . rex::getTable('upkeep_ips_default_patterns') . " 
+                           SET status = 1 - status, updated_at = NOW() 
+                           WHERE id = ?", [$id]);
+            
+            return true;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return false;
+        }
+    }
+
+    /**
+     * Lädt ein Default-Pattern für die Bearbeitung
+     */
+    public static function getDefaultPattern(int $id): ?array
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_ips_default_patterns') . " WHERE id = ?", [$id]);
+            if ($sql->getRows() > 0) {
+                return [
+                    'id' => (int) $sql->getValue('id'),
+                    'category' => $sql->getValue('category'),
+                    'pattern' => $sql->getValue('pattern'),
+                    'description' => $sql->getValue('description'),
+                    'severity' => $sql->getValue('severity'),
+                    'is_regex' => (bool) $sql->getValue('is_regex'),
+                    'status' => (bool) $sql->getValue('status'),
+                    'is_default' => (bool) $sql->getValue('is_default'),
+                    'created_at' => $sql->getValue('created_at'),
+                    'updated_at' => $sql->getValue('updated_at')
+                ];
+            }
+            return null;
+        } catch (Exception $e) {
+            rex_logger::logException($e);
+            return null;
         }
     }
 

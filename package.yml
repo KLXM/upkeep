@@ -26,6 +26,7 @@ page:
                 blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
                 positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
                 patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
+                default_patterns: {title: 'translate:upkeep_ips_default_patterns', icon: rex-icon fa fa-cogs}
                 settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
                 cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
         frontend:

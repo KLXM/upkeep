@@ -20,8 +20,10 @@ $tables = [
     'upkeep_ips_blocked_ips',
     'upkeep_ips_threat_log',
     'upkeep_ips_custom_patterns',
+    'upkeep_ips_default_patterns',  // Neue Tabelle für Standard-Patterns
     'upkeep_ips_rate_limit',
-    'upkeep_ips_positivliste'
+    'upkeep_ips_positivliste',
+    'upkeep_ips_whitelist'          // Falls noch vorhanden (alte Bezeichnung)
 ];
 
 foreach ($tables as $table) {

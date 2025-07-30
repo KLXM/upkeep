@@ -102,6 +102,23 @@ rex_sql_table::get(rex::getTable('upkeep_ips_custom_patterns'))
     ->ensureIndex(new rex_sql_index('status', ['status']))
     ->ensure();
 
+// IPS Default Patterns Tabelle erstellen - für anpassbare Standard-Patterns
+rex_sql_table::get(rex::getTable('upkeep_ips_default_patterns'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
+    ->ensureColumn(new rex_sql_column('description', 'text', true))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('is_default', 'tinyint(1)', false, '1')) // Kennzeichnet vorgegebene Patterns
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
+    ->ensureIndex(new rex_sql_index('status', ['status']))
+    ->ensure();
+
 // IPS Rate Limiting Tabelle erstellen
 rex_sql_table::get(rex::getTable('upkeep_ips_rate_limit'))
     ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
@@ -174,4 +191,264 @@ if ($addon->getConfig('ips_strict_limit') === null) {
 
 if ($addon->getConfig('ips_burst_window') === null) {
     $addon->setConfig('ips_burst_window', 60); // 60 Sekunden Fenster
+}
+
+// Standard-Patterns in die Datenbank migrieren, falls noch nicht vorhanden
+$sql = rex_sql::factory();
+$sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_default_patterns'));
+$existingPatterns = (int) $sql->getValue('count');
+
+if ($existingPatterns === 0) {
+    // Standard-Patterns definieren - diese können später über das Backend angepasst werden
+    $defaultPatterns = [
+        // Kritische Patterns - Sofortige IP-Sperrung
+        'immediate_block' => [
+            'patterns' => [
+                '/xmlrpc.php' => 'WordPress XML-RPC Angriffe',
+                '/.env' => 'Environment-Datei Zugriff',
+                '/.git/' => 'Git Repository Zugriff',
+                '/shell.php' => 'Shell-Script Upload',
+                '/c99.php' => 'C99 Shell',
+                '/r57.php' => 'R57 Shell',
+                '/webshell.php' => 'Web Shell',
+                '/backdoor.php' => 'Backdoor Script',
+                '/cmd.php' => 'Command Execution Script',
+                '/eval.php' => 'Eval Script',
+                '/base64.php' => 'Base64 Encoded Script',
+                '/phpinfo.php' => 'PHP Info Disclosure',
+                '/../' => 'Directory Traversal (einfach)',
+                '/../../' => 'Directory Traversal (doppelt)',
+                '/../../../' => 'Directory Traversal (dreifach)',
+                '%2e%2e%2f' => 'URL-encoded Directory Traversal',
+                '%252e%252e%252f' => 'Double URL-encoded Directory Traversal',
+                'union+select' => 'SQL Injection (UNION SELECT)',
+                'union%20select' => 'URL-encoded SQL Injection',
+                'drop+table' => 'SQL Injection (DROP TABLE)',
+                'drop%20table' => 'URL-encoded DROP TABLE',
+            ],
+            'severity' => 'critical'
+        ],
+        
+        // WordPress-spezifische Pfade
+        'wordpress' => [
+            'patterns' => [
+                '/wp-admin/' => 'WordPress Admin-Bereich',
+                '/wp-login.php' => 'WordPress Login-Seite',
+                '/wp-content/' => 'WordPress Content-Verzeichnis',
+                '/wp-includes/' => 'WordPress Includes-Verzeichnis',
+                '/wp-config.php' => 'WordPress Konfigurationsdatei',
+                '/wp-cron.php' => 'WordPress Cron-Script',
+                '/wp-json/' => 'WordPress REST API',
+                '/wp-trackback.php' => 'WordPress Trackback'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // TYPO3-spezifische Pfade
+        'typo3' => [
+            'patterns' => [
+                '/typo3/' => 'TYPO3 Backend-Bereich',
+                '/typo3conf/' => 'TYPO3 Konfiguration',
+                '/typo3/backend.php' => 'TYPO3 Backend Entry Point',
+                '/typo3/index.php' => 'TYPO3 Backend Index',
+                '/typo3/install/' => 'TYPO3 Install Tool',
+                '/typo3temp/' => 'TYPO3 Temp-Verzeichnis',
+                '/fileadmin/' => 'TYPO3 File Admin',
+                '/t3lib/' => 'TYPO3 Library',
+                '/typo3_src/' => 'TYPO3 Source'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // Drupal-spezifische Pfade
+        'drupal' => [
+            'patterns' => [
+                '/user/login' => 'Drupal Login',
+                '/admin/' => 'Drupal Admin-Bereich',
+                '/node/' => 'Drupal Node-Zugriff',
+                '/sites/default/' => 'Drupal Site Config',
+                '/modules/' => 'Drupal Module-Verzeichnis',
+                '/themes/' => 'Drupal Theme-Verzeichnis',
+                '/core/' => 'Drupal Core-Verzeichnis',
+                '/web.config' => 'Drupal IIS Config',
+                '/.htaccess' => 'Drupal Apache Config',
+                '/update.php' => 'Drupal Update Script',
+                '/install.php' => 'Drupal Install Script'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // Joomla-spezifische Pfade
+        'joomla' => [
+            'patterns' => [
+                '/administrator/' => 'Joomla Administrator',
+                '/components/' => 'Joomla Components',
+                '/modules/' => 'Joomla Module',
+                '/plugins/' => 'Joomla Plugins',
+                '/templates/' => 'Joomla Templates',
+                '/libraries/' => 'Joomla Libraries',
+                '/configuration.php' => 'Joomla Konfiguration',
+                '/htaccess.txt' => 'Joomla .htaccess Template',
+                '/web.config.txt' => 'Joomla web.config Template'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // Allgemeine Admin-Panels
+        'admin_panels' => [
+            'patterns' => [
+                '/admin' => 'Admin Panel (allgemein)',
+                '/admin.php' => 'Admin PHP Script',
+                '/administrator' => 'Administrator Panel',
+                '/phpmyadmin/' => 'phpMyAdmin Interface',
+                '/pma/' => 'phpMyAdmin (kurz)',
+                '/mysql/' => 'MySQL Interface',
+                '/cpanel/' => 'cPanel Interface',
+                '/webmail/' => 'Webmail Interface',
+                '/control/' => 'Control Panel',
+                '/manager/' => 'Manager Interface',
+                '/dashboard/' => 'Dashboard Interface'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // Config- und Sensitive-Files
+        'config_files' => [
+            'patterns' => [
+                '/.env' => 'Environment Config',
+                '/.git/' => 'Git Repository',
+                '/.svn/' => 'SVN Repository',
+                '/config.php' => 'PHP Config File',
+                '/config.inc.php' => 'PHP Include Config',
+                '/settings.php' => 'Settings File',
+                '/local.xml' => 'Local XML Config',
+                '/database.yml' => 'Database YAML Config',
+                '/config.yml' => 'YAML Config File',
+                '/secrets.yml' => 'Secrets YAML File'
+            ],
+            'severity' => 'critical'
+        ],
+        
+        // Shell- und Malware-Uploads
+        'shells' => [
+            'patterns' => [
+                '/shell.php' => 'Generic Shell Script',
+                '/c99.php' => 'C99 Web Shell',
+                '/r57.php' => 'R57 Web Shell',
+                '/webshell.php' => 'Web Shell Script',
+                '/backdoor.php' => 'Backdoor Script',
+                '/hack.php' => 'Hack Script',
+                '/evil.php' => 'Evil Script',
+                '/cmd.php' => 'Command Script'
+            ],
+            'severity' => 'critical'
+        ],
+        
+        // Info-Disclosure
+        'info_disclosure' => [
+            'patterns' => [
+                '/phpinfo.php' => 'PHP Info Script',
+                '/info.php' => 'Info Script',
+                '/test.php' => 'Test Script',
+                '/temp.php' => 'Temporary Script',
+                '/debug.php' => 'Debug Script',
+                '/status.php' => 'Status Script',
+                '/server-status' => 'Apache Server Status',
+                '/server-info' => 'Apache Server Info'
+            ],
+            'severity' => 'medium'
+        ],
+        
+        // Path Traversal-Patterns
+        'path_traversal' => [
+            'patterns' => [
+                '../' => 'Directory Traversal (basic)',
+                '..\\' => 'Directory Traversal (Windows)',
+                '%2e%2e%2f' => 'URL-encoded Traversal',
+                '%2e%2e%5c' => 'URL-encoded Windows Traversal',
+                '..%2f' => 'Mixed encoding Traversal',
+                '..%5c' => 'Mixed encoding Windows Traversal',
+                '%c0%ae%c0%ae%c0%af' => 'Unicode Traversal',
+                '%252e%252e%252f' => 'Double URL-encoded Traversal'
+            ],
+            'severity' => 'high'
+        ],
+        
+        // SQL-Injection-Patterns
+        'sql_injection' => [
+            'patterns' => [
+                "' OR '1'='1" => 'SQL Injection (Classic)',
+                '" OR "1"="1' => 'SQL Injection (Double Quotes)',
+                'UNION SELECT' => 'SQL Injection (UNION)',
+                'DROP TABLE' => 'SQL Injection (DROP)',
+                'INSERT INTO' => 'SQL Injection (INSERT)',
+                'UPDATE SET' => 'SQL Injection (UPDATE)',
+                'DELETE FROM' => 'SQL Injection (DELETE)',
+                '/*' => 'SQL Comment Block',
+                'xp_cmdshell' => 'SQL Server Command Execution',
+                'sp_executesql' => 'SQL Server Dynamic SQL'
+            ],
+            'severity' => 'critical'
+        ],
+
+        // SQL Comment Pattern (separat da problematisch für REDAXO URLs)
+        'sql_comments' => [
+            'patterns' => [
+                ' -- ' => 'SQL Comment Injection (kann REDAXO URLs betreffen)'
+            ],
+            'severity' => 'high',
+            'default_status' => 0  // Deaktiviert da -- in REDAXO URLs vorkommen kann
+        ],
+        
+        // RegEx-basierte Patterns für erweiterte Erkennung
+        'regex_patterns' => [
+            'patterns' => [
+                '/\.(php|asp|jsp|pl|py|rb|cgi)$/i' => 'Script-Datei Endungen',
+                '/union\s+select/i' => 'SQL Injection (UNION SELECT)',
+                '/select\s+.*\s+from/i' => 'SQL Injection (SELECT FROM)',
+                '/\b(wget|curl|lynx|nc|netcat)\b/i' => 'Command Injection Tools',
+                '/\b(eval|exec|system|shell_exec|passthru)\s*\(/i' => 'PHP Code Execution',
+                '/javascript:\s*alert\s*\(/i' => 'XSS Alert Pattern',
+                '/on\w+\s*=\s*["\'][^"\']*["\']/i' => 'HTML Event Handler XSS',
+                '/<script[^>]*>/i' => 'Script Tag Injection',
+                '/\${[^}]+}/i' => 'Expression Language Injection',
+                '/\.\.(\/|\\\\|%2f|%5c){2,}/i' => 'Directory Traversal (erweitert)',
+                '/base64_decode\s*\(/i' => 'Base64 Decode Attempts',
+                '/file_get_contents\s*\(/i' => 'File Access Attempts',
+                '/\b(rm|del|rmdir)\s+/i' => 'File Deletion Commands',
+                '/\b(cat|type|more|less)\s+/i' => 'File Reading Commands',
+                '/\b(passwd|shadow|hosts|httpd\.conf)\b/i' => 'System File Access',
+                '/proc\/\w+/i' => 'Linux Proc Filesystem Access',
+                '/etc\/(passwd|shadow|group|hosts)/i' => 'Linux System Files',
+                '/windows\/(system32|temp)/i' => 'Windows System Directories',
+                '/\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]+\b/' => 'IP:Port Kombinationen (Backdoor)',
+                '/\b(powershell|cmd\.exe|bash|sh)\b/i' => 'Shell Executables'
+            ],
+            'severity' => 'high',
+            'is_regex' => true
+        ]
+    ];
+    
+    // Patterns in die Datenbank einfügen
+    $sql = rex_sql::factory();
+    $currentTime = date('Y-m-d H:i:s');
+    
+    foreach ($defaultPatterns as $category => $data) {
+        $isRegex = isset($data['is_regex']) && $data['is_regex'] === true;
+        $defaultStatus = isset($data['default_status']) ? $data['default_status'] : 1; // Standard: aktiviert
+        
+        foreach ($data['patterns'] as $pattern => $description) {
+            $sql->setTable(rex::getTable('upkeep_ips_default_patterns'));
+            $sql->setValue('category', $category);
+            $sql->setValue('pattern', $pattern);
+            $sql->setValue('description', $description);
+            $sql->setValue('severity', $data['severity']);
+            $sql->setValue('is_regex', $isRegex ? 1 : 0);
+            $sql->setValue('status', $defaultStatus);
+            $sql->setValue('is_default', 1);
+            $sql->setValue('created_at', $currentTime);
+            $sql->setValue('updated_at', $currentTime);
+            $sql->insert();
+        }
+    }
 }

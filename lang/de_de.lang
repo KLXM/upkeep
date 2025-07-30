@@ -107,8 +107,12 @@ upkeep_ips_showing_results = Zeige %d Ergebnisse (%d - %d)
 # IPS Patterns
 upkeep_ips_add_pattern = Pattern hinzufügen
 upkeep_ips_edit_pattern = Pattern bearbeiten
+upkeep_ips_edit_default_pattern = Standard-Pattern bearbeiten
 upkeep_ips_custom_patterns = Benutzerdefinierte Patterns
+upkeep_ips_default_patterns = Standard-Patterns
+upkeep_ips_default_patterns_info = Anpassbare Standard-Sicherheits-Patterns
 upkeep_ips_pattern = Pattern
+upkeep_ips_category = Kategorie
 upkeep_ips_description = Beschreibung
 upkeep_ips_severity_low = Niedrig
 upkeep_ips_severity_medium = Mittel
@@ -116,6 +120,7 @@ upkeep_ips_severity_high = Hoch
 upkeep_ips_severity_critical = Kritisch
 upkeep_ips_is_regex = RegEx
 upkeep_ips_type = Typ
+upkeep_ips_default = Standard
 upkeep_ips_created = Erstellt
 upkeep_ips_created_at = Erstellt am
 upkeep_ips_updated_at = Aktualisiert am
@@ -130,6 +135,25 @@ upkeep_ips_pattern_status_changed = Pattern-Status erfolgreich geändert
 upkeep_ips_pattern_status_error = Fehler beim Ändern des Pattern-Status
 upkeep_ips_delete_confirm = Sind Sie sicher, dass Sie dieses Pattern löschen möchten?
 upkeep_ips_no_patterns = Keine Custom Patterns vorhanden
+upkeep_ips_no_default_patterns = Keine Standard-Patterns vorhanden
+
+# Standard-Pattern Kategorien und Hilfe
+upkeep_ips_default_patterns_help = Standard-Pattern Hilfe
+upkeep_ips_what_are_default_patterns = Was sind Standard-Patterns?
+upkeep_ips_default_patterns_explanation = Standard-Patterns sind vordefinierte Sicherheitsregeln, die häufige Angriffsvektoren erkennen. Diese können individuell angepasst, aktiviert oder deaktiviert werden.
+upkeep_ips_pattern_categories = Pattern-Kategorien
+upkeep_ips_category_immediate_block = Kritische Bedrohungen mit sofortiger Sperrung
+upkeep_ips_category_cms = CMS-spezifische Zugriffe (WordPress, TYPO3, etc.)
+upkeep_ips_category_admin_panels = Admin-Panel-Zugriffe
+upkeep_ips_category_config_files = Konfigurationsdateien und sensitive Bereiche
+upkeep_ips_category_shells = Web-Shells und Malware-Uploads
+upkeep_ips_category_sql_injection = SQL-Injection-Versuche
+upkeep_ips_category_regex_patterns = Erweiterte RegEx-Patterns
+upkeep_ips_category_readonly = Kategorie (nicht änderbar)
+upkeep_ips_editing_warning = Wichtige Hinweise zur Bearbeitung
+upkeep_ips_editing_warning_1 = Vorsicht beim Bearbeiten von Standard-Patterns - fehlerhafte RegEx können Fehler verursachen
+upkeep_ips_editing_warning_2 = Deaktivieren Sie Patterns nur, wenn Sie sicher sind, dass sie nicht benötigt werden
+upkeep_ips_editing_warning_3 = Änderungen wirken sich sofort auf die Sicherheitsprüfungen aus
 
 # Tooltips für Pattern-Formulare
 upkeep_ips_pattern_tooltip = URL-Pfad oder RegEx-Pattern für Bedrohungserkennung. Beispiele: /evil.php, ../../../, /union\s+select/i
