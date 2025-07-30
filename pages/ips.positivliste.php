@@ -85,7 +85,7 @@ $formContent .= '</div>';
 
 $formContent .= '<div class="form-group">';
 $formContent .= '<label for="category">' . $addon->i18n('upkeep_ips_category') . '</label>';
-$formContent .= '<select class="form-control" id="category" name="category">';
+$formContent .= '<select class="form-control selectpicker" id="category" name="category" data-style="btn-default">';
 $formContent .= '<option value="admin">' . $addon->i18n('upkeep_ips_category_admin') . '</option>';
 $formContent .= '<option value="cdn">' . $addon->i18n('upkeep_ips_category_cdn') . '</option>';
 $formContent .= '<option value="monitoring">' . $addon->i18n('upkeep_ips_category_monitoring') . '</option>';

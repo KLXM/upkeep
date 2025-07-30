@@ -38,6 +38,31 @@ class IntrusionPrevention
     
     // Standard-Patterns für verschiedene CMS und Angriffe
     private static array $defaultPatterns = [
+        // Kritische Patterns - Sofortige IP-Sperrung
+        'immediate_block' => [
+            '/xmlrpc.php',
+            '/.env',
+            '/.git/',
+            '/shell.php',
+            '/c99.php',
+            '/r57.php',
+            '/webshell.php', 
+            '/backdoor.php',
+            '/cmd.php',
+            '/eval.php',
+            '/base64.php',
+            '/phpinfo.php',
+            '/../',
+            '/../../',
+            '/../../../',
+            '%2e%2e%2f',
+            '%252e%252e%252f',
+            'union+select',
+            'union%20select',
+            'drop+table',
+            'drop%20table',
+        ],
+        
         // WordPress-spezifische Pfade
         'wordpress' => [
             '/wp-admin/',
@@ -166,7 +191,7 @@ class IntrusionPrevention
             'INSERT INTO',
             'UPDATE SET',
             'DELETE FROM',
-            '--',
+            ' -- ',     // SQL Kommentar mit Leerzeichen vor und nach
             '/*',
             'xp_cmdshell',
             'sp_executesql'
@@ -222,18 +247,21 @@ class IntrusionPrevention
         $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
         $referer = rex_server('HTTP_REFERER', 'string', '');
         
-        // DEBUG: Logging für Troubleshooting
-        self::debugLog("IPS Check: IP={$clientIp}, URI={$requestUri}, Active=" . (self::isActive() ? 'true' : 'false'));
+        // DEBUG: Logging nur bei aktivem Debug-Modus und nicht für jeden Request
+        if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+            self::debugLog("IPS Check: IP={$clientIp}, URI={$requestUri}, Active=" . (self::isActive() ? 'true' : 'false'));
+        }
         
         // Whitelist-Prüfung
         if (self::isOnPositivliste($clientIp)) {
-            self::debugLog("IPS: IP {$clientIp} is on Positivliste - allowing");
             return;
         }
         
         // Bereits gesperrte IP?
         if (self::isBlocked($clientIp)) {
-            rex_logger::factory()->log('info', "IPS: IP {$clientIp} is already blocked");
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: IP {$clientIp} is already blocked");
+            }
             self::blockRequest('IP bereits gesperrt', $clientIp, $requestUri);
         }
         
@@ -244,7 +272,10 @@ class IntrusionPrevention
             rex_logger::factory()->log('warning', "IPS: Threat detected from {$clientIp} - " . json_encode($threat));
             self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
         } else {
-            self::debugLog("IPS: No threat detected for {$clientIp}");
+            // Debug-Log nur bei aktivem Debug-Modus
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                self::debugLog("IPS: No threat detected for {$clientIp}");
+            }
         }
         
         // Rate Limiting prüfen (nur wenn aktiviert)
@@ -265,6 +296,11 @@ class IntrusionPrevention
     {
         // URL-decode für Pattern-Matching
         $decodedUri = urldecode($uri);
+        
+        // Prüfung auf legitime URL-Patterns (Whitelist für typische deutsche CMS-URLs)
+        if (self::isLegitimateUrl($decodedUri)) {
+            return null;
+        }
         
         // 1. Standard-Patterns prüfen
         foreach (self::$defaultPatterns as $category => $patterns) {
@@ -314,6 +350,20 @@ class IntrusionPrevention
     {
         // Logging
         self::logThreat($threat, $ip, $uri, $userAgent);
+        
+        // Spezielle Behandlung für xmlrpc.php - IMMER permanent blocken
+        if (stripos($uri, 'xmlrpc.php') !== false) {
+            self::blockIpPermanently($ip);
+            rex_logger::factory()->log('critical', "IPS: xmlrpc.php access detected - permanent block for {$ip}");
+            self::blockRequest('xmlrpc.php access blocked - permanent ban', $ip, $uri);
+        }
+        
+        // Sofortige Sperrung für kritische Patterns
+        if ($threat['category'] === 'immediate_block') {
+            self::blockIpPermanently($ip);
+            rex_logger::factory()->log('critical', "IPS: Immediate permanent block for {$ip} - {$threat['pattern']}");
+            self::blockRequest('Malicious activity detected - permanent block', $ip, $uri);
+        }
         
         // Entscheidung basierend auf Schweregrad
         switch ($threat['severity']) {
@@ -441,6 +491,33 @@ class IntrusionPrevention
     }
 
     /**
+     * Prüft ob eine URL als legitim eingestuft werden kann
+     * Verhindert False Positives bei normalen CMS-URLs
+     */
+    private static function isLegitimateUrl(string $uri): bool
+    {
+        // Typische deutsche CMS-URL-Patterns die als legitim gelten
+        $legitimatePatterns = [
+            // Normale Artikel-URLs mit Zahlen und Bindestrichen
+            '/^\\/[0-9]+-[0-9]+-[^\\/?]*\\.html(\\?.*)?$/',  // z.B. /3938-0-Regionalkonferenz...html
+            // URLs mit goback-Parameter (typisch für Pagination)
+            '/^[^\\?]*\\?.*goback=[0-9]+.*$/',               // z.B. ...?goback=337
+            // Standard CMS-Artikel URLs
+            '/^\\/[0-9]+-[a-zA-Z0-9\\-_]+\\.html/',
+            // URLs mit normalen GET-Parametern
+            '/^[^\\?]*\\?[a-zA-Z0-9_=&\\-]+$/'
+        ];
+        
+        foreach ($legitimatePatterns as $pattern) {
+            if (preg_match($pattern, $uri)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
      * Prüft ob eine IP in einem CIDR-Bereich liegt
      */
     private static function ipInRange(string $ip, string $range): bool
@@ -526,6 +603,7 @@ class IntrusionPrevention
         }
         
         return match ($category) {
+            'immediate_block' => 'critical',
             'shells', 'sql_injection' => 'critical',
             'path_traversal', 'config_files' => 'high',
             'wordpress', 'typo3', 'drupal', 'joomla', 'admin_panels' => 'medium',
@@ -1474,7 +1552,9 @@ class IntrusionPrevention
         
         // Antwort prüfen
         if ($userAnswer === $correctAnswer) {
-            rex_logger::factory()->log('info', "IPS: CAPTCHA verification successful for IP {$ip}");
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: CAPTCHA verification successful for IP {$ip}");
+            }
             
             // 1. IP komplett entsperren und rehabilitieren
             $unblockSuccess = self::unblockIp($ip);
@@ -1485,9 +1565,11 @@ class IntrusionPrevention
             $addToPositivliste = self::addToTemporaryPositivliste($ip, $trustDuration, 'CAPTCHA verified user');
             
             // Detailliertes Logging der Rehabilitation
-            rex_logger::factory()->log('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
-                                               ", clear_history: " . ($clearSuccess ? 'success' : 'failed') . 
-                                               ", temp_positivliste: " . ($addToPositivliste ? "success ({$trustDuration}h)" : 'failed'));
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
+                                                   ", clear_history: " . ($clearSuccess ? 'success' : 'failed') . 
+                                                   ", temp_positivliste: " . ($addToPositivliste ? "success ({$trustDuration}h)" : 'failed'));
+            }
             
             // Zur Startseite weiterleiten (relative URL)
             header('Location: /');
@@ -1586,7 +1668,9 @@ class IntrusionPrevention
                 $sql->setWhere(['id' => $id]);
                 $sql->update();
                 
-                rex_logger::factory()->log('info', "IPS: Updated existing Positivliste entry for {$ip} with expiry {$expiresAt}");
+                if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                    rex_logger::factory()->log('info', "IPS: Updated existing Positivliste entry for {$ip} with expiry {$expiresAt}");
+                }
             } else {
                 // Neue temporäre Positivliste-Eintrag erstellen
                 $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
@@ -1599,7 +1683,9 @@ class IntrusionPrevention
                 $sql->setValue('updated_at', date('Y-m-d H:i:s'));
                 $sql->insert();
                 
-                rex_logger::factory()->log('info', "IPS: Added {$ip} to temporary Positivliste until {$expiresAt}");
+                if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                    rex_logger::factory()->log('info', "IPS: Added {$ip} to temporary Positivliste until {$expiresAt}");
+                }
             }
             
             return true;
@@ -1675,7 +1761,9 @@ class IntrusionPrevention
             $blockedCount = (int) $sql->getValue('count');
             
             if ($blockedCount === 0) {
-                rex_logger::factory()->log('info', "IPS: IP {$ip} was not in blocked list");
+                if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                    rex_logger::factory()->log('info', "IPS: IP {$ip} was not in blocked list");
+                }
                 return true; // Schon entsperrt
             }
             
@@ -1683,7 +1771,9 @@ class IntrusionPrevention
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
             $deletedRows = $sql->getRows();
             
-            rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
+            }
             
             return $deletedRows > 0;
         } catch (Exception $e) {
@@ -1759,7 +1849,9 @@ class IntrusionPrevention
             $sql->insert();
             
             $expiryInfo = $expiresAt ? " until {$expiresAt}" : " permanently";
-            rex_logger::factory()->log('info', "IPS: IP {$ip} manually blocked{$expiryInfo} - reason: {$reason}");
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: IP {$ip} manually blocked{$expiryInfo} - reason: {$reason}");
+            }
             
             return true;
         } catch (Exception $e) {
@@ -1789,7 +1881,9 @@ class IntrusionPrevention
             $cleanup['rate_limits'] = $sql->getRows();
             
             // Log der Rehabilitation
-            rex_logger::factory()->log('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
+            if (self::getAddon()->getConfig('ips_debug_mode', false)) {
+                rex_logger::factory()->log('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
+            }
             
             return true;
         } catch (Exception $e) {
@@ -1961,7 +2055,7 @@ class IntrusionPrevention
             
             // Log der Bereinigung
             $totalCleaned = array_sum($cleanup);
-            if ($totalCleaned > 0) {
+            if ($totalCleaned > 0 && self::getAddon()->getConfig('ips_debug_mode', false)) {
                 rex_logger::factory()->log('info', 'IPS Cleanup: ' . json_encode($cleanup), [], __FILE__, __LINE__);
             }
             

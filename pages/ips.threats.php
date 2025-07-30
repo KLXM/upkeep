@@ -62,7 +62,7 @@ $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
 // Paginierung
 $page = rex_get('page_num', 'int', 1);
-$perPage = 25;
+$perPage = 20;
 $offset = ($page - 1) * $perPage;
 
 // Gesamtanzahl ermitteln
@@ -83,7 +83,7 @@ echo '<i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_ips_filter');
 echo '</div>';
 echo '<div class="panel-body">';
 
-echo '<form method="get" class="form-inline">';
+echo '<form method="get" class="form-inline" action="' . rex_url::currentBackendPage(['subpage' => 'ips', 'subpage2' => 'threats']) . '">';
 echo '<input type="hidden" name="page" value="upkeep">';
 echo '<input type="hidden" name="subpage" value="ips">';
 echo '<input type="hidden" name="subpage2" value="threats">';
@@ -95,7 +95,7 @@ echo '</div>';
 
 echo '<div class="form-group" style="margin-right: 10px;">';
 echo '<label class="sr-only" for="severity_filter">Schweregrad</label>';
-echo '<select class="form-control" id="severity_filter" name="severity_filter">';
+echo '<select class="form-control selectpicker" id="severity_filter" name="severity_filter" data-style="btn-default" data-width="auto">';
 echo '<option value="">Alle Schweregrade</option>';
 echo '<option value="low"' . ($severityFilter === 'low' ? ' selected' : '') . '>Niedrig</option>';
 echo '<option value="medium"' . ($severityFilter === 'medium' ? ' selected' : '') . '>Mittel</option>';
@@ -208,6 +208,69 @@ if ($sql->getRows() > 0) {
 } else {
     echo '<div class="panel-body">';
     echo '<p class="text-muted">' . $addon->i18n('upkeep_ips_no_threats') . '</p>';
+    echo '</div>';
+}
+
+// Paginierung anzeigen
+if ($totalPages > 1) {
+    echo '<div class="panel-footer">';
+    echo '<nav aria-label="Bedrohungslog Navigation">';
+    echo '<ul class="pagination pagination-sm" style="margin: 0;">';
+    
+    // Erste Seite
+    if ($page > 1) {
+        $firstUrl = rex_url::currentBackendPage(array_merge($_GET, ['page_num' => 1]));
+        echo '<li><a href="' . $firstUrl . '" aria-label="Erste Seite"><span aria-hidden="true">&laquo;&laquo;</span></a></li>';
+        
+        $prevUrl = rex_url::currentBackendPage(array_merge($_GET, ['page_num' => $page - 1]));
+        echo '<li><a href="' . $prevUrl . '" aria-label="Vorherige Seite"><span aria-hidden="true">&laquo;</span></a></li>';
+    } else {
+        echo '<li class="disabled"><span>&laquo;&laquo;</span></li>';
+        echo '<li class="disabled"><span>&laquo;</span></li>';
+    }
+    
+    // Seitenzahlen (max 5 anzeigen)
+    $startPage = max(1, $page - 2);
+    $endPage = min($totalPages, $page + 2);
+    
+    if ($startPage > 1) {
+        echo '<li class="disabled"><span>...</span></li>';
+    }
+    
+    for ($i = $startPage; $i <= $endPage; $i++) {
+        if ($i == $page) {
+            echo '<li class="active"><span>' . $i . '</span></li>';
+        } else {
+            $pageUrl = rex_url::currentBackendPage(array_merge($_GET, ['page_num' => $i]));
+            echo '<li><a href="' . $pageUrl . '">' . $i . '</a></li>';
+        }
+    }
+    
+    if ($endPage < $totalPages) {
+        echo '<li class="disabled"><span>...</span></li>';
+    }
+    
+    // Letzte Seite
+    if ($page < $totalPages) {
+        $nextUrl = rex_url::currentBackendPage(array_merge($_GET, ['page_num' => $page + 1]));
+        echo '<li><a href="' . $nextUrl . '" aria-label="Nächste Seite"><span aria-hidden="true">&raquo;</span></a></li>';
+        
+        $lastUrl = rex_url::currentBackendPage(array_merge($_GET, ['page_num' => $totalPages]));
+        echo '<li><a href="' . $lastUrl . '" aria-label="Letzte Seite"><span aria-hidden="true">&raquo;&raquo;</span></a></li>';
+    } else {
+        echo '<li class="disabled"><span>&raquo;</span></li>';
+        echo '<li class="disabled"><span>&raquo;&raquo;</span></li>';
+    }
+    
+    echo '</ul>';
+    
+    // Pagination info
+    echo '<div class="pull-right" style="margin-top: 5px;">';
+    echo '<small class="text-muted">Seite ' . $page . ' von ' . $totalPages . ' (' . $totalRows . ' Einträge gesamt)</small>';
+    echo '</div>';
+    echo '<div class="clearfix"></div>';
+    
+    echo '</nav>';
     echo '</div>';
 }
 

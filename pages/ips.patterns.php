@@ -131,7 +131,7 @@ $form .= '<div class="form-group">';
 $form .= '<label for="severity">' . $addon->i18n('upkeep_ips_severity') . ' ';
 $form .= '<i class="fa fa-question-circle text-info" title="' . $addon->i18n('upkeep_ips_severity_tooltip') . '" data-toggle="tooltip"></i>';
 $form .= '</label>';
-$form .= '<select class="form-control" id="severity" name="severity">';
+$form .= '<select class="form-control selectpicker" id="severity" name="severity" data-style="btn-default">';
 $currentSeverity = $editPattern['severity'] ?? 'medium';
 $form .= '<option value="low"' . ($currentSeverity === 'low' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_low_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_low') . ' (Log only)</option>';
 $form .= '<option value="medium"' . ($currentSeverity === 'medium' ? ' selected' : '') . ' title="' . $addon->i18n('upkeep_ips_severity_medium_tooltip') . '">' . $addon->i18n('upkeep_ips_severity_medium') . ' (15min)</option>';

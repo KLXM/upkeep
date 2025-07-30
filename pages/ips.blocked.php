@@ -70,7 +70,7 @@ $fragment->setVar('body', '
             <div class="col-md-3">
                 <div class="form-group">
                     <label for="block_duration">' . $addon->i18n('upkeep_ips_block_duration') . '</label>
-                    <select class="form-control" id="block_duration" name="block_duration">
+                    <select class="form-control selectpicker" id="block_duration" name="block_duration" data-style="btn-default">
                         <option value="permanent">' . $addon->i18n('upkeep_ips_block_duration_permanent') . '</option>
                         <option value="1h">' . $addon->i18n('upkeep_ips_block_duration_1h') . '</option>
                         <option value="6h">' . $addon->i18n('upkeep_ips_block_duration_6h') . '</option>
