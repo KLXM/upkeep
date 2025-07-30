@@ -29,6 +29,7 @@ $memoryLimit = ini_get('memory_limit');
 // Status aller Upkeep-Module
 $ipsActive = IntrusionPrevention::isActive();
 $rateLimitActive = IntrusionPrevention::isRateLimitingEnabled();
+$monitorOnlyActive = $addon->getConfig('ips_monitor_only', false);
 $frontendMaintenanceActive = $addon->getConfig('frontend_active', false);
 $backendMaintenanceActive = $addon->getConfig('backend_active', false);
 $domainRedirectsActive = $addon->getConfig('domain_mapping_enabled', false);
@@ -297,6 +298,9 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                 <i class="rex-icon fa-shield"></i>
                                 <strong>Sicherheit aktiv:</strong><br>
                                 • Intrusion Prevention System läuft<br>
+                                <?php if ($monitorOnlyActive): ?>
+                                • <span class="label label-warning">Monitor-Only Modus</span> - Nur Logging, kein Blocking<br>
+                                <?php endif; ?>
                                 <?php if ($rateLimitActive): ?>
                                 • Rate-Limiting ist aktiviert<br>
                                 <?php endif; ?>
@@ -364,6 +368,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                         <th class="text-center">Erkannt</th>
                                         <th class="text-center">Gesperrt</th>
                                         <th class="text-center">Letzter Vorfall</th>
+                                        <th class="text-center">Aktionen</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -391,6 +396,12 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                                 <small class="text-muted">
                                                     <?= date('d.m H:i', strtotime($threat['last_occurrence'])) ?>
                                                 </small>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['threat_type' => $threat['threat_type']]) ?>" 
+                                                   class="btn btn-xs btn-info" title="Details anzeigen">
+                                                    <i class="rex-icon fa-search"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

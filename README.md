@@ -7,7 +7,9 @@ Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 - **Wartungsmodi**: Frontend/Backend getrennt steuerbar
 - **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* -> /new/*`)
 - **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
-- **Dashboard**: Live-Status aller Systeme
+- **Monitor-Only Modus**: Nur loggen ohne automatisches Blocken
+- **Extension Points**: Externes Logging (fail2ban, Grafana, etc.)
+- **Dashboard**: Live-Status aller Systeme mit schnellen Aktionen
 - **API/Console**: Remote-Management
 
 ## Installation
@@ -47,9 +49,59 @@ use KLXM\Upkeep\IntrusionPrevention;
 IntrusionPrevention::checkRequest();
 $isBlocked = IntrusionPrevention::isBlocked($ip);
 
+// Monitor-Only Modus (nur loggen, nicht blocken)
+$isMonitorOnly = IntrusionPrevention::isMonitorOnlyMode();
+
 // Redirects
 use KLXM\Upkeep\DomainMapping;
 DomainMapping::checkAndRedirect();
+```
+
+### Extension Points
+
+```php
+// Externes Logging für jede erkannte Bedrohung
+rex_extension::register('UPKEEP_IPS_THREAT_DETECTED', function($ep) {
+    $data = $ep->getSubject();
+    // $data enthält: ip, uri, threat_type, severity, pattern, etc.
+    
+    // Beispiel: Grafana Logging
+    sendToGrafana($data);
+});
+
+// fail2ban-kompatibles Logging
+rex_extension::register('UPKEEP_IPS_FAIL2BAN_LOG', function($ep) {
+    $params = $ep->getSubject();
+    // Custom fail2ban logging
+    myCustomLogger($params['message'], $params['logData']);
+});
+```
+
+### fail2ban Integration
+
+Aktiviere fail2ban-Logging:
+```php
+rex_config::set('upkeep', 'ips_fail2ban_logging', true);
+rex_config::set('upkeep', 'ips_fail2ban_logfile', '/var/log/redaxo_ips.log');
+```
+
+fail2ban filter (`/etc/fail2ban/filter.d/redaxo-ips.conf`):
+```ini
+[Definition]
+failregex = ^.* \[REDAXO-IPS\] (HIGH|CRITICAL) threat from <HOST>:.*$
+ignoreregex =
+```
+
+fail2ban jail (`/etc/fail2ban/jail.local`):
+```ini
+[redaxo-ips]
+enabled = true
+port = http,https
+filter = redaxo-ips
+logpath = /var/log/redaxo_ips.log
+maxretry = 3
+bantime = 3600
+findtime = 600
 ```
 
 ### Console Commands

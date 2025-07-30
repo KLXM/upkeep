@@ -8,6 +8,9 @@ $addon = rex_addon::get('upkeep');
 if (rex_post('save', 'bool')) {
     $config = [
         'ips_active' => rex_post('ips_active', 'bool'),
+        'ips_monitor_only' => rex_post('ips_monitor_only', 'bool'),
+        'ips_fail2ban_logging' => rex_post('ips_fail2ban_logging', 'bool'),
+        'ips_fail2ban_logfile' => rex_post('ips_fail2ban_logfile', 'string', '/var/log/redaxo_ips.log'),
         'ips_contact_info' => rex_post('ips_contact_info', 'string', ''),
         'ips_captcha_trust_duration' => rex_post('ips_captcha_trust_duration', 'int', 24),
         'ips_debug_mode' => rex_post('ips_debug_mode', 'bool'),
@@ -22,6 +25,9 @@ if (rex_post('save', 'bool')) {
 
 // Aktuelle Einstellungen laden
 $ipsActive = (bool) $addon->getConfig('ips_active', false);
+$monitorOnly = (bool) $addon->getConfig('ips_monitor_only', false);
+$fail2banLogging = (bool) $addon->getConfig('ips_fail2ban_logging', false);
+$fail2banLogfile = $addon->getConfig('ips_fail2ban_logfile', '/var/log/redaxo_ips.log');
 $contactInfo = $addon->getConfig('ips_contact_info', '');
 $captchaTrustDuration = (int) $addon->getConfig('ips_captcha_trust_duration', 24);
 $debugMode = (bool) $addon->getConfig('ips_debug_mode', false);
@@ -45,6 +51,14 @@ echo '<p class="help-block">Aktiviert das Intrusion Prevention System für das F
 echo '</div>';
 
 echo '<div class="form-group">';
+echo '<label class="control-label">';
+echo '<input type="checkbox" name="ips_monitor_only" value="1"' . ($monitorOnly ? ' checked' : '') . ' id="monitor-only-checkbox"> ';
+echo 'Monitor-Only Modus';
+echo '</label>';
+echo '<p class="help-block"><strong>Monitor-Only:</strong> Bedrohungen werden nur protokolliert, aber nicht blockiert. Ideal zum Testen und Feintuning der Patterns ohne Ausfallrisiko.</p>';
+echo '</div>';
+
+echo '<div class="form-group">';
 echo '<label for="ips_captcha_trust_duration">CAPTCHA-Vertrauensdauer (Stunden)</label>';
 echo '<input type="number" class="form-control" id="ips_captcha_trust_duration" name="ips_captcha_trust_duration" value="' . $captchaTrustDuration . '" min="1" max="168">';
 echo '<p class="help-block">Wie lange (in Stunden) eine IP nach erfolgreicher CAPTCHA-Entsperrung vertrauenswürdig bleibt (Standard: 24 Stunden, Maximum: 168 Stunden/7 Tage)</p>';
@@ -56,6 +70,38 @@ echo '<input type="checkbox" name="ips_debug_mode" value="1"' . ($debugMode ? ' 
 echo 'Debug-Modus aktivieren';
 echo '</label>';
 echo '<p class="help-block"><strong>Warnung:</strong> Debug-Modus schreibt viele Log-Einträge für jeden Request. Nur für Entwicklung und Troubleshooting aktivieren!</p>';
+echo '</div>';
+
+echo '</div>';
+echo '</div>';
+
+echo '<div class="panel panel-default">';
+echo '<div class="panel-heading">';
+echo '<i class="fa fa-file-text"></i> Externes Logging';
+echo '</div>';
+echo '<div class="panel-body">';
+
+echo '<div class="form-group">';
+echo '<label class="control-label">';
+echo '<input type="checkbox" name="ips_fail2ban_logging" value="1"' . ($fail2banLogging ? ' checked' : '') . '> ';
+echo 'fail2ban-kompatibles Logging aktivieren';
+echo '</label>';
+echo '<p class="help-block">Schreibt Bedrohungen in ein fail2ban-kompatibles Format für externe Verarbeitung</p>';
+echo '</div>';
+
+echo '<div class="form-group">';
+echo '<label for="ips_fail2ban_logfile">Log-Datei Pfad</label>';
+echo '<input type="text" class="form-control" id="ips_fail2ban_logfile" name="ips_fail2ban_logfile" value="' . rex_escape($fail2banLogfile) . '">';
+echo '<p class="help-block">Absoluter Pfad zur Log-Datei (Standard: /var/log/redaxo_ips.log). Verzeichnis muss beschreibbar sein.</p>';
+echo '</div>';
+
+echo '<div class="alert alert-info">';
+echo '<h5><i class="fa fa-info-circle"></i> Extension Points für Entwickler</h5>';
+echo '<p>Zusätzlich zum File-Logging können Extension Points verwendet werden:</p>';
+echo '<ul style="margin-bottom: 0;">';
+echo '<li><code>UPKEEP_IPS_THREAT_DETECTED</code> - Für jede erkannte Bedrohung</li>';
+echo '<li><code>UPKEEP_IPS_FAIL2BAN_LOG</code> - Für fail2ban-spezifisches Logging</li>';
+echo '</ul>';
 echo '</div>';
 
 echo '</div>';
@@ -145,6 +191,10 @@ echo '<div class="panel-body">';
 echo '<dl class="dl-horizontal">';
 echo '<dt>IPS Status:</dt>';
 echo '<dd>' . ($ipsActive ? '<span class="label label-success">Aktiv</span>' : '<span class="label label-danger">Inaktiv</span>') . '</dd>';
+echo '<dt>Monitor-Only:</dt>';
+echo '<dd>' . ($monitorOnly ? '<span class="label label-warning">Aktiv (Nur Logging)</span>' : '<span class="label label-success">Deaktiviert</span>') . '</dd>';
+echo '<dt>fail2ban Logging:</dt>';
+echo '<dd>' . ($fail2banLogging ? '<span class="label label-info">Aktiv</span>' : '<span class="label label-default">Deaktiviert</span>') . '</dd>';
 echo '<dt>Rate Limiting:</dt>';
 $rateLimitingEnabled = (bool) $addon->getConfig('ips_rate_limiting_enabled', false);
 echo '<dd>' . ($rateLimitingEnabled ? '<span class="label label-warning">Aktiv (Experten-Modus)</span>' : '<span class="label label-default">Deaktiviert</span>') . '</dd>';
