@@ -348,20 +348,29 @@ class IntrusionPrevention
      */
     private static function handleThreat(array $threat, string $ip, string $uri, string $userAgent): void
     {
-        // Logging
+        // 1. Bedrohung loggen (immer)
         self::logThreat($threat, $ip, $uri, $userAgent);
+        
+        // 2. Extension Point für externes Logging
+        self::callExternalLogging($threat, $ip, $uri, $userAgent);
+        
+        // 3. Monitor-Only Modus - nur loggen, nicht blocken
+        if (self::getAddon()->getConfig('ips_monitor_only', false)) {
+            self::debugLog("IPS: Monitor-Only mode - threat logged but not blocked: {$threat['type']} from {$ip}");
+            return; // Nur loggen, nicht blocken
+        }
+        
+        // 4. Normale Blocking-Logik (wenn nicht Monitor-Only)
         
         // Spezielle Behandlung für xmlrpc.php - IMMER permanent blocken
         if (stripos($uri, 'xmlrpc.php') !== false) {
             self::blockIpPermanently($ip);
-            // xmlrpc-Angriffe nur ins IPS-Log
             self::blockRequest('xmlrpc.php access blocked - permanent ban', $ip, $uri);
         }
         
         // Sofortige Sperrung für kritische Patterns
-        if ($threat['category'] === 'immediate_block') {
+        if (isset($threat['category']) && $threat['category'] === 'immediate_block') {
             self::blockIpPermanently($ip);
-            // Kritische Bedrohungen nur ins IPS-Log
             self::blockRequest('Malicious activity detected - permanent block', $ip, $uri);
         }
         
@@ -390,6 +399,121 @@ class IntrusionPrevention
                 self::incrementViolationCount($ip);
                 break;
         }
+    }
+    
+    /**
+     * Extension Point für externes Logging (fail2ban, Grafana, etc.)
+     */
+    private static function callExternalLogging(array $threat, string $ip, string $uri, string $userAgent): void
+    {
+        // Threat-Daten für Extension Points vorbereiten
+        $logData = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'ip' => $ip,
+            'uri' => $uri,
+            'user_agent' => $userAgent,
+            'threat_type' => $threat['type'],
+            'threat_category' => $threat['category'] ?? $threat['type'],
+            'pattern' => $threat['pattern'],
+            'severity' => $threat['severity'],
+            'action' => self::getActionForSeverity($threat['severity']),
+            'monitor_only' => self::getAddon()->getConfig('ips_monitor_only', false)
+        ];
+        
+        // Extension Point für externes Logging
+        \rex_extension::registerPoint(new \rex_extension_point('UPKEEP_IPS_THREAT_DETECTED', $logData));
+        
+        // Extension Point für fail2ban-kompatibles Logging
+        if (self::getAddon()->getConfig('ips_fail2ban_logging', false)) {
+            self::logForFail2ban($logData);
+        }
+    }
+    
+    /**
+     * Fail2ban-kompatibles Logging
+     */
+    private static function logForFail2ban(array $logData): void
+    {
+        $logFile = self::getAddon()->getConfig('ips_fail2ban_logfile', '/var/log/redaxo_ips.log');
+        
+        // fail2ban-kompatibles Format
+        $message = sprintf(
+            "%s [REDAXO-IPS] %s threat from %s: %s (URI: %s, Pattern: %s, Action: %s)",
+            $logData['timestamp'],
+            strtoupper($logData['severity']),
+            $logData['ip'],
+            $logData['threat_type'],
+            $logData['uri'],
+            $logData['pattern'],
+            $logData['action']
+        );
+        
+        try {
+            // Extension Point für custom fail2ban logging
+            \rex_extension::registerPoint(new \rex_extension_point('UPKEEP_IPS_FAIL2BAN_LOG', [
+                'message' => $message,
+                'logFile' => $logFile,
+                'logData' => $logData
+            ]));
+            
+            // Standard File Logging (falls kein Extension Handler)
+            if (is_writable(dirname($logFile))) {
+                error_log($message . "\n", 3, $logFile);
+            }
+        } catch (Exception $e) {
+            self::debugLog("IPS: Failed to write fail2ban log: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Holt die letzten IPs aus Threat-Logs für schnelle manuelle Blockierung
+     */
+    public static function getRecentThreatIps(int $limit = 10): array
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("
+                SELECT DISTINCT 
+                    ip_address,
+                    COUNT(*) as threat_count,
+                    MAX(created_at) as last_threat,
+                    MAX(severity) as max_severity,
+                    GROUP_CONCAT(DISTINCT threat_type ORDER BY created_at DESC LIMIT 3) as recent_threats
+                FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    AND ip_address NOT IN (
+                        SELECT ip_address FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
+                        WHERE expires_at IS NULL OR expires_at > NOW()
+                    )
+                GROUP BY ip_address
+                ORDER BY threat_count DESC, last_threat DESC
+                LIMIT ?
+            ", [$limit]);
+            
+            $threatIps = [];
+            while ($sql->hasNext()) {
+                $threatIps[] = [
+                    'ip' => $sql->getValue('ip_address'),
+                    'threat_count' => (int) $sql->getValue('threat_count'),
+                    'last_threat' => $sql->getValue('last_threat'),
+                    'max_severity' => $sql->getValue('max_severity'),
+                    'recent_threats' => explode(',', $sql->getValue('recent_threats'))
+                ];
+                $sql->next();
+            }
+            return $threatIps;
+        } catch (Exception $e) {
+            self::debugLog("Failed to get recent threat IPs: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Prüft ob Monitor-Only Modus aktiv ist
+     */
+    public static function isMonitorOnlyMode(): bool
+    {
+        return (bool) self::getAddon()->getConfig('ips_monitor_only', false);
     }
 
     /**
