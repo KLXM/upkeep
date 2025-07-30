@@ -83,10 +83,8 @@ echo '<i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_ips_filter');
 echo '</div>';
 echo '<div class="panel-body">';
 
-echo '<form method="get" class="form-inline" action="' . rex_url::currentBackendPage(['subpage' => 'ips', 'subpage2' => 'threats']) . '">';
-echo '<input type="hidden" name="page" value="upkeep">';
-echo '<input type="hidden" name="subpage" value="ips">';
-echo '<input type="hidden" name="subpage2" value="threats">';
+echo '<form method="get" class="form-inline" action="' . rex_url::backendPage('upkeep/ips/threats') . '">';
+echo '<input type="hidden" name="page" value="upkeep/ips/threats">';
 
 echo '<div class="form-group" style="margin-right: 10px;">';
 echo '<label class="sr-only" for="ip_filter">IP-Adresse</label>';
