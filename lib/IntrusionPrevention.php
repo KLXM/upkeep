@@ -269,7 +269,7 @@ class IntrusionPrevention
         $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
         
         if ($threat) {
-            rex_logger::factory()->log('warning', "IPS: Threat detected from {$clientIp} - " . json_encode($threat));
+            // Nur ins IPS-Log, nicht doppelt ins System-Log
             self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
         } else {
             // Debug-Log nur bei aktivem Debug-Modus
@@ -280,7 +280,7 @@ class IntrusionPrevention
         
         // Rate Limiting prüfen (nur wenn aktiviert)
         if (self::isRateLimitingEnabled() && self::isRateLimitExceeded($clientIp)) {
-            rex_logger::factory()->log('warning', "IPS: Rate limit exceeded for {$clientIp}");
+            // Rate Limiting nur ins IPS-Log
             self::handleThreat([
                 'type' => 'rate_limit',
                 'severity' => 'medium',
@@ -354,14 +354,14 @@ class IntrusionPrevention
         // Spezielle Behandlung für xmlrpc.php - IMMER permanent blocken
         if (stripos($uri, 'xmlrpc.php') !== false) {
             self::blockIpPermanently($ip);
-            rex_logger::factory()->log('critical', "IPS: xmlrpc.php access detected - permanent block for {$ip}");
+            // xmlrpc-Angriffe nur ins IPS-Log
             self::blockRequest('xmlrpc.php access blocked - permanent ban', $ip, $uri);
         }
         
         // Sofortige Sperrung für kritische Patterns
         if ($threat['category'] === 'immediate_block') {
             self::blockIpPermanently($ip);
-            rex_logger::factory()->log('critical', "IPS: Immediate permanent block for {$ip} - {$threat['pattern']}");
+            // Kritische Bedrohungen nur ins IPS-Log
             self::blockRequest('Malicious activity detected - permanent block', $ip, $uri);
         }
         
@@ -425,7 +425,7 @@ class IntrusionPrevention
     /**
      * Prüft ob IPS aktiviert ist
      */
-    private static function isActive(): bool
+    public static function isActive(): bool
     {
         return (bool) self::getAddon()->getConfig('ips_active', false);
     }
@@ -433,7 +433,7 @@ class IntrusionPrevention
     /**
      * Prüft ob Rate-Limiting aktiviert ist
      */
-    private static function isRateLimitingEnabled(): bool
+    public static function isRateLimitingEnabled(): bool
     {
         return (bool) self::getAddon()->getConfig('ips_rate_limiting_enabled', false);
     }
@@ -1122,8 +1122,8 @@ class IntrusionPrevention
         $sql->setValue('created_at', date('Y-m-d H:i:s'));
         $sql->insert();
         
-        // Auch ins REDAXO-Log schreiben
-        rex_logger::factory()->log('error', "IPS: Threat detected from {$ip}: {$threat['type']} - {$threat['pattern']}");
+        // IPS-Log reicht - kein zusätzliches System-Log mehr
+        // Bedrohungen werden nur in der IPS-Datenbank protokolliert
     }
     
     /**
@@ -1983,32 +1983,51 @@ class IntrusionPrevention
     public static function getStatistics(): array
     {
         $sql = rex_sql::factory();
-        $stats = [];
+        $stats = [
+            'blocked_ips' => 0,
+            'threats_today' => 0,
+            'threats_week' => 0,
+            'top_threats' => []
+        ];
         
-        // Gesperrte IPs
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE expires_at IS NULL OR expires_at > NOW()");
-        $stats['blocked_ips'] = (int) $sql->getValue('count');
+        try {
+            // Gesperrte IPs
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE expires_at IS NULL OR expires_at > NOW()");
+            $stats['blocked_ips'] = (int) $sql->getValue('count');
+        } catch (Exception $e) {
+            // Tabelle existiert noch nicht
+            self::debugLog("Statistics: upkeep_ips_blocked_ips table not available: " . $e->getMessage());
+            $stats['blocked_ips'] = 0;
+        }
         
-        // Bedrohungen heute
-        $today = date('Y-m-d');
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) = ?", [$today]);
-        $stats['threats_today'] = (int) $sql->getValue('count');
-        
-        // Bedrohungen diese Woche
-        $weekStart = date('Y-m-d', strtotime('monday this week'));
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) >= ?", [$weekStart]);
-        $stats['threats_week'] = (int) $sql->getValue('count');
-        
-        // Top Bedrohungstypen
-        $sql->setQuery("SELECT threat_type, COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                       WHERE DATE(created_at) >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5", [$weekStart]);
-        $stats['top_threats'] = [];
-        while ($sql->hasNext()) {
-            $stats['top_threats'][] = [
-                'type' => $sql->getValue('threat_type'),
-                'count' => (int) $sql->getValue('count')
-            ];
-            $sql->next();
+        try {
+            // Bedrohungen heute
+            $today = date('Y-m-d');
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) = ?", [$today]);
+            $stats['threats_today'] = (int) $sql->getValue('count');
+            
+            // Bedrohungen diese Woche
+            $weekStart = date('Y-m-d', strtotime('monday this week'));
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE DATE(created_at) >= ?", [$weekStart]);
+            $stats['threats_week'] = (int) $sql->getValue('count');
+            
+            // Top Bedrohungstypen
+            $sql->setQuery("SELECT threat_type, COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                           WHERE DATE(created_at) >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5", [$weekStart]);
+            $stats['top_threats'] = [];
+            while ($sql->hasNext()) {
+                $stats['top_threats'][] = [
+                    'type' => $sql->getValue('threat_type'),
+                    'count' => (int) $sql->getValue('count')
+                ];
+                $sql->next();
+            }
+        } catch (Exception $e) {
+            // Tabelle existiert noch nicht
+            self::debugLog("Statistics: upkeep_ips_threat_log table not available: " . $e->getMessage());
+            $stats['threats_today'] = 0;
+            $stats['threats_week'] = 0;
+            $stats['top_threats'] = [];
         }
         
         return $stats;
@@ -2103,29 +2122,6 @@ class IntrusionPrevention
         // 1% Chance pro Request für Cleanup
         if (random_int(1, 100) <= 1) {
             self::cleanupExpiredData();
-        }
-    }
-
-    /**
-     * Aktualisiert ein Custom Pattern
-     */
-    public static function updateCustomPattern(int $id, string $pattern, string $description = '', string $severity = 'medium', bool $isRegex = false, bool $status = true): bool
-    {
-        try {
-            $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_ips_custom_patterns'));
-            $sql->setWhere(['id' => $id]);
-            $sql->setValue('pattern', $pattern);
-            $sql->setValue('description', $description);
-            $sql->setValue('severity', $severity);
-            $sql->setValue('is_regex', $isRegex ? 1 : 0);
-            $sql->setValue('status', $status ? 1 : 0);
-            $sql->setValue('updated_at', date('Y-m-d H:i:s'));
-            $sql->update();
-            return true;
-        } catch (Exception $e) {
-            rex_logger::logException($e);
-            return false;
         }
     }
 

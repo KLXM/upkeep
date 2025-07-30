@@ -1,303 +1,77 @@
 # REDAXO Upkeep AddOn
 
-Ein umfassendes Wartungs- und Sicherheits-AddOn für REDAXO CMS mit Frontend-/Backend-Wartungsmodi, URL-Redirects und integriertem Intrusion Prevention System (IPS).
+Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 
-## 🚀 Features
+## Features
 
-### Wartungsmodi
-- **Frontend-Wartungsmodus**: Zeigt Besuchern eine elegante Wartungsseite an
-- **Backend-Wartungsmodus**: Sperrt den Backend-Zugang für bestimmte Benutzergruppen  
-- **Domain-spezifische Sperren**: Für Multidomains mit YRewrite
-- **Flexible Berechtigungen**: Wartungsmodi können unabhängig voneinander aktiviert werden
-- **Passwort-Bypass**: Zum Testen des Frontends im Wartungsmodus
-- **IP-Whitelist**: Mit einfacher Übernahme der aktuellen IP-Adresse
+- **Wartungsmodi**: Frontend/Backend getrennt steuerbar
+- **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* → /new/*`)
+- **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
+- **Dashboard**: Live-Status aller Systeme
+- **API/Console**: Remote-Management
 
-### URL-Redirects
-- **Wildcard-Unterstützung**: Flexible URL-Umleitungen mit Platzhaltern (`old-blog.com/posts/*` → `new-blog.com/articles/*`)
-- **Pfad-Ersetzung**: Automatische Übertragung von URL-Parametern
-- **HTTP-Status-Codes**: Konfigurierbare Redirect-Codes (301, 302, 303, 307, 308)
-- **Path-Traversal-Schutz**: RFC-konforme Domain-Validierung
+## Installation
 
-### Intrusion Prevention System (IPS) 🛡️
-- **Echtzeit-Bedrohungserkennung**: Automatische Erkennung von Angriffsmustern
-- **CMS-spezifische Patterns**: Schutz vor WordPress, TYPO3, Drupal und Joomla Exploits
-- **Scanner-Erkennung**: Erkennt Pentest-Tools (Nikto, SQLMap, Burp Suite, etc.)
-- **Positivliste mit Ablaufzeiten**: Ausnahmen für vertrauenswürdige IPs (permanent oder temporär)
-- **Manuelle IP-Blockierung**: Gezielte Sperrung mit konfigurierbarer Dauer
-- **CAPTCHA-Entsperrung**: Menschliche Verifikation mit automatischer Rehabilitation
-- **Bot-Erkennung**: Intelligente Erkennung legitimer Bots (Google, Bing, etc.)
-- **Optionales Rate Limiting**: DoS-Schutz (standardmäßig deaktiviert - Server sollte das machen)
-- **Custom Patterns**: Eigene Bedrohungsmuster mit Regex-Unterstützung
-- **Umfassende Protokollierung**: Detaillierte Logs aller Sicherheitsereignisse
-- **Automatische Bereinigung**: Selbstreinigende Datenbank-Logs
+1. AddOn installieren und aktivieren
+2. Konfiguration über Backend → Upkeep
 
-### Backend-Integration
-- **Status-Indikatoren**: Live-Anzeige der aktiven Systeme (B/F/R/S)
-- **Frontend-Tooltips**: Benutzerfreundliche Inline-Hilfen für alle Konfigurationsfelder
-- **Responsive Design**: Optimiert für Desktop und Mobile
-- **Konsolen-Befehle**: Für Remote-Management
-- **REST-API**: Zur Steuerung aus der Ferne
+## Quick Start
 
-## 📋 Systemvoraussetzungen
-
-- **REDAXO**: Version 5.15 oder höher
-- **PHP**: Version 8.0 oder höher
-- **MySQL**: Version 5.7 oder höher
-
-## 🔧 Installation
-
-1. AddOn über das REDAXO Backend installieren
-2. AddOn aktivieren  
-3. Die Datenbanktabellen werden automatisch erstellt
-4. Konfiguration über das Backend-Menü "Upkeep"
-
-## 📚 Verwendung
-
-### Wartungsmodi aktivieren
-
-#### Frontend-Wartungsmodus
-```
-Backend → Upkeep → Frontend → Wartungsmodus aktivieren
-```
-- Zeigt allen Besuchern eine Wartungsseite
-- Benutzer mit entsprechenden Rechten können weiterhin zugreifen
-- Konfigurierbare HTTP-Statuscodes (503, 403, 307) mit Retry-After Header
-
-#### Backend-Wartungsmodus  
-```
-Backend → Upkeep → Backend → Wartungsmodus aktivieren
-```
-- Sperrt den Backend-Zugang
-- Nur Administratoren können sich anmelden
-
-### URL-Redirects einrichten
-
-#### Einfache Weiterleitung
-```
-Quelle: /alte-seite
-Ziel: /neue-seite  
-Status: 301
-```
-
-#### Wildcard-Weiterleitung
-```
-Quelle: /blog/*
-Ziel: /aktuelles/$1
-Status: 301
-```
-
-**Wildcard-Beispiele:**
-```
-Blog-Umzug:    old-blog.com/posts/* → new-blog.com/articles/*
-Shop-Umzug:    shop.com/kategorie/* → example.com/shop/*
-Domain-Umzug:  old-company.com → https://new-company.com
-```
-
-### Intrusion Prevention System 🛡️
-
-#### Automatischer Schutz
-Das IPS läuft automatisch und prüft alle eingehenden Requests auf:
-- Bekannte Angriffsmuster (CMS-Exploits, SQL-Injection, Path-Traversal)
-- Scanner-Tools (Nikto, SQLMap, Burp Suite, Nmap, etc.)
-- Verdächtige User-Agents und Request-Patterns
-- Optionale Rate-Limiting-Verstöße (standardmäßig deaktiviert)
-
-#### Manuelle IP-Blockierung
-```
-Backend → Upkeep → IPS → Gesperrte IPs
-```
-- Gezielte Sperrung einzelner IP-Adressen
-- Konfigurierbare Sperrdauer (1h, 24h, 7d, permanent)
-- Begründung erforderlich für bessere Dokumentation
-- Integration in bestehende IPS-Architektur
-
-#### CAPTCHA-Entsperrung 🤖
-Gesperrte Benutzer können sich per CAPTCHA entsperren:
-- Einfache mathematische Aufgaben
-- Mehrsprachig (Deutsch/Englisch) mit automatischer Erkennung
-- Komplette IP-Rehabilitation nach erfolgreicher Verifikation
-- 24h temporäre Positivliste nach Entsperrung
-
-#### Bot-Management 🔍
-- **Gute Bots**: Automatische Erkennung von Google, Bing, Facebook, etc.
-- **Reverse DNS**: Timeout-geschützte Verifikation kritischer Bots (max 3s)
-- **Forward DNS**: Doppelte Verifikation mit A/AAAA Record Lookup
-- **DNS-Caching**: 24h Cache für verifizierte, 1h für negative Ergebnisse
-- **Erhöhte Limits**: Legitime Bots erhalten doppelte Rate-Limits
-
-#### Rate-Limiting (Optional) ⚠️
-**Standardmäßig DEAKTIVIERT** - Webserver/Reverse Proxy sollten das übernehmen!
-```php
-// Nur bei Bedarf aktivieren (Shared Hosting, etc.)
-rex_config::set('upkeep', 'ips_rate_limiting_enabled', true);
-```
-**Wenn aktiviert:** 600 Requests/Minute (10/Sekunde) für DoS-Schutz
-
-#### Positivliste verwalten
-```
-Backend → Upkeep → IPS → Positivliste
-```
-- IP-Adressen mit permanenter oder temporärer Freigabe
-- Automatische Ablaufzeiten für CAPTCHA-verifizierte IPs
-- CIDR-Notation für IP-Bereiche unterstützt
-
-#### Custom Patterns
-```
-Backend → Upkeep → IPS → Patterns
-```
-- Eigene Bedrohungsmuster definieren
-- Regex-Unterstützung
-- Verschiedene Schweregrade (low, medium, high, critical)
-
-## 🛡️ Sicherheitsfeatures
-
-### Eingebaute Bedrohungserkennung
-
-#### WordPress-Exploits
-```
-/wp-admin/
-/wp-content/plugins/
-/wp-includes/
-
-```
-
-#### TYPO3-Exploits
-```
-/typo3_src/
-/typo3conf/
-/fileadmin/
-```
-
-#### Drupal-Exploits
-```
-/sites/default/
-/modules/
-/install.php
-```
-
-#### Joomla-Exploits
-```
-/administrator/
-/components/
-/web.config.txt
-```
-
-#### Path-Traversal-Angriffe
-```
-../
-%2e%2e%2f
-%252e%252e%252f
-```
-
-#### Scanner-Tools
-```
-Nikto, SQLMap, Burp Suite, OWASP ZAP
-Nmap, Masscan, Dirb, Gobuster
-Hydra, Metasploit, W3AF
-```
-
-## 🔧 API-Integration
-
-### REST-API
-```
-GET: /index.php?rex-api-call=upkeep&token=TOKEN&action=ACTION
-```
-
-**Verfügbare Aktionen:**
-- `action=status` - Wartungsmodus-Status abfragen
-- `action=set_frontend&status=1|0` - Frontend-Wartung aktivieren/deaktivieren
-- `action=set_backend&status=1|0` - Backend-Wartung aktivieren/deaktivieren
-
-**Beispiel:**
 ```bash
 # Wartungsmodus aktivieren
-curl "https://example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
+Backend → Upkeep → Frontend/Backend
+
+# Redirects einrichten
+Backend → Upkeep → Domains
+
+# IPS konfigurieren  
+Backend → Upkeep → IPS
+```
+## Developer Info
+
+### Requirements
+- REDAXO 5.15+
+- PHP 8.0+  
+- MySQL 5.7+
+
+### API Usage
+
+```php
+// Wartungsmodus
+use KLXM\Upkeep\Upkeep;
+$isActive = Upkeep::isFrontendMaintenanceActive();
+
+// IPS
+use KLXM\Upkeep\IntrusionPrevention;
+IntrusionPrevention::checkRequest();
+$isBlocked = IntrusionPrevention::isBlocked($ip);
+
+// Redirects
+use KLXM\Upkeep\DomainMapping;
+
 ```
 
-### Konsolen-Befehle
+### Console Commands
 
-#### Wartungsmodi
 ```bash
-# Frontend-Wartungsmodus aktivieren/deaktivieren
+# Wartungsmodus
 php bin/console upkeep:mode frontend on|off
-
-# Backend-Wartungsmodus aktivieren/deaktivieren
-php bin/console upkeep:mode backend on|off
-
-# Status abfragen
 php bin/console upkeep:status
-```
 
-#### IPS-Management
-```bash
-# IPS-Bereinigung (abgelaufene Sperren, alte Logs)
+# IPS
 php bin/console upkeep:ips-cleanup
-
-# IPS-Status einer IP prüfen
-php bin/console upkeep:ips-status <IP-ADRESSE>
 ```
 
-## Extension Points
+### REST API
 
-- `UPKEEP_ALLOWED_PATHS`: Pfade vom Wartungsmodus ausnehmen
-
-## 📚 Class-Referenz
-
-### KLXM\Upkeep\Upkeep
-
-Haupt-Klasse für Wartungsmodi und Konfiguration.
-
-```php
-// Wartungsmodus-Status prüfen
-$isMaintenanceActive = Upkeep::isFrontendMaintenanceActive();
-$isBackendBlocked = Upkeep::isBackendMaintenanceActive();
-
-// Erlaubte IPs verwalten
-$allowedIps = Upkeep::getAllowedIps();
-$isIpAllowed = Upkeep::isIpAllowed('192.168.1.1');
-
-// Domain-spezifische Prüfungen
-$isDomainBlocked = Upkeep::isDomainBlocked('example.com');
+```bash
+curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=status"
 ```
 
-### KLXM\Upkeep\IntrusionPrevention
+---
 
-Intrusion Prevention System für Bedrohungserkennung und IP-Management.
-
-```php
-// Request-Analyse und Schutz
-IntrusionPrevention::checkRequest(); // Automatische Prüfung bei jedem Request
-
-// IP-Management
-$isBlocked = IntrusionPrevention::isBlocked('192.168.1.100');
-$isOnWhitelist = IntrusionPrevention::isOnPositivliste('192.168.1.50');
-
-// Manuelle IP-Blockierung
-IntrusionPrevention::blockIpManually('192.168.1.200', 'permanent', 'Malicious activity detected');
-
-// Positivliste verwalten
-IntrusionPrevention::addToPositivliste('192.168.1.10', 'Trusted admin IP', 'admin');
-IntrusionPrevention::addToTemporaryPositivliste('192.168.1.20', 24, 'CAPTCHA verified');
-IntrusionPrevention::removeFromPositivliste(1);
-
-// Custom Patterns
-IntrusionPrevention::addCustomPattern('/malicious-path', 'Custom threat pattern', 'high');
-IntrusionPrevention::removeCustomPattern(5);
-
-// Bot-Erkennung und DNS-Verifikation
-$isGoodBot = IntrusionPrevention::isGoodBot();
-$isVerifiedBot = IntrusionPrevention::verifyGoogleBot();
-
-// IP-Status debuggen
-$status = IntrusionPrevention::debugIpStatus('192.168.1.100');
-```
-
-### KLXM\Upkeep\DomainMapping
-
-URL-Redirect-System mit Wildcard-Unterstützung.
-
-```php
-// Redirect-Mapping prüfen und ausführen
+**Maintainer**: KLXM  
+**License**: MIT
 $redirect = DomainMapping::getRedirectForUrl('https://old-site.com/blog/article-1');
 if ($redirect) {
     DomainMapping::executeRedirect($redirect['target'], $redirect['status_code']);
