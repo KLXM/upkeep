@@ -5,7 +5,7 @@ Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 ## Features
 
 - **Wartungsmodi**: Frontend/Backend getrennt steuerbar
-- **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* → /new/*`)
+- **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* -> /new/*`)
 - **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
 - **Dashboard**: Live-Status aller Systeme
 - **API/Console**: Remote-Management
@@ -27,6 +27,7 @@ Backend → Upkeep → Domains
 # IPS konfigurieren  
 Backend → Upkeep → IPS
 ```
+
 ## Developer Info
 
 ### Requirements
@@ -48,6 +49,30 @@ $isBlocked = IntrusionPrevention::isBlocked($ip);
 
 // Redirects
 use KLXM\Upkeep\DomainMapping;
+DomainMapping::checkAndRedirect();
+```
+
+### Console Commands
+
+```bash
+# Wartungsmodus
+php bin/console upkeep:mode frontend on|off
+php bin/console upkeep:status
+
+# IPS
+php bin/console upkeep:ips-cleanup
+```
+
+### REST API
+
+```bash
+curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=status"
+```
+
+---
+
+**Maintainer**: KLXM  
+**License**: MIT
 
 ```
 
