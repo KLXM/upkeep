@@ -113,6 +113,7 @@ if ($sql->getRows() > 0) {
     echo '<thead>';
     echo '<tr>';
     echo '<th>' . $addon->i18n('upkeep_ips_ip') . '</th>';
+    echo '<th><i class="fa fa-globe"></i> Land</th>';
     echo '<th>' . $addon->i18n('upkeep_ips_type') . '</th>';
     echo '<th>' . $addon->i18n('upkeep_ips_severity') . '</th>';
     echo '<th>' . $addon->i18n('upkeep_ips_reason') . '</th>';
@@ -131,8 +132,27 @@ if ($sql->getRows() > 0) {
         $threatLevel = $sql->getValue('threat_level');
         $createdAt = $sql->getValue('created_at');
         
+        // Länder-Information ermitteln (nur wenn GeoIP verfügbar)
+        $countryInfo = null;
+        if (class_exists('KLXM\Upkeep\IntrusionPrevention')) {
+            try {
+                $countryInfo = IntrusionPrevention::getCountryByIp($ip);
+            } catch (Exception $e) {
+                // Fehler ignorieren
+            }
+        }
+        
         echo '<tr>';
         echo '<td><span class="label label-default">' . rex_escape($ip) . '</span></td>';
+        
+        // Land-Spalte
+        echo '<td>';
+        if ($countryInfo && $countryInfo['code'] !== 'UNKNOWN') {
+            echo '<small class="text-muted">' . rex_escape($countryInfo['name']) . '</small>';
+        } else {
+            echo '<small class="text-muted">-</small>';
+        }
+        echo '</td>';
         echo '<td>';
         $typeClass = $blockType === 'permanent' ? 'label-danger' : 'label-warning';
         echo '<span class="label ' . $typeClass . '">' . ucfirst($blockType) . '</span>';

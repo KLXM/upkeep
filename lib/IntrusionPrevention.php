@@ -2292,4 +2292,104 @@ class IntrusionPrevention
             return null;
         }
     }
+
+    /**
+     * Ermittelt das Land einer IP-Adresse
+     * 
+     * @param string $ip IP-Adresse
+     * @return array{code: string, name: string} Land-Information
+     */
+    public static function getCountryByIp(string $ip): array
+    {
+        return GeoIP::getCountry($ip);
+    }
+
+    /**
+     * Aktualisiert die GeoIP-Datenbank
+     */
+    public static function updateGeoDatabase(): bool
+    {
+        return GeoIP::updateDatabase();
+    }
+
+    /**
+     * Status der GeoIP-Datenbank
+     */
+    public static function getGeoDatabaseStatus(): array
+    {
+        return GeoIP::getDatabaseStatus();
+    }
+
+    /**
+     * Erweitert Threat-Logs um Länderinformationen
+     * 
+     * @param array $threats Bedrohungen aus der Datenbank
+     * @return array Erweiterte Bedrohungen mit Länderinformationen
+     */
+    public static function enrichThreatsWithCountry(array $threats): array
+    {
+        foreach ($threats as &$threat) {
+            if (isset($threat['ip'])) {
+                $country = self::getCountryByIp($threat['ip']);
+                $threat['country_code'] = $country['code'];
+                $threat['country_name'] = $country['name'];
+            }
+        }
+        unset($threat); // Referenz aufheben
+        
+        return $threats;
+    }
+
+    /**
+     * Gruppiert Bedrohungen nach Ländern
+     * 
+     * @param int $days Anzahl Tage zurück (Standard: 7)
+     * @return array Gruppierte Bedrohungen nach Ländern
+     */
+    public static function getThreatsByCountry(int $days = 7): array
+    {
+        $sql = rex_sql::factory();
+        $sql->setQuery("
+            SELECT ip, COUNT(*) as threat_count, MAX(created_at) as last_threat
+            FROM " . rex::getTable('upkeep_ips_threat_log') . "
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY ip
+            ORDER BY threat_count DESC
+        ", [$days]);
+        
+        $results = $sql->getArray();
+        $countries = [];
+        
+        foreach ($results as $result) {
+            $country = self::getCountryByIp($result['ip']);
+            $countryCode = $country['code'];
+            
+            if (!isset($countries[$countryCode])) {
+                $countries[$countryCode] = [
+                    'code' => $countryCode,
+                    'name' => $country['name'],
+                    'threat_count' => 0,
+                    'unique_ips' => 0,
+                    'last_threat' => null,
+                    'ips' => []
+                ];
+            }
+            
+            $countries[$countryCode]['threat_count'] += $result['threat_count'];
+            $countries[$countryCode]['unique_ips']++;
+            $countries[$countryCode]['ips'][] = $result['ip'];
+            
+            if (!$countries[$countryCode]['last_threat'] || 
+                $result['last_threat'] > $countries[$countryCode]['last_threat']) {
+                $countries[$countryCode]['last_threat'] = $result['last_threat'];
+            }
+        }
+        
+        // Sortierung nach Bedrohungsanzahl
+        uasort($countries, function($a, $b) {
+            return $b['threat_count'] - $a['threat_count'];
+        });
+        
+        return array_values($countries);
+    }
 }

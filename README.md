@@ -9,6 +9,7 @@ Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 - **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
 - **Monitor-Only Modus**: Nur loggen ohne automatisches Blocken
 - **Extension Points**: Externes Logging (fail2ban, Grafana, etc.)
+- **GeoIP-Integration**: Länder-Anzeige für IP-Adressen mit DB-IP.com
 - **Dashboard**: Live-Status aller Systeme mit schnellen Aktionen
 - **API/Console**: Remote-Management
 
@@ -55,6 +56,13 @@ $isMonitorOnly = IntrusionPrevention::isMonitorOnlyMode();
 // Redirects
 use KLXM\Upkeep\DomainMapping;
 DomainMapping::checkAndRedirect();
+
+// GeoIP
+use KLXM\Upkeep\GeoIP;
+$country = GeoIP::getCountry('8.8.8.8');
+// Returns: ['code' => 'US', 'name' => 'United States']
+$countryInfo = IntrusionPrevention::getCountryByIp('8.8.8.8');
+// Returns: ['code' => 'US', 'name' => 'United States']
 ```
 
 ### Extension Points

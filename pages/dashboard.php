@@ -81,7 +81,31 @@ function getSecurityThreatsByType() {
     }
 }
 
+// Bedrohungen nach Ländern abrufen
+function getThreatsByCountry() {
+    try {
+        // Prüfe ob GeoIP verfügbar ist
+        if (!class_exists('KLXM\Upkeep\GeoIP')) {
+            return [];
+        }
+        
+        // Prüfe ob Datenbank verfügbar ist
+        $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus();
+        if (!$geoStatus['available']) {
+            return [];
+        }
+        
+        return KLXM\Upkeep\IntrusionPrevention::getThreatsByCountry(7);
+    } catch (Exception $e) {
+        if (rex_addon::get('upkeep')->getConfig('ips_debug_mode', false)) {
+            rex_logger::factory()->log('error', 'Dashboard getThreatsByCountry failed: ' . $e->getMessage(), []);
+        }
+        return [];
+    }
+}
+
 $threatsByType = getSecurityThreatsByType();
+$threatsByCountry = getThreatsByCountry();
 
 // Dashboard Assets einbinden
 rex_view::addCssFile($addon->getAssetsUrl('dashboard.css'));
@@ -451,6 +475,92 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             </p>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bedrohungen nach Ländern -->
+    <div class="row dashboard-section">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <i class="rex-icon fa-globe"></i> 
+                        Sicherheits-Bedrohungen nach Ländern (7 Tage)
+                        <?php if (!empty($threatsByCountry)): ?>
+                            <small class="text-muted"><?= count($threatsByCountry) ?> Länder</small>
+                        <?php endif; ?>
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <?php if (!empty($threatsByCountry)): ?>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th><i class="rex-icon fa-flag"></i> Land</th>
+                                        <th class="text-center"><i class="rex-icon fa-exclamation-triangle"></i> Bedrohungen</th>
+                                        <th class="text-center"><i class="rex-icon fa-globe"></i> IPs</th>
+                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> Letzte Aktivität</th>
+                                        <th class="text-center"><i class="rex-icon fa-cog"></i> Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach (array_slice($threatsByCountry, 0, 10) as $country): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?= rex_escape($country['name']) ?></strong>
+                                                <small class="text-muted">(<?= rex_escape($country['code']) ?>)</small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-warning"><?= $country['threat_count'] ?></span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-info"><?= $country['unique_ips'] ?></span>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($country['last_threat']): ?>
+                                                    <small class="text-muted">
+                                                        <?= date('d.m H:i', strtotime($country['last_threat'])) ?>
+                                                    </small>
+                                                <?php else: ?>
+                                                    <small class="text-muted">-</small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['country' => $country['code']]) ?>" 
+                                                   class="btn btn-xs btn-info" title="Details anzeigen">
+                                                    <i class="rex-icon fa-search"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (count($threatsByCountry) > 10): ?>
+                            <div class="text-center" style="margin-top: 15px;">
+                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['view' => 'countries']) ?>" class="btn btn-default">
+                                    <i class="rex-icon fa-globe"></i> Alle <?= count($threatsByCountry) ?> Länder anzeigen
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="text-center text-muted" style="padding: 40px;">
+                            <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
+                            <h4>Keine geografischen Daten</h4>
+                            <p>Keine Bedrohungen mit Geolokalisierung verfügbar oder GeoIP-Datenbank nicht installiert.</p>
+                            <?php if (class_exists('KLXM\Upkeep\GeoIP')): ?>
+                                <?php $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
+                                <?php if (!$geoStatus['available']): ?>
+                                    <a href="<?= rex_url::backendPage('upkeep/ips/settings', ['action' => 'update_geo']) ?>" class="btn btn-sm btn-primary">
+                                        <i class="rex-icon fa-download"></i> GeoIP-Datenbank installieren
+                                    </a>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

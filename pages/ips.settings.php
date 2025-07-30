@@ -4,6 +4,19 @@ use KLXM\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
 
+// GeoIP-Datenbank aktualisieren
+if (rex_post('update_geo', 'bool')) {
+    if (class_exists('KLXM\Upkeep\GeoIP')) {
+        if (IntrusionPrevention::updateGeoDatabase()) {
+            echo rex_view::success('GeoIP-Datenbank erfolgreich aktualisiert');
+        } else {
+            echo rex_view::error('Fehler beim Aktualisieren der GeoIP-Datenbank');
+        }
+    } else {
+        echo rex_view::error('GeoIP-Funktionalität nicht verfügbar');
+    }
+}
+
 // Einstellungen speichern
 if (rex_post('save', 'bool')) {
     $config = [
@@ -122,6 +135,14 @@ echo '</div>';
 echo '</div>';
 echo '</div>';
 
+echo '<div class="form-group text-center" style="margin-top: 20px;">';
+echo '<button type="submit" class="btn btn-primary btn-lg">';
+echo '<i class="fa fa-save"></i> ' . $addon->i18n('upkeep_save');
+echo '</button>';
+echo '</div>';
+
+echo '</form>';
+
 // Rate Limiting Information Panel
 echo '<div class="panel panel-warning">';
 echo '<div class="panel-heading">';
@@ -176,13 +197,68 @@ echo '<p class="help-block"><strong>Hinweis:</strong> Nur die Kontaktinformation
 echo '</div>';
 echo '</div>';
 
-echo '<div class="form-group">';
-echo '<button type="submit" class="btn btn-primary">';
-echo '<i class="fa fa-save"></i> ' . $addon->i18n('upkeep_save');
-echo '</button>';
+// GeoIP-Management
+echo '<div class="panel panel-info">';
+echo '<div class="panel-heading">';
+echo '<i class="fa fa-globe"></i> GeoIP-Datenbank';
 echo '</div>';
+echo '<div class="panel-body">';
 
-echo '</form>';
+if (class_exists('KLXM\Upkeep\GeoIP')) {
+    $geoStatus = IntrusionPrevention::getGeoDatabaseStatus();
+    
+    echo '<div class="row">';
+    echo '<div class="col-md-6">';
+    echo '<h5>Status</h5>';
+    echo '<dl class="dl-horizontal">';
+    echo '<dt>Verfügbar:</dt>';
+    echo '<dd>' . ($geoStatus['available'] ? '<span class="label label-success">Ja</span>' : '<span class="label label-danger">Nein</span>') . '</dd>';
+    echo '<dt>Quelle:</dt>';
+    echo '<dd>' . ucfirst($geoStatus['source']) . '</dd>';
+    if ($geoStatus['file_date']) {
+        echo '<dt>Datum:</dt>';
+        echo '<dd>' . $geoStatus['file_date'] . '</dd>';
+        echo '<dt>Größe:</dt>';
+        echo '<dd>' . number_format($geoStatus['file_size'] / 1024 / 1024, 1) . ' MB</dd>';
+    }
+    echo '</dl>';
+    echo '</div>';
+    
+    echo '<div class="col-md-6">';
+    echo '<h5>Verwaltung</h5>';
+    if ($geoStatus['available']) {
+        echo '<p class="text-success"><i class="fa fa-check-circle"></i> GeoIP-Datenbank ist einsatzbereit</p>';
+        echo '<p><small class="text-muted">Die Datenbank wird für die Länder-Anzeige in der Bedrohungsliste verwendet.</small></p>';
+    } else {
+        echo '<p class="text-danger"><i class="fa fa-exclamation-triangle"></i> Keine GeoIP-Datenbank verfügbar</p>';
+        echo '<p><small class="text-muted">Ohne GeoIP-Datenbank werden keine Länderinformationen angezeigt.</small></p>';
+    }
+    echo '</div>';
+    echo '</div>';
+    
+    echo '<hr>';
+    echo '<div class="row">';
+    echo '<div class="col-md-12">';
+    echo '<h5>Datenbank-Update</h5>';
+    echo '<p>Die GeoIP-Datenbank wird von <strong>DB-IP.com</strong> bereitgestellt (kostenlose Version). Updates erfolgen monatlich.</p>';
+    echo '<form method="post" style="display: inline-block;">';
+    echo '<input type="hidden" name="update_geo" value="1">';
+    echo '<button type="submit" class="btn btn-default" onclick="return confirm(\'GeoIP-Datenbank jetzt aktualisieren?\');">';
+    echo '<i class="fa fa-download"></i> Datenbank aktualisieren';
+    echo '</button>';
+    echo '</form>';
+    echo '</div>';
+    echo '</div>';
+} else {
+    echo '<div class="alert alert-warning">';
+    echo '<h5><i class="fa fa-exclamation-triangle"></i> GeoIP nicht verfügbar</h5>';
+    echo '<p>Die GeoIP-Funktionalität ist nicht verfügbar. Möglicherweise fehlen Abhängigkeiten.</p>';
+    echo '<p><strong>Benötigt:</strong> <span class="text-monospace text-primary">geoip2/geoip2</span> Composer-Paket</p>';
+    echo '</div>';
+}
+
+echo '</div>';
+echo '</div>';
 
 // System Status
 echo '<div class="panel panel-info">';
