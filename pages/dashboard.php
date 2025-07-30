@@ -7,15 +7,18 @@ use KLXM\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
 
-// AJAX-Handler
-$func = rex_request('func', 'string', '');
-if (rex_request::isXmlHttpRequest() && !empty($func)) {
-    include __DIR__ . '/dashboard_ajax.php';
-    return;
-}
-
 // Live-Statistiken abrufen
-$stats = IntrusionPrevention::getStatistics();
+try {
+    $stats = IntrusionPrevention::getStatistics();
+} catch (Exception $e) {
+    // Fallback wenn Tabellen noch nicht existieren
+    $stats = [
+        'blocked_ips' => 0,
+        'threats_today' => 0,
+        'threats_week' => 0,
+        'top_threats' => []
+    ];
+}
 
 // System-Info
 $phpVersion = PHP_VERSION;
@@ -347,20 +350,166 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-clock-o"></i> 
-                        Letzte Sicherheitsereignisse
+                        Letzte Sicherheitsereignisse (7 Tage)
                         <div class="pull-right">
-                            <button class="btn btn-xs btn-default" id="refresh-activities">
-                                <i class="rex-icon fa-refresh"></i> Aktualisieren
+                            <button class="btn btn-xs btn-success" id="dashboard-reload">
+                                <i class="rex-icon fa-refresh"></i> Dashboard aktualisieren
                             </button>
                         </div>
                     </h3>
                 </div>
                 <div class="panel-body">
-                    <div id="recent-activities" class="activity-feed">
-                        <!-- Wird via AJAX geladen -->
-                        <div class="text-center">
-                            <i class="rex-icon fa-spinner fa-spin"></i> Lade Aktivitäten...
-                        </div>
+                    <div class="activity-feed">
+                        <?php
+                        // Letzte Aktivitäten direkt laden (ohne AJAX)
+                        try {
+                            $sql = rex_sql::factory();
+                            $query = "SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                                      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                                      ORDER BY created_at DESC 
+                                      LIMIT 20";
+                            
+                            $sql->setQuery($query);
+                            $activities = [];
+                            
+                            while ($sql->hasNext()) {
+                                $activities[] = [
+                                    'id' => $sql->getValue('id'),
+                                    'ip_address' => $sql->getValue('ip_address'),
+                                    'threat_type' => $sql->getValue('threat_type'),
+                                    'threat_category' => $sql->getValue('threat_category'),
+                                    'severity' => $sql->getValue('severity'),
+                                    'pattern_matched' => $sql->getValue('pattern_matched'),
+                                    'request_uri' => $sql->getValue('request_uri'),
+                                    'user_agent' => $sql->getValue('user_agent'),
+                                    'action_taken' => $sql->getValue('action_taken'),
+                                    'created_at' => $sql->getValue('created_at')
+                                ];
+                                $sql->next();
+                            }
+                            
+                            if (empty($activities)) {
+                                echo '<div class="text-center text-muted">
+                                        <i class="rex-icon fa-check-circle" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>
+                                        Keine Sicherheitsereignisse in den letzten 7 Tagen
+                                      </div>';
+                            } else {
+                                foreach ($activities as $activity) {
+                                    renderActivityItem($activity);
+                                }
+                            }
+                            
+                        } catch (Exception $e) {
+                            echo '<div class="alert alert-info">
+                                    <i class="rex-icon fa-info-circle"></i> 
+                                    IPS-Tabellen sind noch nicht initialisiert. Aktivitäten werden angezeigt, sobald das IPS-System läuft.
+                                  </div>';
+                        }
+                        
+                        /**
+                         * Rendert ein einzelnes Activity Item
+                         */
+                        function renderActivityItem(array $activity): void
+                        {
+                            $severityClass = getSeverityClass($activity['severity']);
+                            $threatIcon = getThreatIcon($activity['threat_type']);
+                            $timeAgo = getTimeAgo($activity['created_at']);
+                            $actionText = getActionText($activity['action_taken']);
+                            
+                            // Request URI kürzen wenn zu lang
+                            $shortUri = strlen($activity['request_uri']) > 50 
+                                ? substr($activity['request_uri'], 0, 47) . '...'
+                                : $activity['request_uri'];
+                            
+                            echo '
+                            <div class="activity-item" data-id="' . $activity['id'] . '">
+                                <div class="activity-icon ' . $severityClass . '">
+                                    <i class="rex-icon ' . $threatIcon . '"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <h4 class="activity-title">
+                                        ' . rex_escape($activity['threat_type']) . ' 
+                                        <small class="text-muted">von ' . rex_escape($activity['ip_address']) . '</small>
+                                    </h4>
+                                    <p class="activity-details">
+                                        <strong>URI:</strong> ' . rex_escape($shortUri) . '<br>
+                                        <strong>Pattern:</strong> ' . rex_escape($activity['pattern_matched']) . '<br>
+                                        <strong>Aktion:</strong> ' . $actionText . '
+                                    </p>
+                                </div>
+                                <div class="activity-time">
+                                    ' . $timeAgo . '
+                                </div>
+                            </div>';
+                        }
+                        
+                        /**
+                         * Ermittelt CSS-Klasse für Schweregrad
+                         */
+                        function getSeverityClass(string $severity): string
+                        {
+                            return match($severity) {
+                                'critical' => 'severity-critical',
+                                'high' => 'severity-high', 
+                                'medium' => 'severity-medium',
+                                'low' => 'severity-low',
+                                default => 'severity-medium'
+                            };
+                        }
+                        
+                        /**
+                         * Ermittelt Icon für Bedrohungstyp
+                         */
+                        function getThreatIcon(string $threatType): string
+                        {
+                            return match($threatType) {
+                                'sql_injection' => 'fa-database',
+                                'xss' => 'fa-code',
+                                'file_inclusion' => 'fa-file-text',
+                                'command_injection' => 'fa-terminal',
+                                'path_traversal' => 'fa-folder-open',
+                                'rate_limit' => 'fa-tachometer',
+                                'scanner' => 'fa-search',
+                                'bot' => 'fa-robot',
+                                default => 'fa-exclamation-triangle'
+                            };
+                        }
+                        
+                        /**
+                         * Berechnet "vor X Zeit" Text
+                         */
+                        function getTimeAgo(string $datetime): string
+                        {
+                            $time = strtotime($datetime);
+                            $diff = time() - $time;
+                            
+                            if ($diff < 60) {
+                                return 'vor ' . $diff . 's';
+                            } elseif ($diff < 3600) {
+                                return 'vor ' . round($diff / 60) . 'min';
+                            } elseif ($diff < 86400) {
+                                return 'vor ' . round($diff / 3600) . 'h';
+                            } elseif ($diff < 2592000) {
+                                return 'vor ' . round($diff / 86400) . 'd';
+                            } else {
+                                return date('d.m.Y', $time);
+                            }
+                        }
+                        
+                        /**
+                         * Übersetzt Aktions-Codes in lesbare Texte
+                         */
+                        function getActionText(string $action): string
+                        {
+                            return match($action) {
+                                'permanent_block' => '<span class="label label-danger">Permanent gesperrt</span>',
+                                'temporary_block' => '<span class="label label-warning">Temporär gesperrt</span>',
+                                'logged' => '<span class="label label-info">Protokolliert</span>',
+                                'captcha' => '<span class="label label-primary">CAPTCHA</span>',
+                                default => '<span class="label label-default">' . rex_escape($action) . '</span>'
+                            };
+                        }
+                        ?>
                     </div>
                 </div>
             </div>
