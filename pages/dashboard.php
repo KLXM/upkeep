@@ -48,12 +48,14 @@ function getRecentSecurityActivities() {
         $sql = rex_sql::factory();
         $sql->setQuery("
             SELECT 
-                ip,
+                ip_address,
                 threat_type,
-                details,
-                created_at,
-                is_blocked
-            FROM " . rex::getTable('upkeep_ips_threats') . " 
+                request_uri,
+                user_agent,
+                severity,
+                action_taken,
+                created_at
+            FROM " . rex::getTable('upkeep_ips_threat_log') . " 
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             ORDER BY created_at DESC
             LIMIT 20
@@ -62,16 +64,23 @@ function getRecentSecurityActivities() {
         $activities = [];
         while ($sql->hasNext()) {
             $activities[] = [
-                'ip' => $sql->getValue('ip'),
+                'ip' => $sql->getValue('ip_address'),
                 'threat_type' => $sql->getValue('threat_type'),
-                'details' => $sql->getValue('details'),
+                'request_uri' => $sql->getValue('request_uri'),
+                'user_agent' => $sql->getValue('user_agent'),
+                'severity' => $sql->getValue('severity'),
+                'action_taken' => $sql->getValue('action_taken'),
                 'created_at' => $sql->getValue('created_at'),
-                'is_blocked' => (bool) $sql->getValue('is_blocked')
+                'is_blocked' => in_array($sql->getValue('action_taken'), ['permanent_block', 'temporary_block'])
             ];
             $sql->next();
         }
         return $activities;
     } catch (Exception $e) {
+        // Debug: Log the error
+        if (rex_addon::get('upkeep')->getConfig('ips_debug_mode', false)) {
+            rex_logger::factory()->log('error', 'Dashboard getRecentSecurityActivities failed: ' . $e->getMessage());
+        }
         return [];
     }
 }
@@ -344,6 +353,12 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </h3>
                 </div>
                 <div class="panel-body">
+                    <?php 
+                    // Debug: Zeige Anzahl gefundener Aktivitäten
+                    if ($addon->getConfig('ips_debug_mode', false) && count($recentActivities) === 0): 
+                        echo '<div class="alert alert-info"><strong>Debug:</strong> Keine Aktivitäten gefunden. Stats zeigen aber ' . $stats['threats_today'] . ' Bedrohungen heute.</div>';
+                    endif;
+                    ?>
                     <?php if (!empty($recentActivities)): ?>
                         <div class="activity-list">
                             <?php foreach ($recentActivities as $activity): ?>
@@ -364,10 +379,18 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                             <?php else: ?>
                                                 <span class="label label-warning">Erkannt</span>
                                             <?php endif; ?>
+                                            <span class="label label-<?= $activity['severity'] === 'critical' ? 'danger' : ($activity['severity'] === 'high' ? 'warning' : 'info') ?>">
+                                                <?= rex_escape(ucfirst($activity['severity'])) ?>
+                                            </span>
                                         </div>
-                                        <?php if (!empty($activity['details'])): ?>
+                                        <?php if (!empty($activity['request_uri'])): ?>
                                             <div class="activity-details text-muted">
-                                                <?= rex_escape($activity['details']) ?>
+                                                <small><strong>URI:</strong> <?= rex_escape($activity['request_uri']) ?></small>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($activity['user_agent']) && strlen($activity['user_agent']) < 100): ?>
+                                            <div class="activity-details text-muted">
+                                                <small><strong>User-Agent:</strong> <?= rex_escape(substr($activity['user_agent'], 0, 80)) ?><?= strlen($activity['user_agent']) > 80 ? '...' : '' ?></small>
                                             </div>
                                         <?php endif; ?>
                                     </div>
