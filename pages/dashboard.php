@@ -444,63 +444,6 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
             </div>
         </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-flash"></i> 
-                        Quick Actions
-                        <div class="pull-right">
-                            <button class="btn btn-xs btn-success" id="dashboard-reload">
-                                <i class="rex-icon fa-refresh"></i> Dashboard aktualisieren
-                            </button>
-                        </div>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <div class="btn-toolbar" role="toolbar">
-                        <div class="btn-group" role="group">
-                            <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="btn btn-primary">
-                                <i class="rex-icon fa-list"></i> Bedrohungsliste
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/ips/blocked') ?>" class="btn btn-danger">
-                                <i class="rex-icon fa-ban"></i> Gesperrte IPs
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/ips/positivliste') ?>" class="btn btn-success">
-                                <i class="rex-icon fa-check"></i> Positivliste
-                            </a>
-                        </div>
-                        <div class="btn-group" role="group">
-                            <a href="<?= rex_url::backendPage('upkeep/ips/patterns') ?>" class="btn btn-info">
-                                <i class="rex-icon fa-code"></i> Patterns
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/frontend') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-globe"></i> Frontend
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/backend') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-users"></i> Backend
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-share"></i> Domains
-                            </a>
-                            </a>
-                        </div>
-                        <div class="btn-group" role="group">
-                            <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-sitemap"></i> Domains
-                            </a>
-                            <a href="<?= rex_url::backendPage('upkeep/domain_mapping') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-share"></i> Redirects
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Dashboard JavaScript wird über rex_view::addJsFile geladen -->
