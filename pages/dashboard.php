@@ -81,25 +81,72 @@ function getSecurityThreatsByType() {
     }
 }
 
-// Bedrohungen nach Ländern abrufen
+// Heute gesperrte IPs nach Ländern abrufen
 function getThreatsByCountry() {
     try {
         // Prüfe ob GeoIP verfügbar ist
         if (!class_exists('KLXM\Upkeep\GeoIP')) {
+            rex_logger::factory()->log('debug', 'Dashboard: GeoIP-Klasse nicht verfügbar');
             return [];
         }
         
-        // Prüfe ob Datenbank verfügbar ist
-        $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus();
-        if (!$geoStatus['available']) {
+        // Hole alle gesperrten IPs (aktive Sperrungen)
+        $sql = rex_sql::factory();
+        rex_logger::factory()->log('debug', 'Dashboard: Suche nach allen aktiven gesperrten IPs');
+        
+        $sql->setQuery('
+            SELECT DISTINCT ip_address 
+            FROM ' . rex::getTable('upkeep_ips_blocked_ips') . '
+            ORDER BY ip_address
+        ');
+        
+        $results = $sql->getArray();
+        rex_logger::factory()->log('debug', 'Dashboard: Gefundene gesperrte IPs: ' . count($results));
+        
+        if (empty($results)) {
+            // Prüfe ob überhaupt Einträge in der Tabelle sind
+            $sql->setQuery('SELECT COUNT(*) as total FROM ' . rex::getTable('upkeep_ips_blocked_ips'));
+            $total = $sql->getValue('total');
+            rex_logger::factory()->log('debug', 'Dashboard: Gesamt Einträge in blocked_ips Tabelle: ' . $total);
             return [];
         }
         
-        return KLXM\Upkeep\IntrusionPrevention::getThreatsByCountry(7);
-    } catch (Exception $e) {
-        if (rex_addon::get('upkeep')->getConfig('ips_debug_mode', false)) {
-            rex_logger::factory()->log('error', 'Dashboard getThreatsByCountry failed: ' . $e->getMessage(), []);
+        $countries = [];
+        
+        foreach ($results as $result) {
+            $ip = $result['ip_address'];
+            rex_logger::factory()->log('debug', 'Dashboard: Verarbeite IP: ' . $ip);
+            
+            $country = \KLXM\Upkeep\IntrusionPrevention::getCountryByIp($ip);
+            $countryCode = $country['code'];
+            rex_logger::factory()->log('debug', 'Dashboard: Land für IP ' . $ip . ': ' . $country['name'] . ' (' . $countryCode . ')');
+            
+            if (!isset($countries[$countryCode])) {
+                $countries[$countryCode] = [
+                    'code' => $countryCode,
+                    'name' => $country['name'],
+                    'blocked_count' => 0,
+                    'unique_ips' => 0,
+                    'last_blocked' => null,
+                    'ips' => []
+                ];
+            }
+            
+            $countries[$countryCode]['blocked_count']++;
+            $countries[$countryCode]['unique_ips']++;
+            $countries[$countryCode]['ips'][] = $ip;
         }
+        
+        // Sortiere nach Anzahl gesperrter IPs
+        uasort($countries, function($a, $b) {
+            return $b['blocked_count'] <=> $a['blocked_count'];
+        });
+        
+        rex_logger::factory()->log('debug', 'Dashboard: Anzahl Länder gefunden: ' . count($countries));
+        
+        return array_values($countries);
+    } catch (\Exception $e) {
+        rex_logger::factory()->log('error', 'Dashboard getThreatsByCountry failed: ' . $e->getMessage(), []);
         return [];
     }
 }
@@ -487,7 +534,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-globe"></i> 
-                        Sicherheits-Bedrohungen nach Ländern (7 Tage)
+                        Gesperrte IPs nach Ländern
                         <?php if (!empty($threatsByCountry)): ?>
                             <small class="text-muted"><?= count($threatsByCountry) ?> Länder</small>
                         <?php endif; ?>
@@ -500,9 +547,9 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                 <thead>
                                     <tr>
                                         <th><i class="rex-icon fa-flag"></i> Land</th>
-                                        <th class="text-center"><i class="rex-icon fa-exclamation-triangle"></i> Bedrohungen</th>
+                                        <th class="text-center"><i class="rex-icon fa-ban"></i> Sperrungen</th>
                                         <th class="text-center"><i class="rex-icon fa-globe"></i> IPs</th>
-                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> Letzte Aktivität</th>
+                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> Letzte Sperrung</th>
                                         <th class="text-center"><i class="rex-icon fa-cog"></i> Aktionen</th>
                                     </tr>
                                 </thead>
@@ -514,23 +561,23 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                                 <small class="text-muted">(<?= rex_escape($country['code']) ?>)</small>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge badge-warning"><?= $country['threat_count'] ?></span>
+                                                <span class="badge badge-warning"><?= $country['blocked_count'] ?></span>
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge badge-info"><?= $country['unique_ips'] ?></span>
                                             </td>
                                             <td class="text-center">
-                                                <?php if ($country['last_threat']): ?>
+                                                <?php if ($country['last_blocked']): ?>
                                                     <small class="text-muted">
-                                                        <?= date('d.m H:i', strtotime($country['last_threat'])) ?>
+                                                        <?= date('d.m H:i', strtotime($country['last_blocked'])) ?>
                                                     </small>
                                                 <?php else: ?>
                                                     <small class="text-muted">-</small>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">
-                                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['country' => $country['code']]) ?>" 
-                                                   class="btn btn-xs btn-info" title="Details anzeigen">
+                                                <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['country' => $country['code']]) ?>" 
+                                                   class="btn btn-xs btn-info" title="Gesperrte IPs anzeigen">
                                                     <i class="rex-icon fa-search"></i>
                                                 </a>
                                             </td>
@@ -541,7 +588,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         </div>
                         <?php if (count($threatsByCountry) > 10): ?>
                             <div class="text-center" style="margin-top: 15px;">
-                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['view' => 'countries']) ?>" class="btn btn-default">
+                                <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['view' => 'countries']) ?>" class="btn btn-default">
                                     <i class="rex-icon fa-globe"></i> Alle <?= count($threatsByCountry) ?> Länder anzeigen
                                 </a>
                             </div>
@@ -549,8 +596,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     <?php else: ?>
                         <div class="text-center text-muted" style="padding: 40px;">
                             <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
-                            <h4>Keine geografischen Daten</h4>
-                            <p>Keine Bedrohungen mit Geolokalisierung verfügbar oder GeoIP-Datenbank nicht installiert.</p>
+                            <h4>Keine gesperrten IPs</h4>
+                            <p>Aktuell sind keine IPs gesperrt oder die GeoIP-Datenbank ist nicht verfügbar.</p>
                             <?php if (class_exists('KLXM\Upkeep\GeoIP')): ?>
                                 <?php $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
                                 <?php if (!$geoStatus['available']): ?>
