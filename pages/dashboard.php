@@ -42,8 +42,41 @@ $activeRedirects = (int) $sql->getValue('count');
 $allowedIps = $addon->getConfig('allowed_ips', '');
 $allowedIpCount = !empty(trim($allowedIps)) ? count(array_filter(explode("\n", $allowedIps))) : 0;
 
-// Aktuelle Uhrzeit für Auto-Refresh
-$currentTime = date('H:i:s');
+// Aktuelle Sicherheitsaktivitäten der letzten 7 Tage abrufen
+function getRecentSecurityActivities() {
+    try {
+        $sql = rex_sql::factory();
+        $sql->setQuery("
+            SELECT 
+                ip,
+                threat_type,
+                details,
+                created_at,
+                is_blocked
+            FROM " . rex::getTable('upkeep_ips_threats') . " 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ORDER BY created_at DESC
+            LIMIT 20
+        ");
+        
+        $activities = [];
+        while ($sql->hasNext()) {
+            $activities[] = [
+                'ip' => $sql->getValue('ip'),
+                'threat_type' => $sql->getValue('threat_type'),
+                'details' => $sql->getValue('details'),
+                'created_at' => $sql->getValue('created_at'),
+                'is_blocked' => (bool) $sql->getValue('is_blocked')
+            ];
+            $sql->next();
+        }
+        return $activities;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+$recentActivities = getRecentSecurityActivities();
 
 // Dashboard Assets einbinden
 rex_view::addCssFile($addon->getAssetsUrl('dashboard.css'));
@@ -52,24 +85,16 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
 ?>
 
 <div id="upkeep-dashboard" class="upkeep-dashboard">
-    <!-- Header mit Live-Status -->
+    <!-- Header -->
     <div class="panel panel-default dashboard-header">
         <div class="panel-body">
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-md-12">
                     <h1 class="dashboard-title">
                         <i class="rex-icon fa-dashboard"></i> 
                         Upkeep Dashboard
-                        <small class="text-muted">Live System Monitor</small>
+                        <small class="text-muted">System Monitor</small>
                     </h1>
-                </div>
-                <div class="col-md-4 text-right">
-                    <div class="dashboard-controls">
-                        <span class="live-time" id="live-time"><?= $currentTime ?></span>
-                        <button class="btn btn-xs btn-success" id="auto-refresh" data-toggle="tooltip" title="Auto-Refresh (30s)">
-                            <i class="rex-icon fa-refresh"></i> Live
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -79,66 +104,74 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
     <div class="row dashboard-cards">
         <!-- IPS Status -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $ipsActive ? 'success' : 'warning' ?> status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-shield-alt"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3>IPS</h3>
-                        <p class="status-text"><?= $ipsActive ? 'Aktiv' : 'Inaktiv' ?></p>
-                        <div class="status-indicator <?= $ipsActive ? 'active' : 'inactive' ?>"></div>
+            <a href="<?= rex_url::backendPage('upkeep/ips') ?>" class="status-card-link">
+                <div class="panel panel-<?= $ipsActive ? 'success' : 'warning' ?> status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-shield-alt"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3>IPS</h3>
+                            <p class="status-text"><?= $ipsActive ? 'Aktiv' : 'Inaktiv' ?></p>
+                            <div class="status-indicator <?= $ipsActive ? 'active' : 'inactive' ?>"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Frontend Wartung -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $frontendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-globe"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3>Frontend</h3>
-                        <p class="status-text"><?= $frontendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
-                        <div class="status-indicator <?= $frontendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
+            <a href="<?= rex_url::backendPage('upkeep/frontend') ?>" class="status-card-link">
+                <div class="panel panel-<?= $frontendMaintenanceActive ? 'warning' : 'success' ?> status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-globe"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3>Frontend</h3>
+                            <p class="status-text"><?= $frontendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
+                            <div class="status-indicator <?= $frontendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Backend Wartung -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $backendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-users"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3>Backend</h3>
-                        <p class="status-text"><?= $backendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
-                        <div class="status-indicator <?= $backendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
+            <a href="<?= rex_url::backendPage('upkeep/backend') ?>" class="status-card-link">
+                <div class="panel panel-<?= $backendMaintenanceActive ? 'warning' : 'success' ?> status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-users"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3>Backend</h3>
+                            <p class="status-text"><?= $backendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
+                            <div class="status-indicator <?= $backendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Domain Redirects -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $domainRedirectsActive ? 'info' : 'default' ?> status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-share"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3><?= $activeRedirects ?></h3>
-                        <p class="status-text">Redirects</p>
-                        <div class="status-indicator <?= $domainRedirectsActive ? 'active' : 'inactive' ?>"></div>
+            <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="status-card-link">
+                <div class="panel panel-<?= $domainRedirectsActive ? 'info' : 'default' ?> status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-share"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3><?= $activeRedirects ?></h3>
+                            <p class="status-text">Redirects</p>
+                            <div class="status-indicator <?= $domainRedirectsActive ? 'active' : 'inactive' ?>"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -146,50 +179,56 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
     <div class="row dashboard-cards">
         <!-- Gesperrte IPs -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-danger status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-ban"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3 id="blocked-ips-count"><?= $stats['blocked_ips'] ?></h3>
-                        <p class="status-text">Gesperrte IPs</p>
-                        <small class="text-muted">Aktive Sperren</small>
+            <a href="<?= rex_url::backendPage('upkeep/ips/blocked') ?>" class="status-card-link">
+                <div class="panel panel-danger status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-ban"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="blocked-ips-count"><?= $stats['blocked_ips'] ?></h3>
+                            <p class="status-text">Gesperrte IPs</p>
+                            <small class="text-muted">Aktive Sperren</small>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Bedrohungen Heute -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-warning status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3 id="threats-today-count"><?= $stats['threats_today'] ?></h3>
-                        <p class="status-text">Bedrohungen</p>
-                        <small class="text-muted">Heute</small>
+            <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="status-card-link">
+                <div class="panel panel-warning status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="threats-today-count"><?= $stats['threats_today'] ?></h3>
+                            <p class="status-text">Bedrohungen</p>
+                            <small class="text-muted">Heute</small>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Erlaubte IPs -->
         <div class="col-md-3 col-sm-6">
-            <div class="panel panel-success status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-check-circle"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3 id="allowed-ips-count"><?= $allowedIpCount ?></h3>
-                        <p class="status-text">Erlaubte IPs</p>
-                        <small class="text-muted">Wartungsmodus</small>
+            <a href="<?= rex_url::backendPage('upkeep/ips/positivliste') ?>" class="status-card-link">
+                <div class="panel panel-success status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-check-circle"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="allowed-ips-count"><?= $allowedIpCount ?></h3>
+                            <p class="status-text">Erlaubte IPs</p>
+                            <small class="text-muted">Wartungsmodus</small>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- System Performance -->
@@ -292,21 +331,66 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         </div>
     </div>
 
-    <!-- Charts und Aktivitäten -->
+    <!-- Sicherheits-Aktivitäten -->
     <div class="row">
-        <!-- Bedrohungs-Trends -->
+        <!-- Letzte Aktivitäten -->
         <div class="col-md-8">
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title">
-                        <i class="rex-icon fa-line-chart"></i> 
+                        <i class="rex-icon fa-shield"></i> 
                         Sicherheits-Aktivitäten (7 Tage)
+                        <small class="pull-right text-muted"><?= count($recentActivities) ?> Einträge</small>
                     </h3>
                 </div>
                 <div class="panel-body">
-                    <div id="threat-chart" class="chart-container">
-                        <canvas id="threatChart" height="300"></canvas>
-                    </div>
+                    <?php if (!empty($recentActivities)): ?>
+                        <div class="activity-list">
+                            <?php foreach ($recentActivities as $activity): ?>
+                                <div class="activity-item <?= $activity['is_blocked'] ? 'blocked' : 'detected' ?>">
+                                    <div class="activity-icon">
+                                        <?php if ($activity['is_blocked']): ?>
+                                            <i class="rex-icon fa-ban text-danger"></i>
+                                        <?php else: ?>
+                                            <i class="rex-icon fa-exclamation-triangle text-warning"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="activity-content">
+                                        <div class="activity-main">
+                                            <strong><?= rex_escape($activity['threat_type']) ?></strong>
+                                            von <code><?= rex_escape($activity['ip']) ?></code>
+                                            <?php if ($activity['is_blocked']): ?>
+                                                <span class="label label-danger">Gesperrt</span>
+                                            <?php else: ?>
+                                                <span class="label label-warning">Erkannt</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($activity['details'])): ?>
+                                            <div class="activity-details text-muted">
+                                                <?= rex_escape($activity['details']) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="activity-time">
+                                        <small class="text-muted">
+                                            <?= date('d.m.Y H:i', strtotime($activity['created_at'])) ?>
+                                        </small>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="text-center" style="margin-top: 15px;">
+                            <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="btn btn-default">
+                                <i class="rex-icon fa-list"></i> Alle Bedrohungen anzeigen
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted" style="padding: 40px;">
+                            <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
+                            <h4>Keine Sicherheitsereignisse</h4>
+                            <p>In den letzten 7 Tagen wurden keine Bedrohungen erkannt.</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -1,18 +1,16 @@
 /**
  * Dashboard JavaScript für das Upkeep AddOn
- * Vereinfachte Version mit Reload-Button
+ * Vereinfachte Version ohne Live-Time
  */
 
 jQuery(document).on('rex:ready', function($) {
     'use strict';
     
-    console.log('Dashboard: Initializing simplified version...');
+    console.log('Dashboard: Initializing...');
     
     var Dashboard = {
         init: function() {
             this.bindEvents();
-            this.updateLiveTime();
-            this.startLiveTimeUpdate();
             console.log('Dashboard: Initialization completed');
         },
         
@@ -23,6 +21,14 @@ jQuery(document).on('rex:ready', function($) {
             $('#dashboard-reload').on('click', function(e) {
                 e.preventDefault();
                 self.reloadPage();
+            });
+            
+            // Status Card Links - Accessibility Enhancement
+            $('.status-card-link').on('keydown', function(e) {
+                if (e.which === 13 || e.which === 32) { // Enter or Space
+                    e.preventDefault();
+                    window.location.href = $(this).attr('href');
+                }
             });
             
             // Keyboard Shortcuts
@@ -38,51 +44,29 @@ jQuery(document).on('rex:ready', function($) {
             });
         },
         
-        updateLiveTime: function() {
-            var $liveTime = $('#live-time');
-            if (!$liveTime.length) return;
-            
-            var now = new Date();
-            var timeString = now.toLocaleTimeString('de-DE', {
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
-            $liveTime.text(timeString);
-        },
-        
-        startLiveTimeUpdate: function() {
-            var self = this;
-            // Update time every second
-            setInterval(function() {
-                self.updateLiveTime();
-            }, 1000);
-        },
-        
         reloadPage: function() {
-            // Zeige Loading-Indikator
-            this.showReloadIndicator();
+            console.log('Dashboard: Reloading page...');
             
-            // Reload nach kurzer Verzögerung
+            // Visuelles Feedback
+            var $button = $('#dashboard-reload');
+            var originalText = $button.html();
+            
+            $button.prop('disabled', true)
+                   .html('<i class="rex-icon fa-spinner fa-spin"></i> Aktualisiere...');
+            
+            // Page reload
             setTimeout(function() {
                 window.location.reload();
-            }, 300);
-        },
-        
-        showReloadIndicator: function() {
-            var $btn = $('#dashboard-reload');
-            if ($btn.length) {
-                var originalHtml = $btn.html();
-                $btn.html('<i class="rex-icon fa-spinner fa-spin"></i> Lädt...');
-                $btn.prop('disabled', true);
-            }
+            }, 500);
         }
     };
     
     // Initialize Dashboard
     Dashboard.init();
+    
+    // Global Dashboard object for external access
+    window.UpkeepDashboard = Dashboard;
+});
     
     // Global access for debugging
     window.UpkeepDashboard = Dashboard;
