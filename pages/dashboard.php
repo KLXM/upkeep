@@ -55,8 +55,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
             <div class="row">
                 <div class="col-md-8">
                     <h1 class="dashboard-title">
-                        <i class="rex-icon fa-shield"></i> 
-                        Upkeep Security Dashboard
+                        <i class="rex-icon fa-dashboard"></i> 
+                        Upkeep Dashboard
                         <small class="text-muted">Live System Monitor</small>
                     </h1>
                 </div>
