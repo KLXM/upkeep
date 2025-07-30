@@ -13,6 +13,21 @@ page:
     block: system
     icon: 'rex-icon fa fa-wrench'
     subpages:
+        dashboard:
+            title: 'Upkeep Dashboard'
+            icon: rex-icon fa fa-dashboard
+            perm: upkeep[]
+        ips:
+            title: 'translate:upkeep_ips_title'
+            icon: rex-icon fa fa-shield
+            perm: upkeep[security]
+            subpages:
+                threats: {title: 'translate:upkeep_ips_threats', icon: rex-icon fa fa-exclamation-triangle}
+                blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
+                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
+                patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
+                settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
+                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
         frontend:
             title: 'translate:upkeep_frontend_title'
             icon: rex-icon fa fa-globe
@@ -29,17 +44,6 @@ page:
             title: 'translate:upkeep_domain_mapping_title'
             icon: rex-icon fa fa-share
             perm: upkeep[domains]
-        ips:
-            title: 'translate:upkeep_ips_title'
-            icon: rex-icon fa fa-shield
-            perm: upkeep[security]
-            subpages:
-                threats: {title: 'translate:upkeep_ips_threats', icon: rex-icon fa fa-exclamation-triangle}
-                blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
-                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
-                patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
-                settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
-                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
             
 requires:
     redaxo: ^5.18.1

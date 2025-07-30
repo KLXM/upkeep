@@ -425,7 +425,7 @@ class IntrusionPrevention
     /**
      * Prüft ob IPS aktiviert ist
      */
-    private static function isActive(): bool
+    public static function isActive(): bool
     {
         return (bool) self::getAddon()->getConfig('ips_active', false);
     }
@@ -433,7 +433,7 @@ class IntrusionPrevention
     /**
      * Prüft ob Rate-Limiting aktiviert ist
      */
-    private static function isRateLimitingEnabled(): bool
+    public static function isRateLimitingEnabled(): bool
     {
         return (bool) self::getAddon()->getConfig('ips_rate_limiting_enabled', false);
     }
@@ -2103,29 +2103,6 @@ class IntrusionPrevention
         // 1% Chance pro Request für Cleanup
         if (random_int(1, 100) <= 1) {
             self::cleanupExpiredData();
-        }
-    }
-
-    /**
-     * Aktualisiert ein Custom Pattern
-     */
-    public static function updateCustomPattern(int $id, string $pattern, string $description = '', string $severity = 'medium', bool $isRegex = false, bool $status = true): bool
-    {
-        try {
-            $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_ips_custom_patterns'));
-            $sql->setWhere(['id' => $id]);
-            $sql->setValue('pattern', $pattern);
-            $sql->setValue('description', $description);
-            $sql->setValue('severity', $severity);
-            $sql->setValue('is_regex', $isRegex ? 1 : 0);
-            $sql->setValue('status', $status ? 1 : 0);
-            $sql->setValue('updated_at', date('Y-m-d H:i:s'));
-            $sql->update();
-            return true;
-        } catch (Exception $e) {
-            rex_logger::logException($e);
-            return false;
         }
     }
 

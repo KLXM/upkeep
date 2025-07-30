@@ -1,0 +1,599 @@
+/**
+ * Dashboard CSS für das Upkeep AddOn
+ * Kompatibel mit REDAXO Dark/Light Themes
+ */
+
+/* CSS-Variablen für Theme-Support */
+:root {
+    --upkeep-primary: #007bff;
+    --upkeep-success: #28a745;
+    --upkeep-danger: #dc3545;
+    --upkeep-warning: #ffc107;
+    --upkeep-info: #17a2b8;
+    
+    --upkeep-bg-primary: #ffffff;
+    --upkeep-bg-secondary: #f8f9fa;
+    --upkeep-text-primary: #333333;
+    --upkeep-text-secondary: #6c757d;
+    --upkeep-border: #dee2e6;
+    
+    --upkeep-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --upkeep-shadow-hover: 0 4px 8px rgba(0,0,0,0.15);
+    
+    --upkeep-transition: all 0.3s ease;
+}
+
+/* Dark Theme Variablen */
+[data-theme="dark"],
+.rex-theme-dark {
+    --upkeep-primary: #4dabf7;
+    --upkeep-success: #51cf66;
+    --upkeep-danger: #ff6b6b;
+    --upkeep-warning: #ffd43b;
+    --upkeep-info: #74c0fc;
+    
+    --upkeep-bg-primary: #2d2d2d;
+    --upkeep-bg-secondary: #1a1a1a;
+    --upkeep-text-primary: #ffffff;
+    --upkeep-text-secondary: #b0b0b0;
+    --upkeep-border: #444444;
+    
+    --upkeep-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    --upkeep-shadow-hover: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* Dashboard Container */
+.upkeep-dashboard {
+    margin: -20px -20px 0 -20px;
+    padding: 20px;
+    min-height: 100vh;
+    background: var(--upkeep-bg-secondary);
+    color: var(--upkeep-text-primary);
+    transition: var(--upkeep-transition);
+}
+
+/* Header mit Gradient */
+.dashboard-header {
+    background: linear-gradient(135deg, var(--upkeep-primary), #0056b3);
+    color: white;
+    border: none;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--upkeep-shadow);
+}
+
+.dashboard-header .panel-body {
+    padding: 25px;
+}
+
+.dashboard-title {
+    margin: 0;
+    color: white;
+    font-weight: 300;
+    font-size: 1.8rem;
+}
+
+.dashboard-title small {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.7em;
+}
+
+.dashboard-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.live-time {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', monospace;
+    background: rgba(255,255,255,0.2);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+}
+
+/* Status Cards mit Hover-Effekten */
+.dashboard-cards {
+    margin-bottom: 25px;
+}
+
+.status-card {
+    transition: var(--upkeep-transition);
+    border: 1px solid var(--upkeep-border);
+    border-radius: 8px;
+    box-shadow: var(--upkeep-shadow);
+    background: var(--upkeep-bg-primary);
+    overflow: hidden;
+}
+
+.status-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--upkeep-shadow-hover);
+}
+
+.status-card.updated {
+    animation: cardPulse 0.6s ease-in-out;
+}
+
+@keyframes cardPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.status-card .panel-body {
+    padding: 25px;
+    text-align: center;
+    position: relative;
+}
+
+.status-card .panel-body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--upkeep-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.status-card:hover .panel-body::before {
+    opacity: 1;
+}
+
+.status-icon {
+    font-size: 2.8rem;
+    margin-bottom: 15px;
+    opacity: 0.85;
+    transition: var(--upkeep-transition);
+}
+
+.status-card:hover .status-icon {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.status-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--upkeep-text-primary);
+    transition: var(--upkeep-transition);
+}
+
+.status-content .status-text {
+    margin: 0 0 5px 0;
+    font-weight: 600;
+    color: var(--upkeep-text-primary);
+    font-size: 1rem;
+}
+
+.status-content small {
+    color: var(--upkeep-text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Status Indicator mit Animation */
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-top: 8px;
+    position: relative;
+}
+
+.status-indicator.active {
+    background: var(--upkeep-success);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
+    animation: statusPulse 2s infinite;
+}
+
+.status-indicator.inactive {
+    background: var(--upkeep-danger);
+    box-shadow: 0 0 6px rgba(220, 53, 69, 0.5);
+}
+
+.status-indicator.maintenance {
+    background: var(--upkeep-warning);
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
+    animation: maintenancePulse 3s infinite;
+}
+
+@keyframes maintenancePulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.6; 
+        transform: scale(1.1);
+    }
+}
+
+@keyframes statusPulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7; 
+        transform: scale(1.2);
+    }
+}
+
+/* Panel Styling */
+.panel {
+    background: var(--upkeep-bg-primary);
+    border: 1px solid var(--upkeep-border);
+    border-radius: 8px;
+    box-shadow: var(--upkeep-shadow);
+    margin-bottom: 20px;
+    transition: var(--upkeep-transition);
+}
+
+.panel:hover {
+    box-shadow: var(--upkeep-shadow-hover);
+}
+
+.panel-heading {
+    background: var(--upkeep-bg-secondary);
+    border-bottom: 1px solid var(--upkeep-border);
+    padding: 15px 20px;
+    border-radius: 8px 8px 0 0;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--upkeep-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-body {
+    padding: 20px;
+}
+
+/* Chart Container */
+.chart-container {
+    height: 300px;
+    position: relative;
+    background: linear-gradient(45deg, var(--upkeep-bg-secondary), var(--upkeep-bg-primary));
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--upkeep-text-secondary);
+    text-align: center;
+}
+
+.chart-container .fa {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+/* Threat List */
+.threat-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.threat-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.threat-list::-webkit-scrollbar-track {
+    background: var(--upkeep-bg-secondary);
+    border-radius: 3px;
+}
+
+.threat-list::-webkit-scrollbar-thumb {
+    background: var(--upkeep-border);
+    border-radius: 3px;
+}
+
+.threat-list::-webkit-scrollbar-thumb:hover {
+    background: var(--upkeep-text-secondary);
+}
+
+.threat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--upkeep-border);
+    transition: var(--upkeep-transition);
+}
+
+.threat-item:last-child {
+    border-bottom: none;
+}
+
+.threat-item:hover {
+    background: var(--upkeep-bg-secondary);
+    margin: 0 -10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 4px;
+}
+
+.threat-name {
+    font-weight: 600;
+    color: var(--upkeep-text-primary);
+    font-size: 0.95rem;
+}
+
+.threat-count .badge {
+    background: var(--upkeep-primary);
+    color: white;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+/* Activity Feed */
+.activity-feed {
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.activity-feed::-webkit-scrollbar {
+    width: 8px;
+}
+
+.activity-feed::-webkit-scrollbar-track {
+    background: var(--upkeep-bg-secondary);
+    border-radius: 4px;
+}
+
+.activity-feed::-webkit-scrollbar-thumb {
+    background: var(--upkeep-border);
+    border-radius: 4px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--upkeep-border);
+    transition: var(--upkeep-transition);
+}
+
+.activity-item:hover {
+    background: var(--upkeep-bg-secondary);
+    margin: 0 -15px;
+    padding-left: 15px;
+    padding-right: 15px;
+    border-radius: 6px;
+}
+
+.activity-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    font-size: 1.3rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-title {
+    font-weight: 600;
+    margin: 0 0 6px 0;
+    color: var(--upkeep-text-primary);
+    font-size: 0.95rem;
+    line-height: 1.3;
+}
+
+.activity-details {
+    font-size: 0.85rem;
+    color: var(--upkeep-text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.activity-time {
+    font-size: 0.8rem;
+    color: var(--upkeep-text-secondary);
+    text-align: right;
+    min-width: 70px;
+    flex-shrink: 0;
+    margin-left: 15px;
+    font-weight: 500;
+}
+
+/* Severity Colors */
+.severity-critical { 
+    background: var(--upkeep-danger);
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.3);
+}
+.severity-high { 
+    background: var(--upkeep-warning);
+    color: #333;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.3);
+}
+.severity-medium { 
+    background: var(--upkeep-info);
+    box-shadow: 0 0 8px rgba(23, 162, 184, 0.3);
+}
+.severity-low { 
+    background: var(--upkeep-success);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+
+/* Labels */
+.label {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.label-danger { background: var(--upkeep-danger); color: white; }
+.label-warning { background: var(--upkeep-warning); color: #333; }
+.label-info { background: var(--upkeep-info); color: white; }
+.label-primary { background: var(--upkeep-primary); color: white; }
+.label-success { background: var(--upkeep-success); color: white; }
+.label-default { background: var(--upkeep-text-secondary); color: white; }
+
+/* Buttons */
+.btn {
+    transition: var(--upkeep-transition);
+    border-radius: 5px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+
+.btn-success.active {
+    background: var(--upkeep-success);
+    border-color: var(--upkeep-success);
+    animation: buttonPulse 1.5s infinite;
+}
+
+@keyframes buttonPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upkeep-dashboard {
+        margin: -15px -15px 0 -15px;
+        padding: 15px;
+    }
+    
+    .dashboard-header .panel-body {
+        padding: 20px;
+    }
+    
+    .dashboard-title {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .status-card .panel-body {
+        padding: 20px 15px;
+    }
+    
+    .status-content h3 {
+        font-size: 1.8rem;
+    }
+    
+    .activity-item {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .activity-icon {
+        margin-right: 0;
+        align-self: flex-start;
+    }
+    
+    .activity-time {
+        align-self: flex-end;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-cards .col-md-3 {
+        margin-bottom: 15px;
+    }
+    
+    .status-icon {
+        font-size: 2.2rem;
+    }
+    
+    .status-content h3 {
+        font-size: 1.6rem;
+    }
+    
+    .panel-heading {
+        padding: 12px 15px;
+    }
+    
+    .panel-body {
+        padding: 15px;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--upkeep-border);
+    border-radius: 50%;
+    border-top-color: var(--upkeep-primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--upkeep-text-secondary);
+}
+
+.empty-state .fa {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .status-card {
+        border-width: 2px;
+    }
+    
+    .status-indicator {
+        border: 2px solid var(--upkeep-text-primary);
+    }
+    
+    .threat-item:hover {
+        outline: 2px solid var(--upkeep-primary);
+    }
+}
