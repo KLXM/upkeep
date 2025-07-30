@@ -42,50 +42,45 @@ $activeRedirects = (int) $sql->getValue('count');
 $allowedIps = $addon->getConfig('allowed_ips', '');
 $allowedIpCount = !empty(trim($allowedIps)) ? count(array_filter(explode("\n", $allowedIps))) : 0;
 
-// Aktuelle Sicherheitsaktivitäten der letzten 7 Tage abrufen
-function getRecentSecurityActivities() {
+// Sicherheitsbedrohungen nach Typ der letzten 7 Tage abrufen
+function getSecurityThreatsByType() {
     try {
         $sql = rex_sql::factory();
         $sql->setQuery("
             SELECT 
-                ip_address,
                 threat_type,
-                request_uri,
-                user_agent,
                 severity,
-                action_taken,
-                created_at
+                COUNT(*) as count,
+                SUM(CASE WHEN action_taken IN ('permanent_block', 'temporary_block') THEN 1 ELSE 0 END) as blocked_count,
+                MAX(created_at) as last_occurrence
             FROM " . rex::getTable('upkeep_ips_threat_log') . " 
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            ORDER BY created_at DESC
-            LIMIT 20
+            GROUP BY threat_type, severity
+            ORDER BY count DESC, severity DESC
         ");
         
-        $activities = [];
+        $threatTypes = [];
         while ($sql->hasNext()) {
-            $activities[] = [
-                'ip' => $sql->getValue('ip_address'),
+            $threatTypes[] = [
                 'threat_type' => $sql->getValue('threat_type'),
-                'request_uri' => $sql->getValue('request_uri'),
-                'user_agent' => $sql->getValue('user_agent'),
                 'severity' => $sql->getValue('severity'),
-                'action_taken' => $sql->getValue('action_taken'),
-                'created_at' => $sql->getValue('created_at'),
-                'is_blocked' => in_array($sql->getValue('action_taken'), ['permanent_block', 'temporary_block'])
+                'count' => (int) $sql->getValue('count'),
+                'blocked_count' => (int) $sql->getValue('blocked_count'),
+                'last_occurrence' => $sql->getValue('last_occurrence')
             ];
             $sql->next();
         }
-        return $activities;
+        return $threatTypes;
     } catch (Exception $e) {
         // Debug: Log the error
         if (rex_addon::get('upkeep')->getConfig('ips_debug_mode', false)) {
-            rex_logger::factory()->log('error', 'Dashboard getRecentSecurityActivities failed: ' . $e->getMessage());
+            rex_logger::factory()->log('error', 'Dashboard getSecurityThreatsByType failed: ' . $e->getMessage());
         }
         return [];
     }
 }
 
-$recentActivities = getRecentSecurityActivities();
+$threatsByType = getSecurityThreatsByType();
 
 // Dashboard Assets einbinden
 rex_view::addCssFile($addon->getAssetsUrl('dashboard.css'));
@@ -340,71 +335,71 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         </div>
     </div>
 
-    <!-- Sicherheits-Aktivitäten -->
+    <!-- Sicherheits-Bedrohungstypen -->
     <div class="row">
-        <!-- Letzte Aktivitäten -->
+        <!-- Bedrohungstypen-Statistik -->
         <div class="col-md-8">
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-shield"></i> 
-                        Sicherheits-Aktivitäten (7 Tage)
-                        <small class="pull-right text-muted"><?= count($recentActivities) ?> Einträge</small>
+                        Sicherheits-Bedrohungen nach Typ (7 Tage)
+                        <small class="pull-right text-muted"><?= count($threatsByType) ?> Typen</small>
                     </h3>
                 </div>
                 <div class="panel-body">
                     <?php 
-                    // Debug: Zeige Anzahl gefundener Aktivitäten
-                    if ($addon->getConfig('ips_debug_mode', false) && count($recentActivities) === 0): 
-                        echo '<div class="alert alert-info"><strong>Debug:</strong> Keine Aktivitäten gefunden. Stats zeigen aber ' . $stats['threats_today'] . ' Bedrohungen heute.</div>';
+                    // Debug: Zeige Anzahl gefundener Bedrohungstypen
+                    if ($addon->getConfig('ips_debug_mode', false) && count($threatsByType) === 0): 
+                        echo '<div class="alert alert-info"><strong>Debug:</strong> Keine Bedrohungstypen gefunden. Stats zeigen aber ' . $stats['threats_today'] . ' Bedrohungen heute.</div>';
                     endif;
                     ?>
-                    <?php if (!empty($recentActivities)): ?>
-                        <div class="activity-list">
-                            <?php foreach ($recentActivities as $activity): ?>
-                                <div class="activity-item <?= $activity['is_blocked'] ? 'blocked' : 'detected' ?>">
-                                    <div class="activity-icon">
-                                        <?php if ($activity['is_blocked']): ?>
-                                            <i class="rex-icon fa-ban text-danger"></i>
-                                        <?php else: ?>
-                                            <i class="rex-icon fa-exclamation-triangle text-warning"></i>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="activity-content">
-                                        <div class="activity-main">
-                                            <strong><?= rex_escape($activity['threat_type']) ?></strong>
-                                            von <code><?= rex_escape($activity['ip']) ?></code>
-                                            <?php if ($activity['is_blocked']): ?>
-                                                <span class="label label-danger">Gesperrt</span>
-                                            <?php else: ?>
-                                                <span class="label label-warning">Erkannt</span>
-                                            <?php endif; ?>
-                                            <span class="label label-<?= $activity['severity'] === 'critical' ? 'danger' : ($activity['severity'] === 'high' ? 'warning' : 'info') ?>">
-                                                <?= rex_escape(ucfirst($activity['severity'])) ?>
-                                            </span>
-                                        </div>
-                                        <?php if (!empty($activity['request_uri'])): ?>
-                                            <div class="activity-details text-muted">
-                                                <small><strong>URI:</strong> <?= rex_escape($activity['request_uri']) ?></small>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if (!empty($activity['user_agent']) && strlen($activity['user_agent']) < 100): ?>
-                                            <div class="activity-details text-muted">
-                                                <small><strong>User-Agent:</strong> <?= rex_escape(substr($activity['user_agent'], 0, 80)) ?><?= strlen($activity['user_agent']) > 80 ? '...' : '' ?></small>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="activity-time">
-                                        <small class="text-muted">
-                                            <?= date('d.m.Y H:i', strtotime($activity['created_at'])) ?>
-                                        </small>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                    <?php if (!empty($threatsByType)): ?>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Bedrohungstyp</th>
+                                        <th class="text-center">Severity</th>
+                                        <th class="text-center">Erkannt</th>
+                                        <th class="text-center">Gesperrt</th>
+                                        <th class="text-center">Letzter Vorfall</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($threatsByType as $threat): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?= rex_escape($threat['threat_type']) ?></strong>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="label label-<?= $threat['severity'] === 'critical' ? 'danger' : ($threat['severity'] === 'high' ? 'warning' : ($threat['severity'] === 'medium' ? 'info' : 'default')) ?>">
+                                                    <?= rex_escape(ucfirst($threat['severity'])) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-warning"><?= $threat['count'] ?></span>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($threat['blocked_count'] > 0): ?>
+                                                    <span class="badge badge-danger"><?= $threat['blocked_count'] ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">0</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <small class="text-muted">
+                                                    <?= date('d.m H:i', strtotime($threat['last_occurrence'])) ?>
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                         <div class="text-center" style="margin-top: 15px;">
                             <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-list"></i> Alle Bedrohungen anzeigen
+                                <i class="rex-icon fa-list"></i> Detaillierte Bedrohungsliste
                             </a>
                         </div>
                     <?php else: ?>

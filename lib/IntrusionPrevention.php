@@ -269,7 +269,7 @@ class IntrusionPrevention
         $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
         
         if ($threat) {
-            rex_logger::factory()->log('warning', "IPS: Threat detected from {$clientIp} - " . json_encode($threat));
+            // Nur ins IPS-Log, nicht doppelt ins System-Log
             self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
         } else {
             // Debug-Log nur bei aktivem Debug-Modus
@@ -280,7 +280,7 @@ class IntrusionPrevention
         
         // Rate Limiting prüfen (nur wenn aktiviert)
         if (self::isRateLimitingEnabled() && self::isRateLimitExceeded($clientIp)) {
-            rex_logger::factory()->log('warning', "IPS: Rate limit exceeded for {$clientIp}");
+            // Rate Limiting nur ins IPS-Log
             self::handleThreat([
                 'type' => 'rate_limit',
                 'severity' => 'medium',
@@ -354,14 +354,14 @@ class IntrusionPrevention
         // Spezielle Behandlung für xmlrpc.php - IMMER permanent blocken
         if (stripos($uri, 'xmlrpc.php') !== false) {
             self::blockIpPermanently($ip);
-            rex_logger::factory()->log('critical', "IPS: xmlrpc.php access detected - permanent block for {$ip}");
+            // xmlrpc-Angriffe nur ins IPS-Log
             self::blockRequest('xmlrpc.php access blocked - permanent ban', $ip, $uri);
         }
         
         // Sofortige Sperrung für kritische Patterns
         if ($threat['category'] === 'immediate_block') {
             self::blockIpPermanently($ip);
-            rex_logger::factory()->log('critical', "IPS: Immediate permanent block for {$ip} - {$threat['pattern']}");
+            // Kritische Bedrohungen nur ins IPS-Log
             self::blockRequest('Malicious activity detected - permanent block', $ip, $uri);
         }
         
@@ -1122,8 +1122,8 @@ class IntrusionPrevention
         $sql->setValue('created_at', date('Y-m-d H:i:s'));
         $sql->insert();
         
-        // Auch ins REDAXO-Log schreiben
-        rex_logger::factory()->log('error', "IPS: Threat detected from {$ip}: {$threat['type']} - {$threat['pattern']}");
+        // IPS-Log reicht - kein zusätzliches System-Log mehr
+        // Bedrohungen werden nur in der IPS-Datenbank protokolliert
     }
     
     /**
