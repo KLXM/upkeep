@@ -361,51 +361,6 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-body">
                     <div class="activity-feed">
                         <?php
-                        // Letzte Aktivitäten direkt laden (ohne AJAX)
-                        try {
-                            $sql = rex_sql::factory();
-                            $query = "SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                                      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                                      ORDER BY created_at DESC 
-                                      LIMIT 20";
-                            
-                            $sql->setQuery($query);
-                            $activities = [];
-                            
-                            while ($sql->hasNext()) {
-                                $activities[] = [
-                                    'id' => $sql->getValue('id'),
-                                    'ip_address' => $sql->getValue('ip_address'),
-                                    'threat_type' => $sql->getValue('threat_type'),
-                                    'threat_category' => $sql->getValue('threat_category'),
-                                    'severity' => $sql->getValue('severity'),
-                                    'pattern_matched' => $sql->getValue('pattern_matched'),
-                                    'request_uri' => $sql->getValue('request_uri'),
-                                    'user_agent' => $sql->getValue('user_agent'),
-                                    'action_taken' => $sql->getValue('action_taken'),
-                                    'created_at' => $sql->getValue('created_at')
-                                ];
-                                $sql->next();
-                            }
-                            
-                            if (empty($activities)) {
-                                echo '<div class="text-center text-muted">
-                                        <i class="rex-icon fa-check-circle" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>
-                                        Keine Sicherheitsereignisse in den letzten 7 Tagen
-                                      </div>';
-                            } else {
-                                foreach ($activities as $activity) {
-                                    renderActivityItem($activity);
-                                }
-                            }
-                            
-                        } catch (Exception $e) {
-                            echo '<div class="alert alert-info">
-                                    <i class="rex-icon fa-info-circle"></i> 
-                                    IPS-Tabellen sind noch nicht initialisiert. Aktivitäten werden angezeigt, sobald das IPS-System läuft.
-                                  </div>';
-                        }
-                        
                         /**
                          * Rendert ein einzelnes Activity Item
                          */
@@ -508,6 +463,51 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                 'captcha' => '<span class="label label-primary">CAPTCHA</span>',
                                 default => '<span class="label label-default">' . rex_escape($action) . '</span>'
                             };
+                        }
+                        
+                        // Letzte Aktivitäten direkt laden (ohne AJAX)
+                        try {
+                            $sql = rex_sql::factory();
+                            $query = "SELECT * FROM " . rex::getTable('upkeep_ips_threat_log') . " 
+                                      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                                      ORDER BY created_at DESC 
+                                      LIMIT 20";
+                            
+                            $sql->setQuery($query);
+                            $activities = [];
+                            
+                            while ($sql->hasNext()) {
+                                $activities[] = [
+                                    'id' => $sql->getValue('id'),
+                                    'ip_address' => $sql->getValue('ip_address'),
+                                    'threat_type' => $sql->getValue('threat_type'),
+                                    'threat_category' => $sql->getValue('threat_category'),
+                                    'severity' => $sql->getValue('severity'),
+                                    'pattern_matched' => $sql->getValue('pattern_matched'),
+                                    'request_uri' => $sql->getValue('request_uri'),
+                                    'user_agent' => $sql->getValue('user_agent'),
+                                    'action_taken' => $sql->getValue('action_taken'),
+                                    'created_at' => $sql->getValue('created_at')
+                                ];
+                                $sql->next();
+                            }
+                            
+                            if (empty($activities)) {
+                                echo '<div class="text-center text-muted">
+                                        <i class="rex-icon fa-check-circle" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>
+                                        Keine Sicherheitsereignisse in den letzten 7 Tagen
+                                      </div>';
+                            } else {
+                                foreach ($activities as $activity) {
+                                    renderActivityItem($activity);
+                                }
+                            }
+                            
+                        } catch (Exception $e) {
+                            echo '<div class="alert alert-info">
+                                    <i class="rex-icon fa-info-circle"></i> 
+                                    IPS-Tabellen sind noch nicht initialisiert. Aktivitäten werden angezeigt, sobald das IPS-System läuft.
+                                  </div>';
                         }
                         ?>
                     </div>
