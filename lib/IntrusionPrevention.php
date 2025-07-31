@@ -1876,23 +1876,76 @@ class IntrusionPrevention
 
     /**
      * Sperrt IP-Adresse manuell
+     * 
+     * @param string $ip IP-Adresse die gesperrt werden soll
+     * @param string $duration Sperrdauer ('permanent', '1h', '6h', '24h', '7d', '30d')
+     * @param string $reason Grund für die Sperrung
+     * @return array Ergebnis mit Erfolg/Fehler und Nachricht ['success' => bool, 'message' => string, 'error_code' => string]
      */
-    public static function blockIpManually(string $ip, string $duration = 'permanent', string $reason = ''): bool
+    public static function blockIpManually(string $ip, string $duration = 'permanent', string $reason = ''): array
     {
+        // Input-Validierung
+        $ip = trim($ip);
+        if (empty($ip)) {
+            return [
+                'success' => false,
+                'message' => 'IP-Adresse ist erforderlich',
+                'error_code' => 'IP_REQUIRED'
+            ];
+        }
+        
+        // IP-Format validieren
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return [
+                'success' => false,
+                'message' => "Ungültiges IP-Adressformat: {$ip}. Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein.",
+                'error_code' => 'INVALID_IP_FORMAT'
+            ];
+        }
+        
+        // Prüfe ob es sich um eine private/lokale IP handelt (Warnung)
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            // Private IP - warnen aber nicht blockieren
+            rex_logger::factory()->log('warning', "IPS: Attempting to block private/reserved IP: {$ip}");
+        }
+        
         try {
             $sql = rex_sql::factory();
             
-            // Prüfe zuerst, ob die IP bereits gesperrt ist
-            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address = ?", [$ip]);
-            $alreadyBlocked = (int) $sql->getValue('count') > 0;
+            // Prüfe zuerst, ob die IP bereits gesperrt ist (inklusive nicht-abgelaufene temporäre Sperren)
+            $sql->setQuery("SELECT id, block_type, expires_at, reason FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
+                           WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW())", [$ip]);
             
-            if ($alreadyBlocked) {
-                return false; // IP ist bereits gesperrt
+            if ($sql->getRows() > 0) {
+                $existingBlockType = $sql->getValue('block_type');
+                $existingExpiresAt = $sql->getValue('expires_at');
+                $existingReason = $sql->getValue('reason');
+                
+                $expiryInfo = $existingExpiresAt ? " bis " . date('d.m.Y H:i', strtotime($existingExpiresAt)) : " permanent";
+                return [
+                    'success' => false,
+                    'message' => "IP {$ip} ist bereits gesperrt ({$existingBlockType}{$expiryInfo}). Grund: " . substr($existingReason, 0, 100),
+                    'error_code' => 'IP_ALREADY_BLOCKED'
+                ];
             }
             
-            // IP validieren
-            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                return false;
+            // Prüfe ob die IP in der Positivliste steht
+            if (self::isOnPositivliste($ip)) {
+                return [
+                    'success' => false,
+                    'message' => "IP {$ip} steht in der Positivliste und kann nicht gesperrt werden. Entfernen Sie sie zuerst aus der Positivliste.",
+                    'error_code' => 'IP_IN_POSITIVLISTE'
+                ];
+            }
+            
+            // Duration validieren
+            $validDurations = ['permanent', '1h', '6h', '24h', '7d', '30d'];
+            if (!in_array($duration, $validDurations)) {
+                return [
+                    'success' => false,
+                    'message' => "Ungültige Sperrdauer: {$duration}. Erlaubte Werte: " . implode(', ', $validDurations),
+                    'error_code' => 'INVALID_DURATION'
+                ];
             }
             
             // Ablaufzeit berechnen
@@ -1903,31 +1956,36 @@ class IntrusionPrevention
                 $blockType = 'temporary';
                 $now = new DateTime();
                 
-                switch ($duration) {
-                    case '1h':
-                        $expiresAt = $now->modify('+1 hour')->format('Y-m-d H:i:s');
-                        break;
-                    case '6h':
-                        $expiresAt = $now->modify('+6 hours')->format('Y-m-d H:i:s');
-                        break;
-                    case '24h':
-                        $expiresAt = $now->modify('+24 hours')->format('Y-m-d H:i:s');
-                        break;
-                    case '7d':
-                        $expiresAt = $now->modify('+7 days')->format('Y-m-d H:i:s');
-                        break;
-                    case '30d':
-                        $expiresAt = $now->modify('+30 days')->format('Y-m-d H:i:s');
-                        break;
-                    default:
-                        $blockType = 'permanent';
-                        $expiresAt = null;
+                try {
+                    switch ($duration) {
+                        case '1h':
+                            $expiresAt = $now->modify('+1 hour')->format('Y-m-d H:i:s');
+                            break;
+                        case '6h':
+                            $expiresAt = $now->modify('+6 hours')->format('Y-m-d H:i:s');
+                            break;
+                        case '24h':
+                            $expiresAt = $now->modify('+24 hours')->format('Y-m-d H:i:s');
+                            break;
+                        case '7d':
+                            $expiresAt = $now->modify('+7 days')->format('Y-m-d H:i:s');
+                            break;
+                        case '30d':
+                            $expiresAt = $now->modify('+30 days')->format('Y-m-d H:i:s');
+                            break;
+                    }
+                } catch (Exception $e) {
+                    return [
+                        'success' => false,
+                        'message' => "Fehler beim Berechnen der Ablaufzeit: " . $e->getMessage(),
+                        'error_code' => 'DATE_CALCULATION_ERROR'
+                    ];
                 }
             }
             
             // Grund standardisieren
             if (empty($reason)) {
-                $reason = 'Manually blocked by administrator';
+                $reason = 'Manuell gesperrt durch Administrator';
             }
             
             // IP in Datenbank sperren
@@ -1940,16 +1998,48 @@ class IntrusionPrevention
             $sql->setValue('created_at', date('Y-m-d H:i:s'));
             $sql->insert();
             
-            $expiryInfo = $expiresAt ? " until {$expiresAt}" : " permanently";
+            // Erfolg loggen
+            $expiryInfo = $expiresAt ? " bis {$expiresAt}" : " permanent";
+            rex_logger::factory()->log('info', "IPS: IP {$ip} manuell gesperrt{$expiryInfo} - Grund: {$reason}");
+            
+            // Auch bei ausgeschaltetem Debug-Modus loggen, da dies eine wichtige Admin-Aktion ist
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: IP {$ip} manually blocked{$expiryInfo} - reason: {$reason}");
+                self::debugLog("Manual IP block successful: {$ip} ({$blockType}{$expiryInfo}) - {$reason}");
             }
             
-            return true;
+            $successMessage = "IP {$ip} wurde erfolgreich gesperrt ({$blockType}";
+            if ($expiresAt) {
+                $successMessage .= " bis " . date('d.m.Y H:i', strtotime($expiresAt));
+            }
+            $successMessage .= ").";
+            
+            return [
+                'success' => true,
+                'message' => $successMessage,
+                'error_code' => null
+            ];
+            
         } catch (Exception $e) {
+            $errorMessage = "Datenbankfehler beim Sperren der IP {$ip}: " . $e->getMessage();
             rex_logger::logException($e);
-            return false;
+            rex_logger::factory()->log('error', "IPS Manual Block Error: {$errorMessage}");
+            
+            return [
+                'success' => false,
+                'message' => "Datenbankfehler beim Sperren der IP-Adresse. Details wurden geloggt.",
+                'error_code' => 'DATABASE_ERROR'
+            ];
         }
+    }
+    
+    /**
+     * Backward compatibility wrapper for blockIpManually
+     * @deprecated Use blockIpManually() which returns detailed result array
+     */
+    public static function blockIpManuallyLegacy(string $ip, string $duration = 'permanent', string $reason = ''): bool
+    {
+        $result = self::blockIpManually($ip, $duration, $reason);
+        return $result['success'];
     }
     
     /**
