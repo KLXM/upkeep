@@ -40,48 +40,48 @@ if (rex_post('save', 'bool')) {
     $errors = [];
     
     if (empty($data['source_domain'])) {
-        $errors[] = 'Source Domain ist erforderlich';
+        $errors[] = $addon->i18n('upkeep_domain_mapping_source_required');
     } elseif (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/', $data['source_domain']) || strlen($data['source_domain']) > 253) {
-        $errors[] = 'Ungültige Domain (RFC-konform erforderlich)';
+        $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_domain');
     }
     
     // Wildcard-spezifische Validierung
     if ($data['is_wildcard'] && empty($data['source_path'])) {
-        $errors[] = 'Source Path ist erforderlich für Wildcard-Redirects';
+        $errors[] = $addon->i18n('upkeep_domain_mapping_source_path_required');
     } elseif (!empty($data['source_path'])) {
         // Pfad-Sicherheit: Verhindere Path Traversal
         if (str_contains($data['source_path'], '..') || str_contains($data['source_path'], '\\')) {
-            $errors[] = 'Pfade dürfen keine ".." oder Backslashes enthalten';
+            $errors[] = $addon->i18n('upkeep_domain_mapping_path_security');
         }
         
         if ($data['is_wildcard'] && !str_ends_with($data['source_path'], '/*')) {
-            $errors[] = 'Wildcard-Pfade müssen mit /* enden';
+            $errors[] = $addon->i18n('upkeep_domain_mapping_wildcard_ending');
         }
         if (!str_starts_with($data['source_path'], '/')) {
-            $errors[] = 'Pfade müssen mit / beginnen';
+            $errors[] = $addon->i18n('upkeep_domain_mapping_path_start');
         }
     }
     
     if (empty($data['target_url'])) {
-        $errors[] = 'Target URL ist erforderlich';
+        $errors[] = $addon->i18n('upkeep_domain_mapping_target_required');
     } else {
         // Wildcard-URLs validieren
         if (str_contains($data['target_url'], '*')) {
             // Bei Wildcard-URLs: Prüfe URL-Format ohne das *
             $testUrl = str_replace('*', 'test', $data['target_url']);
             if (!filter_var($testUrl, FILTER_VALIDATE_URL)) {
-                $errors[] = 'Ungültige Wildcard-URL (Format mit * muss gültige URL ergeben)';
+                $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_wildcard_url');
             }
         } else {
             // Normale URL-Validierung
             if (!filter_var($data['target_url'], FILTER_VALIDATE_URL)) {
-                $errors[] = 'Ungültige Target URL';
+                $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_target_url');
             }
         }
         
         // Zusätzliche Sicherheitscheck für erlaubte Schemas
         if (!preg_match('/^https?:\/\//', $data['target_url']) && !str_contains($data['target_url'], '*')) {
-            $errors[] = 'Target URL muss mit http:// oder https:// beginnen';
+            $errors[] = $addon->i18n('upkeep_domain_mapping_url_schema_required');
         }
     }
     
@@ -128,10 +128,10 @@ if (rex_post('save', 'bool')) {
             $sql->insert();
         }
         
-        echo rex_view::success('Domain Mapping wurde gespeichert');
+        echo rex_view::success($addon->i18n('upkeep_domain_mapping_saved'));
         $func = '';
     } else {
-        echo rex_view::error('Fehler beim Speichern:<br>' . implode('<br>', $errors));
+        echo rex_view::error($addon->i18n('upkeep_domain_mapping_save_error') . ':<br>' . implode('<br>', $errors));
     }
 }
 
@@ -141,9 +141,9 @@ if ($func == 'delete' && $id > 0) {
     $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE id = ?', [$id]);
     
     if ($sql->getRows() > 0) {
-        echo rex_view::success('Domain Mapping wurde gelöscht');
+        echo rex_view::success($addon->i18n('upkeep_domain_mapping_deleted'));
     } else {
-        echo rex_view::error('Fehler beim Löschen');
+        echo rex_view::error($addon->i18n('upkeep_domain_mapping_delete_error'));
     }
     $func = '';
 }
@@ -196,7 +196,7 @@ if ($func == 'add' || $func == 'edit') {
         $n['label'] = '<label for="is_wildcard">Wildcard Mapping</label>';
         $checked = isset($data['is_wildcard']) && $data['is_wildcard'] ? ' checked="checked"' : '';
         $n['field'] = '<input type="checkbox" id="is_wildcard" name="is_wildcard" value="1"' . $checked . '> Wildcard-Umleitung aktivieren';
-        $n['note'] = 'Source Path muss mit /* enden. Target URL kann * enthalten für dynamische Ersetzung.';
+        $n['note'] = $addon->i18n('upkeep_domain_mapping_wildcard_note');
         $formElements[] = $n;
         
         // Target URL
@@ -284,26 +284,26 @@ if ($func == '') {
                 Domain-Mapping global aktivieren
             </label>
         </div>
-        <p class="help-block">Wenn deaktiviert, werden alle Domain-Mappings ignoriert, auch wenn sie als "Aktiv" markiert sind.</p>
+        <p class="help-block">' . $addon->i18n('upkeep_domain_mapping_disabled_help') . '</p>
         <button class="btn btn-primary" type="submit" name="save_global_settings" value="1">Einstellungen speichern</button>
     </form>';
     
     $fragment = new rex_fragment();
-    $fragment->setVar('title', 'Globale Domain-Mapping Einstellungen', false);
+    $fragment->setVar('title', $addon->i18n('upkeep_domain_mapping_global_settings'), false);
     $fragment->setVar('body', $globalForm, false);
     echo $fragment->parse('core/page/section.php');
     
     // Description
     $fragment = new rex_fragment();
-    $fragment->setVar('title', 'Domain Mapping', false);
-    $fragment->setVar('body', '<p>Hier können Sie Domains auf URLs umleiten. Die Umleitung funktioniert nur, wenn die Domain auch tatsächlich auf diesen Server zeigt.</p>', false);
+    $fragment->setVar('title', $addon->i18n('upkeep_domain_mapping'), false);
+    $fragment->setVar('body', '<p>' . $addon->i18n('upkeep_domain_mapping_help_text') . '</p>', false);
     echo $fragment->parse('core/page/section.php');
     
     // List
     $list = rex_list::factory('SELECT * FROM ' . rex::getTable('upkeep_domain_mapping') . ' ORDER BY source_domain');
     $list->addTableAttribute('class', 'table-striped');
     
-    $list->setNoRowsMessage('Keine Domain Mappings vorhanden');
+    $list->setNoRowsMessage($addon->i18n('upkeep_domain_mapping_no_entries'));
     
     $list->setColumnLabel('source_domain', 'Domain');
     $list->setColumnLabel('source_path', 'Pfad');

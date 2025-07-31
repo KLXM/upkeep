@@ -22,7 +22,7 @@ if (rex_post('cleanup', 'bool')) {
     if (empty($messages)) {
         echo rex_view::info('Keine Bereinigung notwendig - alle Daten sind aktuell.');
     } else {
-        echo rex_view::success('Bereinigung erfolgreich: ' . implode(', ', $messages));
+        echo rex_view::success($addon->i18n('upkeep_ips_cleanup_success_detail', implode(', ', $messages)));
     }
 }
 
@@ -107,13 +107,13 @@ $totalThreats = (int) $sql->getValue('count');
                 <h4>Manuelle Bereinigung</h4>
                 <?php if ($expiredIps > 0 || $oldThreats > 0 || $oldRateLimits > 0): ?>
                     <div class="alert alert-warning">
-                        <strong>Bereinigung empfohlen!</strong><br>
-                        Es wurden <?= $expiredIps + $oldThreats + $oldRateLimits ?> Datensätze gefunden, die bereinigt werden können.
+                        <strong><?= $addon->i18n('upkeep_cleanup_recommended_title') ?></strong><br>
+                        <?= $addon->i18n('upkeep_ips_cleanup_found', $expiredIps + $oldThreats + $oldRateLimits) ?>
                     </div>
                 <?php else: ?>
                     <div class="alert alert-success">
-                        <strong>Datenbank ist sauber!</strong><br>
-                        Keine Bereinigung notwendig.
+                        <strong><?= $addon->i18n('upkeep_database_clean_title') ?></strong><br>
+                        <?= $addon->i18n('upkeep_ips_cleanup_no_cleanup_needed') ?>
                     </div>
                 <?php endif; ?>
                 

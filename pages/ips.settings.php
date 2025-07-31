@@ -8,9 +8,9 @@ $addon = rex_addon::get('upkeep');
 if (rex_post('update_geo', 'bool')) {
     if (class_exists('KLXM\Upkeep\GeoIP')) {
         if (IntrusionPrevention::updateGeoDatabase()) {
-            echo rex_view::success('GeoIP-Datenbank erfolgreich aktualisiert');
+            echo rex_view::success($addon->i18n('upkeep_ips_geo_update_success'));
         } else {
-            echo rex_view::error('Fehler beim Aktualisieren der GeoIP-Datenbank');
+            echo rex_view::error($addon->i18n('upkeep_ips_geo_update_error'));
         }
     } else {
         echo rex_view::error('GeoIP-Funktionalität nicht verfügbar');
@@ -74,7 +74,7 @@ echo '</div>';
 echo '<div class="form-group">';
 echo '<label for="ips_captcha_trust_duration">CAPTCHA-Vertrauensdauer (Stunden)</label>';
 echo '<input type="number" class="form-control" id="ips_captcha_trust_duration" name="ips_captcha_trust_duration" value="' . $captchaTrustDuration . '" min="1" max="168">';
-echo '<p class="help-block">Wie lange (in Stunden) eine IP nach erfolgreicher CAPTCHA-Entsperrung vertrauenswürdig bleibt (Standard: 24 Stunden, Maximum: 168 Stunden/7 Tage)</p>';
+echo '<p class="help-block">' . $addon->i18n('upkeep_ips_captcha_trust_help') . '</p>';
 echo '</div>';
 
 echo '<div class="form-group">';
@@ -191,7 +191,7 @@ echo '<ul>';
 echo '<li>Automatische Spracherkennung basierend auf Browser-Einstellungen</li>';
 echo '<li>CAPTCHA-Entsperrung mit mathematischen Aufgaben</li>';
 echo '<li>Moderne, responsive Oberfläche</li>';
-echo '<li>24h temporäre Positivliste nach erfolgreicher Entsperrung</li>';
+echo '<li>' . $addon->i18n('upkeep_ips_temp_whitelist_help') . '</li>';
 echo '</ul>';
 echo '<p class="help-block"><strong>Hinweis:</strong> Nur die Kontaktinformationen können über das Interface angepasst werden. Titel und Nachrichten sind fest definiert und mehrsprachig.</p>';
 echo '</div>';

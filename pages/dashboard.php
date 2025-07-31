@@ -326,7 +326,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-info-circle"></i> 
-                        System-Status & Hinweise
+                        <?= $addon->i18n('upkeep_dashboard_system_status') ?>
                     </h3>
                 </div>
                 <div class="panel-body">
@@ -336,23 +336,23 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <?php if ($frontendMaintenanceActive || $backendMaintenanceActive): ?>
                             <div class="alert alert-warning">
                                 <i class="rex-icon fa-wrench"></i>
-                                <strong>Wartungsmodus aktiv:</strong><br>
+                                <strong><?= $addon->i18n('upkeep_dashboard_maintenance_active') ?>:</strong><br>
                                 <?php if ($frontendMaintenanceActive): ?>
-                                • Frontend ist für Besucher gesperrt<br>
+                                • <?= $addon->i18n('upkeep_dashboard_frontend_blocked') ?><br>
                                 <?php endif; ?>
                                 <?php if ($backendMaintenanceActive): ?>
-                                • Backend ist nur für Admins zugänglich<br>
+                                • <?= $addon->i18n('upkeep_dashboard_backend_admin_only') ?><br>
                                 <?php endif; ?>
                                 <?php if ($allowedIpCount > 0): ?>
-                                • <?= $allowedIpCount ?> IP<?= $allowedIpCount > 1 ? 's' : '' ?> haben weiterhin Zugriff
+                                • <?= $addon->i18n('upkeep_dashboard_allowed_ips', $allowedIpCount, $allowedIpCount > 1 ? 's' : '') ?>
                                 <?php endif; ?>
                             </div>
                             <?php else: ?>
                             <div class="alert alert-success">
                                 <i class="rex-icon fa-check-circle"></i>
-                                <strong>System läuft normal:</strong><br>
-                                • Frontend ist öffentlich zugänglich<br>
-                                • Backend ist für alle Benutzer verfügbar
+                                <strong><?= $addon->i18n('upkeep_dashboard_system_normal') ?>:</strong><br>
+                                • <?= $addon->i18n('upkeep_dashboard_frontend_public') ?><br>
+                                • <?= $addon->i18n('upkeep_dashboard_backend_available') ?>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -362,25 +362,25 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <?php if ($ipsActive): ?>
                             <div class="alert alert-info">
                                 <i class="rex-icon fa-shield"></i>
-                                <strong>Sicherheit aktiv:</strong><br>
-                                • Intrusion Prevention System läuft<br>
+                                <strong><?= $addon->i18n('upkeep_dashboard_security_active') ?>:</strong><br>
+                                • <?= $addon->i18n('upkeep_dashboard_ips_running') ?><br>
                                 <?php if ($monitorOnlyActive): ?>
-                                • <span class="label label-warning">Monitor-Only Modus</span> - Nur Logging, kein Blocking<br>
+                                • <span class="label label-warning"><?= $addon->i18n('upkeep_dashboard_monitor_only') ?></span><br>
                                 <?php endif; ?>
                                 <?php if ($rateLimitActive): ?>
-                                • Rate-Limiting ist aktiviert<br>
+                                • <?= $addon->i18n('upkeep_dashboard_rate_limiting') ?><br>
                                 <?php endif; ?>
                                 <?php if ($stats['blocked_ips'] > 0): ?>
-                                • <?= $stats['blocked_ips'] ?> IP<?= $stats['blocked_ips'] > 1 ? 's' : '' ?> aktuell gesperrt
+                                • <?= $addon->i18n('upkeep_dashboard_ips_blocked', $stats['blocked_ips'], $stats['blocked_ips'] > 1 ? 's' : '') ?>
                                 <?php endif; ?>
                             </div>
                             <?php else: ?>
                             <div class="alert alert-danger">
                                 <i class="rex-icon fa-exclamation-triangle"></i>
-                                <strong>Sicherheitswarnung:</strong><br>
-                                • IPS ist deaktiviert!<br>
-                                • Website ist ungeschützt vor Angriffen<br>
-                                • Sofortige Aktivierung empfohlen
+                                <strong><?= $addon->i18n('upkeep_dashboard_security_warning') ?>:</strong><br>
+                                • <?= $addon->i18n('upkeep_dashboard_ips_deactivated') ?><br>
+                                • <?= $addon->i18n('upkeep_dashboard_website_unprotected') ?><br>
+                                • <?= $addon->i18n('upkeep_dashboard_activation_recommended') ?>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -392,10 +392,10 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         <div class="col-md-12">
                             <div class="alert alert-info">
                                 <i class="rex-icon fa-share"></i>
-                                <strong>Domain-Redirects:</strong>
-                                <?= $activeRedirects ?> aktive Weiterleitung<?= $activeRedirects > 1 ? 'en' : '' ?> 
-                                - <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="alert-link">Verwalten</a>
-                                | <a href="<?= rex_url::backendPage('upkeep/domain_mapping') ?>" class="alert-link">URL-Redirects</a>
+                                <strong><?= $addon->i18n('upkeep_dashboard_domain_redirects') ?>:</strong>
+                                <?= $addon->i18n('upkeep_dashboard_active_redirects', $activeRedirects, $activeRedirects > 1 ? 'en' : '') ?> 
+                                - <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="alert-link"><?= $addon->i18n('upkeep_dashboard_manage') ?></a>
+                                | <a href="<?= rex_url::backendPage('upkeep/domain_mapping') ?>" class="alert-link"><?= $addon->i18n('upkeep_dashboard_url_redirects') ?></a>
                             </div>
                         </div>
                     </div>
@@ -413,15 +413,15 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-shield"></i> 
-                        Sicherheits-Bedrohungen nach Typ (7 Tage)
-                        <small class="pull-right text-muted"><?= count($threatsByType) ?> Typen</small>
+                        <?= $addon->i18n('upkeep_dashboard_security_threats_title') ?>
+                        <small class="pull-right text-muted"><?= $addon->i18n('upkeep_dashboard_types_count', count($threatsByType)) ?></small>
                     </h3>
                 </div>
                 <div class="panel-body">
                     <?php 
                     // Debug: Zeige Anzahl gefundener Bedrohungstypen
                     if ($addon->getConfig('ips_debug_mode', false) && count($threatsByType) === 0): 
-                        echo '<div class="alert alert-info"><strong>Debug:</strong> Keine Bedrohungstypen gefunden. Stats zeigen aber ' . $stats['threats_today'] . ' Bedrohungen heute.</div>';
+                        echo '<div class="alert alert-info"><strong>' . $addon->i18n('upkeep_dashboard_debug_no_threats', $stats['threats_today']) . '</strong></div>';
                     endif;
                     ?>
                     <?php if (!empty($threatsByType)): ?>
@@ -429,12 +429,12 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Bedrohungstyp</th>
-                                        <th class="text-center">Severity</th>
-                                        <th class="text-center">Erkannt</th>
-                                        <th class="text-center">Gesperrt</th>
-                                        <th class="text-center">Letzter Vorfall</th>
-                                        <th class="text-center">Aktionen</th>
+                                        <th><?= $addon->i18n('upkeep_dashboard_threat_type') ?></th>
+                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_severity') ?></th>
+                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_detected') ?></th>
+                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_blocked') ?></th>
+                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_last_incident') ?></th>
+                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_actions') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -482,8 +482,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     <?php else: ?>
                         <div class="text-center text-muted" style="padding: 40px;">
                             <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
-                            <h4>Keine Sicherheitsereignisse</h4>
-                            <p>In den letzten 7 Tagen wurden keine Bedrohungen erkannt.</p>
+                            <h4><?= $addon->i18n('upkeep_dashboard_no_security_events') ?></h4>
+                            <p><?= $addon->i18n('upkeep_dashboard_no_threats_7days') ?></p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -496,7 +496,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-list"></i> 
-                        Top Bedrohungstypen
+                        <?= $addon->i18n('upkeep_dashboard_top_threats') ?>
                     </h3>
                 </div>
                 <div class="panel-body">
@@ -513,7 +513,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         <?php else: ?>
                             <p class="text-muted">
                                 <i class="rex-icon fa-check-circle"></i> 
-                                Keine Bedrohungen diese Woche
+                                <?= $addon->i18n('upkeep_dashboard_no_threats_week') ?>
                             </p>
                         <?php endif; ?>
                     </div>
@@ -529,9 +529,9 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-globe"></i> 
-                        Gesperrte IPs nach Ländern
+                        <?= $addon->i18n('upkeep_dashboard_blocked_ips_countries') ?>
                         <?php if (!empty($threatsByCountry)): ?>
-                            <small class="text-muted"><?= count($threatsByCountry) ?> Länder</small>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_countries_count', count($threatsByCountry)) ?></small>
                         <?php endif; ?>
                     </h3>
                 </div>
@@ -541,11 +541,11 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <table class="table table-striped table-hover dashboard-table">
                                 <thead>
                                     <tr>
-                                        <th><i class="rex-icon fa-flag"></i> Land</th>
-                                        <th class="text-center"><i class="rex-icon fa-ban"></i> Sperrungen</th>
-                                        <th class="text-center"><i class="rex-icon fa-globe"></i> IPs</th>
-                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> Letzte Sperrung</th>
-                                        <th class="text-center"><i class="rex-icon fa-cog"></i> Aktionen</th>
+                                        <th><i class="rex-icon fa-flag"></i> <?= $addon->i18n('upkeep_dashboard_country') ?></th>
+                                        <th class="text-center"><i class="rex-icon fa-ban"></i> <?= $addon->i18n('upkeep_dashboard_blocks') ?></th>
+                                        <th class="text-center"><i class="rex-icon fa-globe"></i> <?= $addon->i18n('upkeep_dashboard_unique_ips') ?></th>
+                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> <?= $addon->i18n('upkeep_dashboard_last_block') ?></th>
+                                        <th class="text-center"><i class="rex-icon fa-cog"></i> <?= $addon->i18n('upkeep_dashboard_actions') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -572,7 +572,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                             </td>
                                             <td class="text-center">
                                                 <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['country' => $country['code']]) ?>" 
-                                                   class="btn btn-xs btn-info" title="Gesperrte IPs anzeigen">
+                                                   class="btn btn-xs btn-info" title="<?= $addon->i18n('upkeep_dashboard_show_blocked') ?>">
                                                     <i class="rex-icon fa-search"></i>
                                                 </a>
                                             </td>
@@ -584,20 +584,20 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         <?php if (count($threatsByCountry) > 10): ?>
                             <div class="text-center" style="margin-top: 15px;">
                                 <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['view' => 'countries']) ?>" class="btn btn-default">
-                                    <i class="rex-icon fa-globe"></i> Alle <?= count($threatsByCountry) ?> Länder anzeigen
+                                    <i class="rex-icon fa-globe"></i> <?= $addon->i18n('upkeep_dashboard_show_all_countries', count($threatsByCountry)) ?>
                                 </a>
                             </div>
                         <?php endif; ?>
                     <?php else: ?>
                         <div class="text-center text-muted" style="padding: 40px;">
                             <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
-                            <h4>Keine gesperrten IPs</h4>
-                            <p>Aktuell sind keine IPs gesperrt oder die GeoIP-Datenbank ist nicht verfügbar.</p>
+                            <h4><?= $addon->i18n('upkeep_dashboard_no_blocked_ips') ?></h4>
+                            <p><?= $addon->i18n('upkeep_dashboard_no_blocked_or_geo') ?></p>
                             <?php if (class_exists('KLXM\Upkeep\GeoIP')): ?>
                                 <?php $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
                                 <?php if (!$geoStatus['available']): ?>
                                     <a href="<?= rex_url::backendPage('upkeep/ips/settings', ['action' => 'update_geo']) ?>" class="btn btn-sm btn-primary">
-                                        <i class="rex-icon fa-download"></i> GeoIP-Datenbank installieren
+                                        <i class="rex-icon fa-download"></i> <?= $addon->i18n('upkeep_dashboard_install_geo') ?>
                                     </a>
                                 <?php endif; ?>
                             <?php endif; ?>

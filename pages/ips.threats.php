@@ -92,9 +92,9 @@ echo '<input type="text" class="form-control" id="ip_filter" name="ip_filter" pl
 echo '</div>';
 
 echo '<div class="form-group" style="margin-right: 10px;">';
-echo '<label class="sr-only" for="severity_filter">Schweregrad</label>';
+echo '<label class="sr-only" for="severity_filter">' . $addon->i18n('upkeep_severity_filter_label') . '</label>';
 echo '<select class="form-control selectpicker" id="severity_filter" name="severity_filter" data-style="btn-default" data-width="auto">';
-echo '<option value="">Alle Schweregrade</option>';
+echo '<option value="">' . $addon->i18n('upkeep_filter_all_severities') . '</option>';
 echo '<option value="low"' . ($severityFilter === 'low' ? ' selected' : '') . '>Niedrig</option>';
 echo '<option value="medium"' . ($severityFilter === 'medium' ? ' selected' : '') . '>Mittel</option>';
 echo '<option value="high"' . ($severityFilter === 'high' ? ' selected' : '') . '>Hoch</option>';

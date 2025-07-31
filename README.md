@@ -31,12 +31,241 @@ Backend → Upkeep → Domains
 Backend → Upkeep → IPS
 ```
 
+## Detaillierte Funktionen
+
+### Dashboard
+
+Das Dashboard bietet eine zentrale Übersicht über alle Upkeep-Funktionen:
+
+- **System-Status**: Zeigt den aktuellen Status von Wartungsmodi, IPS und Domain-Redirects
+- **Sicherheits-Übersicht**: Live-Statistiken zu Bedrohungen und gesperrten IPs
+- **Länder-Analyse**: Visualisierung gesperrter IPs nach Herkunftsländern
+- **Schnellaktionen**: Direkter Zugriff auf wichtige Funktionen
+
+#### Status-Indikatoren
+
+- **Wartungsmodus aktiv**: Frontend/Backend-Status mit Anzahl erlaubter IPs
+- **System läuft normal**: Alle Dienste verfügbar
+- **Sicherheit aktiv**: IPS läuft mit Rate-Limiting-Status
+- **Monitor-Only Modus**: Nur Logging, keine automatischen Sperrungen
+- **Sicherheitswarnung**: IPS deaktiviert - sofortige Aktivierung empfohlen
+
+### Domain Mapping & URL-Redirects
+
+Leistungsstarkes System für Domain- und URL-Weiterleitungen:
+
+#### Funktionen
+- **Domain-Redirects**: Vollständige Domain-Weiterleitung
+- **Pfad-basierte Redirects**: Spezifische URL-Pfade umleiten
+- **Wildcard-Unterstützung**: Dynamische Pfad-Ersetzung (`/old/* -> /new/*`)
+- **HTTP-Status-Codes**: 301, 302, 307, 308 für SEO-optimierte Redirects
+- **Global aktivieren/deaktivieren**: Master-Schalter für alle Mappings
+
+#### Wildcard-Redirects
+```
+Quelle: example.com/old/*
+Ziel: https://new-domain.com/new/*
+
+Beispiel:
+example.com/old/category/page -> https://new-domain.com/new/category/page
+```
+
+#### Sicherheitsfeatures
+- **Path Traversal Schutz**: Verhindert "../" in Pfaden
+- **RFC-konforme Domain-Validierung**
+- **URL-Format-Prüfung**
+
+#### Fehlermeldungen
+- **Pfade müssen mit / beginnen**: Korrekte URL-Struktur erforderlich
+- **Wildcard-Pfade müssen mit /* enden**: Für dynamische Ersetzung
+- **Pfade dürfen keine ".." enthalten**: Sicherheitsschutz
+- **Target URL ist erforderlich**: Ziel-URL muss angegeben werden
+
+### Intrusion Prevention System (IPS)
+
+Umfassendes Sicherheitssystem mit mehreren Schutzebenen:
+
+#### Pattern-System
+
+**Standard-Patterns**: Vordefinierte Sicherheitsregeln für häufige Angriffsvektoren
+- **Kritische Bedrohungen**: Sofortige permanente Sperrung
+- **CMS-spezifische Zugriffe**: WordPress, TYPO3, etc. Detection
+- **Admin-Panel-Zugriffe**: Schutz vor Brute-Force-Angriffen
+- **Konfigurationsdateien**: Schutz sensibler Bereiche
+- **Web-Shells**: Malware-Upload-Erkennung
+- **SQL-Injection**: Pattern für Datenbankattacken
+- **RegEx-Patterns**: Erweiterte reguläre Ausdrücke
+
+**Custom Patterns**: Eigene Sicherheitsregeln definieren
+- **String-Patterns**: Einfache Textsuche
+- **RegEx-Patterns**: Komplexe Muster mit Flags
+- **Schweregrade**: LOW (nur Log) → CRITICAL (permanent gesperrt)
+
+#### Schweregrade und Konsequenzen
+- **LOW**: Nur Protokollierung, keine Sperrung
+- **MEDIUM**: 15 Minuten temporäre Sperrung
+- **HIGH**: 1 Stunde temporäre Sperrung
+- **CRITICAL**: Permanente Sperrung
+
+#### Monitor-Only Modus
+Für Testumgebungen und neue Pattern:
+- Alle Bedrohungen werden protokolliert
+- Keine automatischen Sperrungen
+- Ideal für Pattern-Tests vor Produktivsetzung
+
+#### GeoIP-Integration
+- **Länder-Erkennung**: IP-Adressen zu Ländern zuordnen
+- **Statistiken**: Bedrohungen nach Herkunftsländern
+- **DB-IP.com Database**: Kostenlose, regelmäßig aktualisierte GeoIP-Daten
+
+#### Positivliste (Whitelist)
+Vertrauenswürdige IPs vor automatischer Sperrung schützen:
+- **Admin-IPs**: Backend-Administratoren
+- **CDN-IPs**: Cloudflare, etc.
+- **Monitoring-Services**: Uptime-Checker
+- **API-Clients**: Vertrauenswürdige automatisierte Services
+- **CIDR-Notation**: IP-Bereiche (z.B. 192.168.1.0/24)
+
+#### Rate-Limiting
+- **Request-Limits**: Schutz vor DoS-Angriffen
+- **CAPTCHA-System**: Entsperrung für legitime Benutzer
+- **Vertrauens-Zeitraum**: 24h Schutz nach erfolgreicher CAPTCHA-Lösung
+
+#### Cleanup-System
+Automatische Datenbankpflege:
+- **Abgelaufene Sperrungen**: Temporäre Blocks automatisch entfernen
+- **Alte Logs**: Threat-Logs nach 30 Tagen löschen
+- **Rate-Limit-Einträge**: Nach 2 Stunden bereinigen
+- **CAPTCHA-Vertrauen**: Veraltete Einträge entfernen
+- **Cronjob-Integration**: Automatische nächtliche Bereinigung
+
+### Wartungsmodi
+
+#### Frontend-Wartungsmodus
+- **Passwort-Schutz**: Optionaler Zugang für bestimmte Benutzer
+- **IP-Erlaubnisliste**: Bestimmte IPs vom Wartungsmodus ausschließen
+- **Angemeldete Benutzer**: REDAXO-Backend-Nutzer automatisch ausschließen
+- **Custom Wartungsseite**: Individueller Titel und Nachricht
+- **HTTP-Status-Codes**: SEO-konforme 503/403 Responses
+- **Retry-After Header**: Suchmaschinen-freundliche Signale
+
+#### Backend-Wartungsmodus
+- **Admin-Only**: Nur Administratoren haben Zugang
+- **Vollständige Sperrung**: Alle anderen Benutzer werden ausgeschlossen
+- **Sichere Wartung**: Updates ohne Benutzer-Interferenz
+
+### API & Console Commands
+
+#### Console Commands
+```bash
+# Wartungsmodus steuern
+php redaxo/bin/console upkeep:mode frontend on
+php redaxo/bin/console upkeep:mode backend off
+
+# IPS Cleanup
+php redaxo/bin/console upkeep:ips:cleanup
+```
+
+#### REST API
+```php
+// API-Token in den Einstellungen generieren
+POST /upkeep/api
+{
+    "action": "toggle_maintenance",
+    "type": "frontend",
+    "active": true,
+    "token": "your-api-token"
+}
+```
+
+## Wartungshinweise und Best Practices
+
+### Standard-Pattern Bearbeitung
+⚠️ **Wichtige Hinweise**:
+- **Vorsicht bei RegEx**: Fehlerhafte reguläre Ausdrücke können Fehler verursachen
+- **Deaktivierung überdenken**: Patterns nur deaktivieren wenn sicher nicht benötigt
+- **Sofortige Wirkung**: Änderungen wirken sich sofort auf Sicherheitsprüfungen aus
+- **Backup empfohlen**: Vor größeren Änderungen Datenbank-Backup erstellen
+
+### Pattern-Kategorien Erklärung
+
+#### Kritische Bedrohungen (Immediate Block)
+Patterns die sofortige permanente Sperrung auslösen:
+- Shell-Injections: `system(`, `exec(`, `passthru(`
+- PHP-Code-Injection: `<?php`, `eval(`
+- Path-Traversal: `../../../`
+- Null-Byte-Attacks: `%00`
+
+#### CMS-spezifische Zugriffe
+Erkennung von CMS-Scanner und Exploit-Versuchen:
+- WordPress: `/wp-admin/`, `/wp-content/`, `wp-config.php`
+- TYPO3: `/typo3/`, `/typo3conf/`, `typo3temp`
+- Joomla: `/administrator/`, `configuration.php`
+- Drupal: `/sites/default/`, `settings.php`
+
+#### Admin-Panel-Zugriffe
+Schutz vor Brute-Force-Angriffen:
+- `/admin`, `/administrator`, `/login`
+- `/panel`, `/control`, `/manage`
+- `/backend`, `/cms`, `/wp-admin`
+
+### Cleanup und Performance
+
+#### Automatische Bereinigung
+- **Häufigkeit**: Bei jedem Request 1% Wahrscheinlichkeit
+- **Abgelaufene IPs**: Werden bei Prüfung automatisch ignoriert
+- **Alte Logs**: Werden nach 30 Tagen gelöscht
+- **Rate-Limits**: Werden nach 2 Stunden gelöscht
+- **Cronjob**: Tägliche vollständige Bereinigung empfohlen
+
+#### Performance-Optimierung
+- **Datenbank-Indizes**: Automatisch für alle relevanten Felder gesetzt
+- **Lazy Loading**: Nur benötigte Daten werden geladen
+- **Cache-friendly**: Minimale Datenbankabfragen pro Request
+
+## Fehlerbehebung
+
+### Häufige Probleme
+
+#### "Standard-Pattern-Tabelle fehlt"
+**Ursache**: AddOn-Installation unvollständig
+**Lösung**: AddOns → Upkeep → Reinstall
+
+#### "GeoIP-Datenbank nicht verfügbar"
+**Ursache**: GeoIP-Datenbank nicht installiert
+**Lösung**: IPS → Einstellungen → "GeoIP-Datenbank installieren"
+
+#### Legitime Benutzer werden gesperrt
+**Ursache**: Zu restriktive Custom Patterns
+**Lösung**: 
+1. Monitor-Only Modus aktivieren
+2. Logs analysieren 
+3. Patterns anpassen
+4. Betroffene IPs zur Positivliste hinzufügen
+
+#### Performance-Probleme
+**Ursache**: Große Threat-Log-Tabelle
+**Lösung**: IPS → Cleanup → Manuelle Bereinigung
+
+### Debug-Modus
+
+Für Entwicklung und Fehlersuche:
+```php
+// Debug-Modus in config.yml aktivieren
+ips_debug_mode: true
+```
+
+Debug-Informationen in REDAXO-Log:
+- Jede IPS-Prüfung wird protokolliert
+- Pattern-Matches werden geloggt
+- Performance-Metriken werden erfasst
+
 ## Developer Info
 
 ### Requirements
 - REDAXO 5.15+
 - PHP 8.0+  
-- MySQL 5.7+
+- MySQL 5.7+ / MariaDB 10.3+
 
 ### API Usage
 

@@ -15,9 +15,9 @@ try {
 
 if (!$tableExists) {
     echo '<div class="alert alert-warning">';
-    echo '<h4><i class="fa fa-exclamation-triangle"></i> Standard-Pattern-Tabelle fehlt</h4>';
-    echo '<p>Die Standard-Pattern-Tabelle wurde noch nicht erstellt.</p>';
-    echo '<p>Bitte installieren Sie das Upkeep AddOn erneut über das Backend: <strong>AddOns → Upkeep → Reinstall</strong></p>';
+    echo '<h4><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_ips_table_missing') . '</h4>';
+    echo '<p>' . $addon->i18n('upkeep_ips_table_missing_text') . '</p>';
+    echo '<p>' . $addon->i18n('upkeep_ips_reinstall_required') . '</p>';
     echo '</div>';
     return;
 }

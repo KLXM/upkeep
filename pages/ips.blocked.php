@@ -29,12 +29,12 @@ if (rex_post('bulk_import_ips', 'bool')) {
     $reason = rex_post('bulk_reason', 'string', '');
     
     if (empty($ipList)) {
-        echo rex_view::error('IP-Liste ist erforderlich');
+        echo rex_view::error($addon->i18n('upkeep_ips_ip_list_required'));
     } else {
         $results = IntrusionPrevention::processBulkIpImport($ipList, $duration, $reason);
         
         if ($results['success_count'] > 0) {
-            echo rex_view::success("Erfolgreich {$results['success_count']} IPs gesperrt.");
+            echo rex_view::success($addon->i18n('upkeep_ips_bulk_success', $results['success_count']));
         }
         
         if ($results['error_count'] > 0) {
@@ -95,7 +95,7 @@ if (rex_get('action') === 'unblock' && rex_get('ip', 'string')) {
     if (IntrusionPrevention::unblockIp($ip)) {
         echo rex_view::success("IP {$ip} wurde entsperrt");
     } else {
-        echo rex_view::error("Fehler beim Entsperren der IP {$ip}");
+        echo rex_view::error($addon->i18n('upkeep_ips_unblock_error', $ip));
     }
 }
 
@@ -334,7 +334,7 @@ if (!empty($recentThreatIps)) {
     echo '<th>IP-Adresse</th>';
     echo '<th><i class="fa fa-globe"></i> Land</th>';
     echo '<th>Bedrohungen</th>';
-    echo '<th>Schweregrad</th>';
+    echo '<th>' . $addon->i18n('upkeep_ips_severity') . '</th>';
     echo '<th>Letzte Bedrohung</th>';
     echo '<th class="text-center">Aktion</th>';
     echo '</tr></thead><tbody>';

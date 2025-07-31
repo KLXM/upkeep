@@ -15,9 +15,9 @@ try {
 
 if (!$tableExists) {
     echo '<div class="alert alert-warning">';
-    echo '<h4><i class="fa fa-exclamation-triangle"></i> IPS-Datenbanktabellen fehlen</h4>';
-    echo '<p>Die Intrusion Prevention System Tabellen wurden noch nicht erstellt.</p>';
-    echo '<p>Bitte installieren Sie das Upkeep AddOn erneut über das Backend: <strong>AddOns → Upkeep → Reinstall</strong></p>';
+    echo '<h4><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_ips_table_missing') . '</h4>';
+    echo '<p>' . $addon->i18n('upkeep_ips_tables_missing') . '</p>';
+    echo '<p>' . $addon->i18n('upkeep_ips_reinstall_required') . '</p>';
     echo '</div>';
     return;
 }
@@ -285,7 +285,7 @@ echo '<div class="panel-body">';
 
 // Schweregrade Erklärung
 echo '<div class="alert alert-info">';
-echo '<h4><i class="fa fa-shield"></i> Schweregrade und ihre Auswirkungen</h4>';
+echo '<h4><i class="fa fa-shield"></i> ' . $addon->i18n('upkeep_severity_explanation_title') . '</h4>';
 echo '<div class="row">';
 echo '<div class="col-md-3">';
 echo '<span class="label label-default">LOW</span><br>';
@@ -320,13 +320,14 @@ echo '<li><span class="text-monospace text-success">/\b(wget|curl)\b/i</span> - 
 echo '</ul>';
 
 echo '<div class="alert alert-warning">';
-echo '<h5><i class="fa fa-exclamation-triangle"></i> Wichtige Hinweise</h5>';
+echo '<h5><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_ips_important_notes') . '</h5>';
 echo '<ul class="mb-0">';
-echo '<li><strong>RegEx-Patterns</strong> beginnen und enden mit Schrägstrichen: <code>/pattern/flags</code></li>';
-echo '<li><strong>String-Patterns</strong> sind einfache Textsuchen ohne Schrägstriche</li>';
-echo '<li><strong>Test vor Aktivierung</strong> empfohlen - falsche Patterns können legitime Benutzer blockieren</li>';
-echo '<li><strong>Schweregrad CRITICAL</strong> sollte nur für eindeutige Angriffe verwendet werden</li>';
+echo '<li><strong>' . $addon->i18n('upkeep_ips_pattern_note_regex') . '</strong></li>';
+echo '<li><strong>' . $addon->i18n('upkeep_ips_pattern_note_string') . '</strong></li>';
+echo '<li><strong>' . $addon->i18n('upkeep_ips_pattern_note_test') . '</strong></li>';
+echo '<li><strong>' . $addon->i18n('upkeep_ips_pattern_note_critical') . '</strong></li>';
 echo '</ul>';
+echo '<p class="mt-2"><i class="fa fa-book"></i> <strong>' . $addon->i18n('upkeep_ips_pattern_help_link') . '</strong></p>';
 echo '</div>';
 
 echo '</div>';

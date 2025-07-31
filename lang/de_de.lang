@@ -316,6 +316,42 @@ upkeep_ips_cleanup_manual = Manuelle Bereinigung
 upkeep_ips_cleanup_auto = Automatische Bereinigung
 upkeep_ips_cleanup_success = Datenbank erfolgreich bereinigt
 upkeep_ips_cleanup_nothing = Keine Bereinigung notwendig - alle Daten sind aktuell
+upkeep_ips_cleanup_success_detail = Bereinigung erfolgreich: {0}
+upkeep_ips_cleanup_found = Es wurden {0} Datensätze gefunden, die bereinigt werden können.
+upkeep_ips_cleanup_recommended = Bereinigung empfohlen!
+upkeep_ips_cleanup_database_clean = Datenbank ist sauber!
+upkeep_ips_cleanup_no_cleanup_needed = Keine Bereinigung notwendig.
+
+# Pattern-Hilfe und Hinweise
+upkeep_ips_pattern_notes_title = Wichtige Hinweise zur Pattern-Bearbeitung
+upkeep_ips_pattern_note_regex = RegEx-Patterns beginnen und enden mit Schrägstrichen: /pattern/flags
+upkeep_ips_pattern_note_string = String-Patterns sind einfache Textsuchen ohne Schrägstriche  
+upkeep_ips_pattern_note_test = Test vor Aktivierung empfohlen - falsche Patterns können legitime Benutzer blockieren
+upkeep_ips_pattern_note_critical = Schweregrad CRITICAL sollte nur für eindeutige Angriffe verwendet werden
+upkeep_ips_pattern_help_link = Ausführliche Dokumentation in der README
+
+# Weitere Hilfetexte - gekürzt für UI, Details in README
+upkeep_help_see_readme = Detaillierte Informationen in der README-Datei
+upkeep_help_documentation = Dokumentation
+upkeep_help_more_info = Weitere Informationen
+
+# Validierung Domain Mapping
+upkeep_domain_mapping_invalid_domain = Ungültige Domain (RFC-konform erforderlich)
+upkeep_domain_mapping_invalid_wildcard_url = Ungültige Wildcard-URL (Format mit * muss gültige URL ergeben)
+upkeep_domain_mapping_invalid_target_url = Ungültige Target URL
+upkeep_domain_mapping_url_schema_required = Target URL muss mit http:// oder https:// beginnen
+
+# Severity und Filter
+upkeep_severity_explanation_title = Schweregrade und ihre Auswirkungen
+upkeep_filter_all_severities = Alle Schweregrade
+upkeep_severity_filter_label = Schweregrad
+
+# Allgemeine UI-Texte  
+upkeep_global_settings = Globale Einstellungen
+upkeep_enable_globally = Global aktivieren
+upkeep_disable_help = Wenn deaktiviert, werden alle Einstellungen ignoriert
+upkeep_cleanup_recommended_title = Bereinigung empfohlen!
+upkeep_database_clean_title = Datenbank ist sauber!
 
 # Cronjob Texte
 upkeep_ips_cronjob_name = Upkeep IPS: Bereinigung veralteter Sicherheitsdaten
@@ -323,3 +359,85 @@ upkeep_ips_cronjob_description = Entfernt automatisch abgelaufene IP-Sperren, al
 upkeep_ips_cronjob_retention_label = Threat Log Aufbewahrung (Tage)
 upkeep_ips_cronjob_success = IPS-Datenbereinigung erfolgreich durchgeführt
 upkeep_ips_cronjob_error = Fehler bei der IPS-Datenbereinigung
+
+# Dashboard Texte
+upkeep_dashboard_system_status = System-Status & Hinweise
+upkeep_dashboard_maintenance_active = Wartungsmodus aktiv
+upkeep_dashboard_frontend_blocked = Frontend ist für Besucher gesperrt
+upkeep_dashboard_backend_admin_only = Backend ist nur für Admins zugänglich
+upkeep_dashboard_allowed_ips = {0} IP{1} haben weiterhin Zugriff
+upkeep_dashboard_system_normal = System läuft normal
+upkeep_dashboard_frontend_public = Frontend ist öffentlich zugänglich
+upkeep_dashboard_backend_available = Backend ist für alle Benutzer verfügbar
+upkeep_dashboard_security_active = Sicherheit aktiv
+upkeep_dashboard_ips_running = Intrusion Prevention System läuft
+upkeep_dashboard_monitor_only = Monitor-Only Modus - Nur Logging, kein Blocking
+upkeep_dashboard_rate_limiting = Rate-Limiting ist aktiviert
+upkeep_dashboard_ips_blocked = {0} IP{1} aktuell gesperrt
+upkeep_dashboard_security_warning = Sicherheitswarnung
+upkeep_dashboard_ips_deactivated = IPS ist deaktiviert!
+upkeep_dashboard_website_unprotected = Website ist ungeschützt vor Angriffen
+upkeep_dashboard_activation_recommended = Sofortige Aktivierung empfohlen
+upkeep_dashboard_domain_redirects = Domain-Redirects
+upkeep_dashboard_active_redirects = {0} aktive Weiterleitung{1}
+upkeep_dashboard_manage = Verwalten
+upkeep_dashboard_url_redirects = URL-Redirects
+upkeep_dashboard_security_threats_title = Sicherheits-Bedrohungen nach Typ (7 Tage)
+upkeep_dashboard_types_count = {0} Typen
+upkeep_dashboard_threat_type = Bedrohungstyp
+upkeep_dashboard_severity = Severity
+upkeep_dashboard_detected = Erkannt
+upkeep_dashboard_blocked = Gesperrt
+upkeep_dashboard_last_incident = Letzter Vorfall
+upkeep_dashboard_actions = Aktionen
+upkeep_dashboard_debug_no_threats = Debug: Keine Bedrohungstypen gefunden. Stats zeigen aber {0} Bedrohungen heute.
+upkeep_dashboard_no_security_events = Keine Sicherheitsereignisse
+upkeep_dashboard_no_threats_7days = In den letzten 7 Tagen wurden keine Bedrohungen erkannt.
+upkeep_dashboard_top_threats = Top Bedrohungstypen
+upkeep_dashboard_no_threats_week = Keine Bedrohungen diese Woche
+upkeep_dashboard_blocked_ips_countries = Gesperrte IPs nach Ländern
+upkeep_dashboard_countries_count = {0} Länder
+upkeep_dashboard_country = Land
+upkeep_dashboard_blocks = Sperrungen
+upkeep_dashboard_unique_ips = IPs
+upkeep_dashboard_last_block = Letzte Sperrung
+upkeep_dashboard_show_blocked = Gesperrte IPs anzeigen
+upkeep_dashboard_show_all_countries = Alle {0} Länder anzeigen
+upkeep_dashboard_no_blocked_ips = Keine gesperrten IPs
+upkeep_dashboard_no_blocked_or_geo = Aktuell sind keine IPs gesperrt oder die GeoIP-Datenbank ist nicht verfügbar.
+upkeep_dashboard_install_geo = GeoIP-Datenbank installieren
+
+# Domain Mapping Fehlermeldungen
+upkeep_domain_mapping_source_required = Source Domain ist erforderlich
+upkeep_domain_mapping_source_path_required = Source Path ist erforderlich für Wildcard-Redirects
+upkeep_domain_mapping_path_security = Pfade dürfen keine ".." oder Backslashes enthalten
+upkeep_domain_mapping_wildcard_ending = Wildcard-Pfade müssen mit /* enden
+upkeep_domain_mapping_path_start = Pfade müssen mit / beginnen
+upkeep_domain_mapping_target_required = Target URL ist erforderlich
+upkeep_domain_mapping_saved = Domain Mapping wurde gespeichert
+upkeep_domain_mapping_save_error = Fehler beim Speichern
+upkeep_domain_mapping_deleted = Domain Mapping wurde gelöscht
+upkeep_domain_mapping_delete_error = Fehler beim Löschen
+upkeep_domain_mapping_no_entries = Keine Domain Mappings vorhanden
+upkeep_domain_mapping_help_text = Hier können Sie Domains auf URLs umleiten. Die Umleitung funktioniert nur, wenn die Domain auch tatsächlich auf diesen Server zeigt.
+upkeep_domain_mapping_wildcard_note = Source Path muss mit /* enden. Target URL kann * enthalten für dynamische Ersetzung.
+upkeep_domain_mapping_global_settings = Globale Domain-Mapping Einstellungen
+upkeep_domain_mapping_disabled_help = Wenn deaktiviert, werden alle Domain-Mappings ignoriert, auch wenn sie als "Aktiv" markiert sind.
+
+# IPS Fehlermeldungen und Status
+upkeep_ips_table_missing = Standard-Pattern-Tabelle fehlt
+upkeep_ips_table_missing_text = Die Standard-Pattern-Tabelle wurde noch nicht erstellt.
+upkeep_ips_reinstall_required = Bitte installieren Sie das Upkeep AddOn erneut über das Backend: AddOns → Upkeep → Reinstall
+upkeep_ips_tables_missing = Die Intrusion Prevention System Tabellen wurden noch nicht erstellt.
+upkeep_ips_ip_list_required = IP-Liste ist erforderlich
+upkeep_ips_bulk_success = Erfolgreich {0} IPs gesperrt.
+upkeep_ips_unblock_error = Fehler beim Entsperren der IP {0}
+upkeep_ips_geo_update_success = GeoIP-Datenbank erfolgreich aktualisiert
+upkeep_ips_geo_update_error = Fehler beim Aktualisieren der GeoIP-Datenbank
+upkeep_ips_captcha_trust_help = Wie lange (in Stunden) eine IP nach erfolgreicher CAPTCHA-Entsperrung vertrauenswürdig bleibt (Standard: 24 Stunden, Maximum: 168 Stunden/7 Tage)
+upkeep_ips_temp_whitelist_help = 24h temporäre Positivliste nach erfolgreicher Entsperrung
+upkeep_ips_cleanup_success_detail = Bereinigung erfolgreich: {0}
+upkeep_ips_cleanup_manual = Manuelle Bereinigung
+upkeep_ips_cleanup_auto = Automatische Bereinigung
+upkeep_ips_cleanup_found = Es wurden {0} Datensätze gefunden, die bereinigt werden können.
+upkeep_ips_important_notes = Wichtige Hinweise
