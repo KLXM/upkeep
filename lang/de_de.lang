@@ -74,6 +74,8 @@ upkeep_ips_threats = Bedrohungen
 upkeep_ips_blocked = Gesperrte IPs
 upkeep_ips_patterns = Patterns
 upkeep_ips_settings = Einstellungen
+upkeep_ips_disable_system_logging = System-Logging deaktivieren
+upkeep_ips_disable_system_logging_help = Deaktiviert alle IPS-Logs im REDAXO-System-Log. Bedrohungen werden nur noch in der IPS-Datenbank gespeichert. Kritische Fehler (Exceptions) werden weiterhin geloggt.
 
 # IPS Dashboard
 upkeep_ips_blocked_count = Gesperrte IPs

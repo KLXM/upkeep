@@ -130,7 +130,12 @@ class GeoIP
                 }
                 
                 \rex_file::put($targetPath, $decompressed);
-                \rex_logger::factory()->log('info', 'Upkeep GeoIP: Datenbank erfolgreich heruntergeladen', []);
+                
+                // Info-Logging nur wenn IPS System-Logging nicht deaktiviert ist
+                $addon = \rex_addon::get('upkeep');
+                if (!$addon->getConfig('ips_disable_system_logging', false)) {
+                    \rex_logger::factory()->log('info', 'Upkeep GeoIP: Datenbank erfolgreich heruntergeladen', []);
+                }
                 return true;
             }
             

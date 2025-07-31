@@ -22,6 +22,7 @@ if (rex_post('save', 'bool')) {
     $config = [
         'ips_active' => rex_post('ips_active', 'bool'),
         'ips_monitor_only' => rex_post('ips_monitor_only', 'bool'),
+        'ips_disable_system_logging' => rex_post('ips_disable_system_logging', 'bool'),
         'ips_fail2ban_logging' => rex_post('ips_fail2ban_logging', 'bool'),
         'ips_fail2ban_logfile' => rex_post('ips_fail2ban_logfile', 'string', '/var/log/redaxo_ips.log'),
         'ips_contact_info' => rex_post('ips_contact_info', 'string', ''),
@@ -39,6 +40,7 @@ if (rex_post('save', 'bool')) {
 // Aktuelle Einstellungen laden
 $ipsActive = (bool) $addon->getConfig('ips_active', false);
 $monitorOnly = (bool) $addon->getConfig('ips_monitor_only', false);
+$disableSystemLogging = (bool) $addon->getConfig('ips_disable_system_logging', false);
 $fail2banLogging = (bool) $addon->getConfig('ips_fail2ban_logging', false);
 $fail2banLogfile = $addon->getConfig('ips_fail2ban_logfile', '/var/log/redaxo_ips.log');
 $contactInfo = $addon->getConfig('ips_contact_info', '');
@@ -69,6 +71,14 @@ echo '<input type="checkbox" name="ips_monitor_only" value="1"' . ($monitorOnly 
 echo 'Monitor-Only Modus';
 echo '</label>';
 echo '<p class="help-block"><strong>Monitor-Only:</strong> Bedrohungen werden nur protokolliert, aber nicht blockiert. Ideal zum Testen und Feintuning der Patterns ohne Ausfallrisiko.</p>';
+echo '</div>';
+
+echo '<div class="form-group">';
+echo '<label class="control-label">';
+echo '<input type="checkbox" name="ips_disable_system_logging" value="1"' . ($disableSystemLogging ? ' checked' : '') . ' id="disable-system-logging-checkbox"> ';
+echo 'System-Logging deaktivieren';
+echo '</label>';
+echo '<p class="help-block"><strong>Wichtig:</strong> Deaktiviert alle IPS-Logs im REDAXO-System-Log. Bedrohungen werden nur noch in der IPS-Datenbank gespeichert. Kritische Fehler (Exceptions) werden weiterhin geloggt.</p>';
 echo '</div>';
 
 echo '<div class="form-group">';
@@ -271,6 +281,8 @@ echo '<dt>IPS Status:</dt>';
 echo '<dd>' . ($ipsActive ? '<span class="label label-success">Aktiv</span>' : '<span class="label label-danger">Inaktiv</span>') . '</dd>';
 echo '<dt>Monitor-Only:</dt>';
 echo '<dd>' . ($monitorOnly ? '<span class="label label-warning">Aktiv (Nur Logging)</span>' : '<span class="label label-success">Deaktiviert</span>') . '</dd>';
+echo '<dt>System-Logging:</dt>';
+echo '<dd>' . ($disableSystemLogging ? '<span class="label label-warning">Deaktiviert</span>' : '<span class="label label-success">Aktiv</span>') . '</dd>';
 echo '<dt>fail2ban Logging:</dt>';
 echo '<dd>' . ($fail2banLogging ? '<span class="label label-info">Aktiv</span>' : '<span class="label label-default">Deaktiviert</span>') . '</dd>';
 echo '<dt>Rate Limiting:</dt>';
