@@ -92,7 +92,6 @@ function getThreatsByCountry() {
         
         // Hole alle gesperrten IPs (aktive Sperrungen)
         $sql = rex_sql::factory();
-        rex_logger::factory()->log('debug', 'Dashboard: Suche nach allen aktiven gesperrten IPs');
         
         $sql->setQuery('
             SELECT DISTINCT ip_address 
@@ -101,13 +100,11 @@ function getThreatsByCountry() {
         ');
         
         $results = $sql->getArray();
-        rex_logger::factory()->log('debug', 'Dashboard: Gefundene gesperrte IPs: ' . count($results));
         
         if (empty($results)) {
             // Prüfe ob überhaupt Einträge in der Tabelle sind
             $sql->setQuery('SELECT COUNT(*) as total FROM ' . rex::getTable('upkeep_ips_blocked_ips'));
             $total = $sql->getValue('total');
-            rex_logger::factory()->log('debug', 'Dashboard: Gesamt Einträge in blocked_ips Tabelle: ' . $total);
             return [];
         }
         
@@ -115,11 +112,10 @@ function getThreatsByCountry() {
         
         foreach ($results as $result) {
             $ip = $result['ip_address'];
-            rex_logger::factory()->log('debug', 'Dashboard: Verarbeite IP: ' . $ip);
+            
             
             $country = \KLXM\Upkeep\IntrusionPrevention::getCountryByIp($ip);
             $countryCode = $country['code'];
-            rex_logger::factory()->log('debug', 'Dashboard: Land für IP ' . $ip . ': ' . $country['name'] . ' (' . $countryCode . ')');
             
             if (!isset($countries[$countryCode])) {
                 $countries[$countryCode] = [
@@ -142,7 +138,6 @@ function getThreatsByCountry() {
             return $b['blocked_count'] <=> $a['blocked_count'];
         });
         
-        rex_logger::factory()->log('debug', 'Dashboard: Anzahl Länder gefunden: ' . count($countries));
         
         return array_values($countries);
     } catch (\Exception $e) {
