@@ -665,16 +665,35 @@ class IntrusionPrevention
      */
     
     /**
-     * Prüft ob IP gesperrt ist
+     * Prüft ob IP gesperrt ist (unterstützt auch CIDR-Bereiche)
      */
     private static function isBlocked(string $ip): bool
     {
         $sql = rex_sql::factory();
+        
+        // Erst exakte IP-Übereinstimmung prüfen
         $query = "SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
                   WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW())";
         
         $sql->setQuery($query, [$ip]);
-        return $sql->getValue('count') > 0;
+        if ($sql->getValue('count') > 0) {
+            return true;
+        }
+        
+        // Dann CIDR-Bereiche prüfen
+        $query = "SELECT ip_address FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
+                  WHERE ip_address LIKE '%/%' AND (expires_at IS NULL OR expires_at > NOW())";
+        
+        $sql->setQuery($query);
+        while ($sql->hasNext()) {
+            $cidr = $sql->getValue('ip_address');
+            if (self::ipInRange($ip, $cidr)) {
+                return true;
+            }
+            $sql->next();
+        }
+        
+        return false;
     }
     
     /**
@@ -1875,9 +1894,9 @@ class IntrusionPrevention
     }
 
     /**
-     * Sperrt IP-Adresse manuell
+     * Sperrt IP-Adresse oder IP-Bereich manuell
      * 
-     * @param string $ip IP-Adresse die gesperrt werden soll
+     * @param string $ip IP-Adresse oder CIDR-Notation (z.B. 192.168.1.0/24) die gesperrt werden soll
      * @param string $duration Sperrdauer ('permanent', '1h', '6h', '24h', '7d', '30d')
      * @param string $reason Grund für die Sperrung
      * @return array Ergebnis mit Erfolg/Fehler und Nachricht ['success' => bool, 'message' => string, 'error_code' => string]
@@ -1894,17 +1913,32 @@ class IntrusionPrevention
             ];
         }
         
-        // IP-Format validieren
-        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-            return [
-                'success' => false,
-                'message' => "Ungültiges IP-Adressformat: {$ip}. Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein.",
-                'error_code' => 'INVALID_IP_FORMAT'
-            ];
+        // Prüfe ob es sich um CIDR-Notation handelt
+        $isCidr = strpos($ip, '/') !== false;
+        
+        if ($isCidr) {
+            // CIDR-Validierung
+            $validation = self::validateCidrRange($ip);
+            if (!$validation['valid']) {
+                return [
+                    'success' => false,
+                    'message' => $validation['message'],
+                    'error_code' => 'INVALID_CIDR_FORMAT'
+                ];
+            }
+        } else {
+            // Einzelne IP-Format validieren
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                return [
+                    'success' => false,
+                    'message' => "Ungültiges IP-Adressformat: {$ip}. Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein oder verwenden Sie CIDR-Notation (z.B. 192.168.1.0/24).",
+                    'error_code' => 'INVALID_IP_FORMAT'
+                ];
+            }
         }
         
         // Prüfe ob es sich um eine private/lokale IP handelt (Warnung)
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        if (!$isCidr && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             // Private IP - warnen aber nicht blockieren
             rex_logger::factory()->log('warning', "IPS: Attempting to block private/reserved IP: {$ip}");
         }
@@ -1924,13 +1958,13 @@ class IntrusionPrevention
                 $expiryInfo = $existingExpiresAt ? " bis " . date('d.m.Y H:i', strtotime($existingExpiresAt)) : " permanent";
                 return [
                     'success' => false,
-                    'message' => "IP {$ip} ist bereits gesperrt ({$existingBlockType}{$expiryInfo}). Grund: " . substr($existingReason, 0, 100),
+                    'message' => "IP/Bereich {$ip} ist bereits gesperrt ({$existingBlockType}{$expiryInfo}). Grund: " . substr($existingReason, 0, 100),
                     'error_code' => 'IP_ALREADY_BLOCKED'
                 ];
             }
             
-            // Prüfe ob die IP in der Positivliste steht
-            if (self::isOnPositivliste($ip)) {
+            // Prüfe ob die IP in der Positivliste steht (nur bei einzelnen IPs, nicht bei CIDR)
+            if (!$isCidr && self::isOnPositivliste($ip)) {
                 return [
                     'success' => false,
                     'message' => "IP {$ip} steht in der Positivliste und kann nicht gesperrt werden. Entfernen Sie sie zuerst aus der Positivliste.",
@@ -1985,10 +2019,10 @@ class IntrusionPrevention
             
             // Grund standardisieren
             if (empty($reason)) {
-                $reason = 'Manuell gesperrt durch Administrator';
+                $reason = $isCidr ? 'Manuell gesperrter IP-Bereich durch Administrator' : 'Manuell gesperrt durch Administrator';
             }
             
-            // IP in Datenbank sperren
+            // IP/CIDR in Datenbank sperren
             $sql->setTable(rex::getTable('upkeep_ips_blocked_ips'));
             $sql->setValue('ip_address', $ip);
             $sql->setValue('block_type', $blockType);
@@ -2000,14 +2034,15 @@ class IntrusionPrevention
             
             // Erfolg loggen
             $expiryInfo = $expiresAt ? " bis {$expiresAt}" : " permanent";
-            rex_logger::factory()->log('info', "IPS: IP {$ip} manuell gesperrt{$expiryInfo} - Grund: {$reason}");
+            $typeDesc = $isCidr ? "IP-Bereich" : "IP";
+            rex_logger::factory()->log('info', "IPS: {$typeDesc} {$ip} manuell gesperrt{$expiryInfo} - Grund: {$reason}");
             
             // Auch bei ausgeschaltetem Debug-Modus loggen, da dies eine wichtige Admin-Aktion ist
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
                 self::debugLog("Manual IP block successful: {$ip} ({$blockType}{$expiryInfo}) - {$reason}");
             }
             
-            $successMessage = "IP {$ip} wurde erfolgreich gesperrt ({$blockType}";
+            $successMessage = "{$typeDesc} {$ip} wurde erfolgreich gesperrt ({$blockType}";
             if ($expiresAt) {
                 $successMessage .= " bis " . date('d.m.Y H:i', strtotime($expiresAt));
             }
@@ -2020,16 +2055,139 @@ class IntrusionPrevention
             ];
             
         } catch (Exception $e) {
-            $errorMessage = "Datenbankfehler beim Sperren der IP {$ip}: " . $e->getMessage();
+            $errorMessage = "Datenbankfehler beim Sperren von {$ip}: " . $e->getMessage();
             rex_logger::logException($e);
             rex_logger::factory()->log('error', "IPS Manual Block Error: {$errorMessage}");
             
             return [
                 'success' => false,
-                'message' => "Datenbankfehler beim Sperren der IP-Adresse. Details wurden geloggt.",
+                'message' => "Datenbankfehler beim Sperren der IP-Adresse/des IP-Bereichs. Details wurden geloggt.",
                 'error_code' => 'DATABASE_ERROR'
             ];
         }
+    }
+    
+    /**
+     * Validiert CIDR-Notation
+     * 
+     * @param string $cidr CIDR-String (z.B. 192.168.1.0/24)
+     * @return array ['valid' => bool, 'message' => string]
+     */
+    private static function validateCidrRange(string $cidr): array
+    {
+        if (!str_contains($cidr, '/')) {
+            return [
+                'valid' => false,
+                'message' => "CIDR-Notation muss ein '/' enthalten (z.B. 192.168.1.0/24)"
+            ];
+        }
+        
+        $parts = explode('/', $cidr);
+        if (count($parts) !== 2) {
+            return [
+                'valid' => false,
+                'message' => "Ungültiges CIDR-Format. Erwartetes Format: IP/Prefix (z.B. 192.168.1.0/24)"
+            ];
+        }
+        
+        list($ip, $prefix) = $parts;
+        
+        // IP-Teil validieren
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return [
+                'valid' => false,
+                'message' => "Ungültige IP-Adresse in CIDR-Notation: {$ip}"
+            ];
+        }
+        
+        // Prefix validieren
+        if (!is_numeric($prefix)) {
+            return [
+                'valid' => false,
+                'message' => "CIDR-Prefix muss eine Zahl sein: {$prefix}"
+            ];
+        }
+        
+        $prefix = (int)$prefix;
+        
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            // IPv4: Prefix 0-32
+            if ($prefix < 0 || $prefix > 32) {
+                return [
+                    'valid' => false,
+                    'message' => "IPv4 CIDR-Prefix muss zwischen 0 und 32 liegen: /{$prefix}"
+                ];
+            }
+        } elseif (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            // IPv6: Prefix 0-128
+            if ($prefix < 0 || $prefix > 128) {
+                return [
+                    'valid' => false,
+                    'message' => "IPv6 CIDR-Prefix muss zwischen 0 und 128 liegen: /{$prefix}"
+                ];
+            }
+        } else {
+            return [
+                'valid' => false,
+                'message' => "Unbekannter IP-Typ in CIDR-Notation: {$ip}"
+            ];
+        }
+        
+        return [
+            'valid' => true,
+            'message' => "Gültige CIDR-Notation"
+        ];
+    }
+    
+    /**
+     * Verarbeitet Bulk-Import von IP-Listen
+     * 
+     * @param string $ipList Zeilengetrennte Liste von IPs/CIDR
+     * @param string $duration Sperrdauer für alle IPs
+     * @param string $reason Grund für die Sperrung
+     * @return array Ergebnis-Statistiken
+     */
+    public static function processBulkIpImport(string $ipList, string $duration = '24h', string $reason = ''): array
+    {
+        $lines = explode("\n", trim($ipList));
+        $results = [
+            'success_count' => 0,
+            'error_count' => 0,
+            'skipped_count' => 0,
+            'errors' => []
+        ];
+        
+        if (empty($reason)) {
+            $reason = "Bulk-Import (" . date('Y-m-d H:i') . ")";
+        }
+        
+        foreach ($lines as $line) {
+            $ip = trim($line);
+            
+            // Leere Zeilen und Kommentare überspringen
+            if (empty($ip) || $ip[0] === '#') {
+                continue;
+            }
+            
+            // IP blockieren
+            $result = self::blockIpManually($ip, $duration, $reason);
+            
+            if ($result['success']) {
+                $results['success_count']++;
+            } else {
+                if ($result['error_code'] === 'IP_ALREADY_BLOCKED' || $result['error_code'] === 'IP_IN_POSITIVLISTE') {
+                    $results['skipped_count']++;
+                } else {
+                    $results['error_count']++;
+                    $results['errors'][] = "{$ip}: " . $result['message'];
+                }
+            }
+        }
+        
+        // Bulk-Import loggen
+        rex_logger::factory()->log('info', "IPS Bulk Import: {$results['success_count']} erfolgreiche, {$results['error_count']} fehlerhafte, {$results['skipped_count']} übersprungene IPs");
+        
+        return $results;
     }
     
     /**

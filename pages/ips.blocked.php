@@ -22,6 +22,35 @@ if (!$tableExists) {
     return;
 }
 
+// Bulk-Import von IP-Listen
+if (rex_post('bulk_import_ips', 'bool')) {
+    $ipList = rex_post('ip_list', 'string', '');
+    $duration = rex_post('bulk_duration', 'string', '24h');
+    $reason = rex_post('bulk_reason', 'string', '');
+    
+    if (empty($ipList)) {
+        echo rex_view::error('IP-Liste ist erforderlich');
+    } else {
+        $results = IntrusionPrevention::processBulkIpImport($ipList, $duration, $reason);
+        
+        if ($results['success_count'] > 0) {
+            echo rex_view::success("Erfolgreich {$results['success_count']} IPs gesperrt.");
+        }
+        
+        if ($results['error_count'] > 0) {
+            $errorMsg = "Fehler bei {$results['error_count']} IPs:";
+            foreach ($results['errors'] as $error) {
+                $errorMsg .= "<br>• " . rex_escape($error);
+            }
+            echo rex_view::warning($errorMsg);
+        }
+        
+        if ($results['skipped_count'] > 0) {
+            echo rex_view::info("Übersprungen: {$results['skipped_count']} IPs (bereits gesperrt oder in Positivliste).");
+        }
+    }
+}
+
 // IP manuell sperren
 if (rex_post('add_blocked_ip', 'bool')) {
     $ip = rex_post('ip_address', 'string', '');
@@ -81,6 +110,8 @@ $fragment->setVar('body', '
         <ul class="small" style="margin-bottom: 0;">
             <li><strong>IPv4:</strong> z.B. 192.168.1.100, 203.0.113.0</li>
             <li><strong>IPv6:</strong> z.B. 2001:db8::1, ::1</li>
+            <li><strong>CIDR IPv4:</strong> z.B. 192.168.1.0/24, 10.0.0.0/8</li>
+            <li><strong>CIDR IPv6:</strong> z.B. 2001:db8::/32</li>
             <li><strong>Hinweis:</strong> IPs aus der Positivliste können nicht gesperrt werden</li>
         </ul>
     </div>
@@ -91,10 +122,9 @@ $fragment->setVar('body', '
                 <div class="form-group">
                     <label for="ip_address">' . $addon->i18n('upkeep_ips_ip_address') . ' <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="ip_address" name="ip_address" 
-                           placeholder="192.168.1.100" required 
-                           pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$"
-                           title="Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein">
-                    <small class="help-block">IPv4 (192.168.1.100) oder IPv6 (2001:db8::1)</small>
+                           placeholder="192.168.1.100 oder 192.168.1.0/24" required 
+                           title="Geben Sie eine gültige IPv4/IPv6 Adresse oder CIDR-Notation ein">
+                    <small class="help-block">Einzelne IP oder CIDR-Bereich (z.B. 192.168.1.0/24)</small>
                 </div>
             </div>
             <div class="col-md-3">
@@ -132,21 +162,162 @@ $fragment->setVar('body', '
 </div>
 
 <script>
-// Client-side IP validation
+// Client-side IP and CIDR validation
 document.getElementById("ip_address").addEventListener("input", function() {
-    var ip = this.value.trim();
+    var input = this.value.trim();
+    
+    if (!input) {
+        this.setCustomValidity("");
+        return;
+    }
+    
+    // Check if it\'s CIDR notation
+    if (input.includes("/")) {
+        if (validateCidr(input)) {
+            this.setCustomValidity("");
+        } else {
+            this.setCustomValidity("Bitte geben Sie eine gültige CIDR-Notation ein (z.B. 192.168.1.0/24)");
+        }
+    } else {
+        // Single IP validation
+        var ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        var ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+        
+        if (ipv4Regex.test(input) || ipv6Regex.test(input)) {
+            this.setCustomValidity("");
+        } else {
+            this.setCustomValidity("Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein");
+        }
+    }
+});
+
+function validateCidr(cidr) {
+    var parts = cidr.split("/");
+    if (parts.length !== 2) return false;
+    
+    var ip = parts[0];
+    var prefix = parseInt(parts[1]);
+    
+    // Validate IP part
     var ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
     var ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
     
-    if (ip && !ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
-        this.setCustomValidity("Bitte geben Sie eine gültige IPv4 oder IPv6 Adresse ein");
-    } else {
-        this.setCustomValidity("");
+    if (ipv4Regex.test(ip)) {
+        // IPv4: prefix 0-32
+        return prefix >= 0 && prefix <= 32;
+    } else if (ipv6Regex.test(ip)) {
+        // IPv6: prefix 0-128
+        return prefix >= 0 && prefix <= 128;
     }
-});
+    
+    return false;
+}
 </script>
 ', false);
 echo $fragment->parse('core/page/section.php');
+
+// Bulk-Import Formular
+$bulkFragment = new rex_fragment();
+$bulkFragment->setVar('class', 'edit', false);
+$bulkFragment->setVar('title', 'Bulk-Import: Mehrere IPs gleichzeitig sperren', false);
+$bulkFragment->setVar('body', '
+<div class="panel-body">
+    <div class="alert alert-info">
+        <p><i class="fa fa-upload"></i> Importieren Sie mehrere IP-Adressen oder CIDR-Bereiche gleichzeitig.</p>
+        <ul class="small" style="margin-bottom: 0;">
+            <li>Eine IP-Adresse oder CIDR pro Zeile</li>
+            <li>Kommentare mit # am Zeilenanfang werden ignoriert</li>
+            <li>Beispiel: 192.168.1.100, 10.0.0.0/8, 2001:db8::/32</li>
+        </ul>
+    </div>
+    
+    <form action="' . rex_url::currentBackendPage() . '" method="post" id="bulkImportForm">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="ip_list">IP-Adressen/CIDR-Bereiche <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="ip_list" name="ip_list" rows="10" required
+                              placeholder="192.168.1.100&#10;10.0.0.0/8&#10;203.0.113.0/24&#10;# Kommentar wird ignoriert&#10;2001:db8::/32"></textarea>
+                    <small class="help-block">Eine IP/CIDR pro Zeile, Kommentare mit # möglich</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="bulk_duration">Sperrdauer für alle IPs</label>
+                    <select class="form-control selectpicker" id="bulk_duration" name="bulk_duration" data-style="btn-default">
+                        <option value="1h">' . $addon->i18n('upkeep_ips_block_duration_1h') . '</option>
+                        <option value="6h">' . $addon->i18n('upkeep_ips_block_duration_6h') . '</option>
+                        <option value="24h" selected>' . $addon->i18n('upkeep_ips_block_duration_24h') . '</option>
+                        <option value="7d">' . $addon->i18n('upkeep_ips_block_duration_7d') . '</option>
+                        <option value="30d">' . $addon->i18n('upkeep_ips_block_duration_30d') . '</option>
+                        <option value="permanent">' . $addon->i18n('upkeep_ips_block_duration_permanent') . '</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="bulk_reason">Grund für Bulk-Import</label>
+                    <input type="text" class="form-control" id="bulk_reason" name="bulk_reason" 
+                           placeholder="z.B. Spam-Liste vom ' . date('Y-m-d') . '"
+                           maxlength="255">
+                    <small class="help-block">Optional: Grund für alle IPs</small>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="submit" name="bulk_import_ips" value="1" class="btn btn-warning">
+                <i class="fa fa-upload"></i> IPs importieren und sperren
+            </button>
+            <button type="button" class="btn btn-default" onclick="document.getElementById(\'bulkImportForm\').reset();">
+                <i class="fa fa-refresh"></i> Formular leeren
+            </button>
+            <button type="button" class="btn btn-info" onclick="showBulkExamples()">
+                <i class="fa fa-question-circle"></i> Beispiele
+            </button>
+        </div>
+    </form>
+    
+    <div id="bulkExamples" style="display: none;">
+        <hr>
+        <h5>Beispiel-IP-Listen:</h5>
+        <div class="row">
+            <div class="col-md-4">
+                <h6>Bekannte Spam-IPs:</h6>
+                <pre class="small">203.0.113.100
+203.0.113.101
+203.0.113.102</pre>
+            </div>
+            <div class="col-md-4">
+                <h6>IP-Bereiche:</h6>
+                <pre class="small"># Verdächtiges Netzwerk
+10.0.0.0/8
+192.168.1.0/24
+172.16.0.0/12</pre>
+            </div>
+            <div class="col-md-4">
+                <h6>Gemischte Liste:</h6>
+                <pre class="small"># Liste vom ' . date('Y-m-d') . '
+203.0.113.50
+# Ganzes Netzwerk sperren
+198.51.100.0/24
+2001:db8:bad::/48</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showBulkExamples() {
+    var examples = document.getElementById("bulkExamples");
+    if (examples.style.display === "none") {
+        examples.style.display = "block";
+    } else {
+        examples.style.display = "none";
+    }
+}
+</script>
+', false);
+echo $bulkFragment->parse('core/page/section.php');
 
 // Quick Actions: Bedrohliche IPs schnell sperren
 $recentThreatIps = IntrusionPrevention::getRecentThreatIps(10);
