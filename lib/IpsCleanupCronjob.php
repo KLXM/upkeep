@@ -74,7 +74,12 @@ class rex_upkeep_ips_cleanup_cronjob extends rex_cronjob
             // Logging für Administratoren
             if ($cleanupCount > 0) {
                 $retentionInfo = $threatLogRetentionDays !== 30 ? " (Threat Log: {$threatLogRetentionDays} Tage)" : '';
-                rex_logger::factory()->info("IPS Cleanup: {$cleanupCount} veraltete Einträge entfernt{$retentionInfo}.");
+                
+                // Prüfe ob System-Logging für IPS deaktiviert ist
+                $addon = rex_addon::get('upkeep');
+                if (!$addon->getConfig('ips_disable_system_logging', false)) {
+                    rex_logger::factory()->info("IPS Cleanup: {$cleanupCount} veraltete Einträge entfernt{$retentionInfo}.");
+                }
             }
 
             return true;

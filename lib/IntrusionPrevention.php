@@ -36,6 +36,30 @@ class IntrusionPrevention
         }
     }
     
+    /**
+     * System-Logging nur wenn nicht deaktiviert
+     * Ermöglicht es, IPS-Logs komplett aus dem REDAXO-Log zu entfernen
+     */
+    private static function systemLog(string $level, string $message, array $context = []): void
+    {
+        // Prüfe ob System-Logging für IPS deaktiviert ist
+        if (self::getAddon()->getConfig('ips_disable_system_logging', false)) {
+            return; // Keine Logs ins REDAXO-System schreiben
+        }
+        
+        rex_logger::factory()->log($level, $message, $context);
+    }
+    
+    /**
+     * Exception-Logging - immer aktiv für kritische Fehler
+     */
+    private static function exceptionLog(\Throwable $exception): void
+    {
+        // Exceptions werden immer geloggt, auch wenn System-Logging deaktiviert ist
+        // da sie kritische Fehler darstellen
+        rex_logger::logException($exception);
+    }
+    
     // Bekannte Scanner und Pentest-Tools (User-Agent)
     private static array $suspiciousUserAgents = [
         'nmap',
@@ -98,7 +122,7 @@ class IntrusionPrevention
         // Bereits gesperrte IP?
         if (self::isBlocked($clientIp)) {
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: IP {$clientIp} is already blocked");
+                self::systemLog('info', "IPS: IP {$clientIp} is already blocked");
             }
             self::blockRequest('IP bereits gesperrt', $clientIp, $requestUri);
         }
@@ -468,7 +492,7 @@ class IntrusionPrevention
                 $sql->next();
             }
         } catch (Exception $e) {
-            rex_logger::factory()->log('error', "IPS: Error checking Positivliste: " . $e->getMessage());
+            self::systemLog('error', "IPS: Error checking Positivliste: " . $e->getMessage());
             // Fehler beim Datenbankzugriff ignorieren (Tabelle existiert möglicherweise noch nicht)
         }
         
@@ -651,7 +675,7 @@ class IntrusionPrevention
                 }
             } catch (Exception $e) {
                 // Fallback auf leeres Array falls Tabelle noch nicht existiert
-                rex_logger::logException($e);
+                self::exceptionLog($e);
                 $patterns = [];
             }
         }
@@ -1593,7 +1617,7 @@ class IntrusionPrevention
         // Antwort prüfen
         if ($userAnswer === $correctAnswer) {
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: CAPTCHA verification successful for IP {$ip}");
+                self::systemLog('info', "IPS: CAPTCHA verification successful for IP {$ip}");
             }
             
             // 1. IP komplett entsperren und rehabilitieren
@@ -1606,7 +1630,7 @@ class IntrusionPrevention
             
             // Detailliertes Logging der Rehabilitation
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
+                self::systemLog('info', "IPS: IP {$ip} rehabilitation - unblock: " . ($unblockSuccess ? 'success' : 'failed') . 
                                                    ", clear_history: " . ($clearSuccess ? 'success' : 'failed') . 
                                                    ", temp_positivliste: " . ($addToPositivliste ? "success ({$trustDuration}h)" : 'failed'));
             }
@@ -1638,7 +1662,7 @@ class IntrusionPrevention
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1655,7 +1679,7 @@ class IntrusionPrevention
             $sql->delete();
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1679,7 +1703,7 @@ class IntrusionPrevention
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1697,7 +1721,7 @@ class IntrusionPrevention
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1726,7 +1750,7 @@ class IntrusionPrevention
             }
             return null;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return null;
         }
     }
@@ -1749,7 +1773,7 @@ class IntrusionPrevention
             $sql->insert();
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1780,7 +1804,7 @@ class IntrusionPrevention
                 $sql->update();
                 
                 if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                    rex_logger::factory()->log('info', "IPS: Updated existing Positivliste entry for {$ip} with expiry {$expiresAt}");
+                    self::systemLog('info', "IPS: Updated existing Positivliste entry for {$ip} with expiry {$expiresAt}");
                 }
             } else {
                 // Neue temporäre Positivliste-Eintrag erstellen
@@ -1795,13 +1819,13 @@ class IntrusionPrevention
                 $sql->insert();
                 
                 if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                    rex_logger::factory()->log('info', "IPS: Added {$ip} to temporary Positivliste until {$expiresAt}");
+                    self::systemLog('info', "IPS: Added {$ip} to temporary Positivliste until {$expiresAt}");
                 }
             }
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1816,7 +1840,7 @@ class IntrusionPrevention
             $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_positivliste') . " WHERE id = ?", [$id]);
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1831,7 +1855,7 @@ class IntrusionPrevention
             $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_ips_positivliste') . ' ORDER BY created_at DESC');
             return $sql->getArray();
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return [];
         }
     }
@@ -1854,7 +1878,7 @@ class IntrusionPrevention
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1873,7 +1897,7 @@ class IntrusionPrevention
             
             if ($blockedCount === 0) {
                 if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                    rex_logger::factory()->log('info', "IPS: IP {$ip} was not in blocked list");
+                    self::systemLog('info', "IPS: IP {$ip} was not in blocked list");
                 }
                 return true; // Schon entsperrt
             }
@@ -1883,12 +1907,12 @@ class IntrusionPrevention
             $deletedRows = $sql->getRows();
             
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
+                self::systemLog('info', "IPS: IP {$ip} manually unblocked - removed {$deletedRows} entries");
             }
             
             return $deletedRows > 0;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -1940,7 +1964,7 @@ class IntrusionPrevention
         // Prüfe ob es sich um eine private/lokale IP handelt (Warnung)
         if (!$isCidr && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             // Private IP - warnen aber nicht blockieren
-            rex_logger::factory()->log('warning', "IPS: Attempting to block private/reserved IP: {$ip}");
+            self::systemLog('warning', "IPS: Attempting to block private/reserved IP: {$ip}");
         }
         
         try {
@@ -2035,7 +2059,7 @@ class IntrusionPrevention
             // Erfolg loggen
             $expiryInfo = $expiresAt ? " bis {$expiresAt}" : " permanent";
             $typeDesc = $isCidr ? "IP-Bereich" : "IP";
-            rex_logger::factory()->log('info', "IPS: {$typeDesc} {$ip} manuell gesperrt{$expiryInfo} - Grund: {$reason}");
+            self::systemLog('info', "IPS: {$typeDesc} {$ip} manuell gesperrt{$expiryInfo} - Grund: {$reason}");
             
             // Auch bei ausgeschaltetem Debug-Modus loggen, da dies eine wichtige Admin-Aktion ist
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
@@ -2056,8 +2080,8 @@ class IntrusionPrevention
             
         } catch (Exception $e) {
             $errorMessage = "Datenbankfehler beim Sperren von {$ip}: " . $e->getMessage();
-            rex_logger::logException($e);
-            rex_logger::factory()->log('error', "IPS Manual Block Error: {$errorMessage}");
+            self::exceptionLog($e);
+            self::systemLog('error', "IPS Manual Block Error: {$errorMessage}");
             
             return [
                 'success' => false,
@@ -2185,7 +2209,7 @@ class IntrusionPrevention
         }
         
         // Bulk-Import loggen
-        rex_logger::factory()->log('info', "IPS Bulk Import: {$results['success_count']} erfolgreiche, {$results['error_count']} fehlerhafte, {$results['skipped_count']} übersprungene IPs");
+        self::systemLog('info', "IPS Bulk Import: {$results['success_count']} erfolgreiche, {$results['error_count']} fehlerhafte, {$results['skipped_count']} übersprungene IPs");
         
         return $results;
     }
@@ -2222,12 +2246,12 @@ class IntrusionPrevention
             
             // Log der Rehabilitation
             if (self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
+                self::systemLog('info', "IPS: Threat history cleared for {$ip} - " . json_encode($cleanup));
             }
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -2312,7 +2336,7 @@ class IntrusionPrevention
             
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -2415,11 +2439,11 @@ class IntrusionPrevention
             // Log der Bereinigung
             $totalCleaned = array_sum($cleanup);
             if ($totalCleaned > 0 && self::getAddon()->getConfig('ips_debug_mode', false)) {
-                rex_logger::factory()->log('info', 'IPS Cleanup: ' . json_encode($cleanup), [], __FILE__, __LINE__);
+                self::systemLog('info', 'IPS Cleanup: ' . json_encode($cleanup), [], __FILE__, __LINE__);
             }
             
         } catch (Exception $e) {
-            rex_logger::factory()->log('error', 'IPS Cleanup Error: ' . $e->getMessage(), [], __FILE__, __LINE__);
+            self::systemLog('error', 'IPS Cleanup Error: ' . $e->getMessage(), [], __FILE__, __LINE__);
         }
         
         return $cleanup;
@@ -2477,7 +2501,7 @@ class IntrusionPrevention
                            WHERE id = ?", [$id]);
             return true;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return false;
         }
     }
@@ -2504,7 +2528,7 @@ class IntrusionPrevention
             }
             return null;
         } catch (Exception $e) {
-            rex_logger::logException($e);
+            self::exceptionLog($e);
             return null;
         }
     }
