@@ -339,6 +339,7 @@ upkeep_help_more_info = Weitere Informationen
 
 # Validierung Domain Mapping
 upkeep_domain_mapping_invalid_domain = Ungültige Domain (RFC-konform erforderlich)
+upkeep_domain_mapping_invalid_idn_domain = Ungültige IDN-Domain (Internationalisierte Domain kann nicht verarbeitet werden)
 upkeep_domain_mapping_invalid_wildcard_url = Ungültige Wildcard-URL (Format mit * muss gültige URL ergeben)
 upkeep_domain_mapping_invalid_target_url = Ungültige Target URL
 upkeep_domain_mapping_url_schema_required = Target URL muss mit http:// oder https:// beginnen
@@ -421,7 +422,7 @@ upkeep_domain_mapping_save_error = Fehler beim Speichern
 upkeep_domain_mapping_deleted = Domain Mapping wurde gelöscht
 upkeep_domain_mapping_delete_error = Fehler beim Löschen
 upkeep_domain_mapping_no_entries = Keine Domain Mappings vorhanden
-upkeep_domain_mapping_help_text = Hier können Sie Domains auf URLs umleiten. Die Umleitung funktioniert nur, wenn die Domain auch tatsächlich auf diesen Server zeigt.
+upkeep_domain_mapping_help_text = Hier können Sie Domains auf URLs umleiten. Die Umleitung funktioniert nur, wenn die Domain auch tatsächlich auf diesen Server zeigt. <strong>IDN-Domains werden unterstützt.</strong> Bei Eingabe der Domain gilt die Umleitung automatisch für domain.tld und www.domain.tld.
 upkeep_domain_mapping_wildcard_note = Source Path muss mit /* enden. Target URL kann * enthalten für dynamische Ersetzung.
 upkeep_domain_mapping_global_settings = Globale Domain-Mapping Einstellungen
 upkeep_domain_mapping_disabled_help = Wenn deaktiviert, werden alle Domain-Mappings ignoriert, auch wenn sie als "Aktiv" markiert sind.

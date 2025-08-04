@@ -41,8 +41,35 @@ if (rex_post('save', 'bool')) {
     
     if (empty($data['source_domain'])) {
         $errors[] = $addon->i18n('upkeep_domain_mapping_source_required');
-    } elseif (!preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/', $data['source_domain']) || strlen($data['source_domain']) > 253) {
-        $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_domain');
+    } else {
+        // IDN-Domain normalisieren und validieren
+        $normalizedDomain = $data['source_domain'];
+        
+        // Entferne www. falls vorhanden für die Validierung
+        $domainForValidation = $normalizedDomain;
+        if (str_starts_with($domainForValidation, 'www.')) {
+            $domainForValidation = substr($domainForValidation, 4);
+        }
+        
+        // IDN-Domains zu Punycode konvertieren für die Validierung
+        if (function_exists('idn_to_ascii')) {
+            $asciiDomain = idn_to_ascii($domainForValidation, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+            if ($asciiDomain === false) {
+                $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_idn_domain');
+            } else {
+                $domainForValidation = $asciiDomain;
+            }
+        }
+        
+        // Validierung der ASCII-Domain (erweiterte Regex für IDN)
+        if (!$errors && (!filter_var('http://' . $domainForValidation, FILTER_VALIDATE_URL) || strlen($normalizedDomain) > 253)) {
+            $errors[] = $addon->i18n('upkeep_domain_mapping_invalid_domain');
+        }
+        
+        // Domain für Speicherung normalisieren (www. entfernen)
+        if (str_starts_with($data['source_domain'], 'www.')) {
+            $data['source_domain'] = substr($data['source_domain'], 4);
+        }
     }
     
     // Wildcard-spezifische Validierung
@@ -181,7 +208,7 @@ if ($func == 'add' || $func == 'edit') {
         $n = [];
         $n['label'] = '<label for="source_domain">Source Domain</label>';
         $n['field'] = '<input class="form-control" type="text" id="source_domain" name="source_domain" value="' . rex_escape($data['source_domain'] ?? '') . '" required>';
-        $n['note'] = 'Domain ohne http(s):// und ohne Pfad (z.B. alt-domain.com)';
+        $n['note'] = 'Domain ohne http(s):// und ohne Pfad (z.B. alt-domain.com oder niag-lokführer.de). <br><strong>Automatische www-Unterstützung:</strong> Bei Eingabe der Domain gilt die Umleitung automatisch für domain.tld und www.domain.tld. IDN-Domains (mit Umlauten) werden unterstützt.';
         $formElements[] = $n;
         
         // Source Path

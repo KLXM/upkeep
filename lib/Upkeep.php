@@ -298,38 +298,53 @@ public static function checkFrontend(): void
             return;
         }
 
-        // Erst exakte Domain-Mappings prüfen (ohne Wildcard)
-        $sql = rex_sql::factory();
-        $sql->setQuery('SELECT target_url, redirect_code FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND (source_path = "" OR source_path IS NULL) AND status = 1 ORDER BY id', [$currentDomain]);
-
-        if ($sql->getRows() > 0) {
-            $targetUrl = $sql->getValue('target_url');
-            $httpCode = (int) $sql->getValue('redirect_code');
-            
-            self::performRedirect($targetUrl, $httpCode);
+        // Domains für das Matching vorbereiten (mit und ohne www)
+        $domainsToCheck = [$currentDomain];
+        
+        // Wenn Domain mit www. beginnt, füge auch Variante ohne www hinzu
+        if (str_starts_with($currentDomain, 'www.')) {
+            $domainsToCheck[] = substr($currentDomain, 4);
+        } else {
+            // Wenn Domain ohne www, füge auch Variante mit www hinzu
+            $domainsToCheck[] = 'www.' . $currentDomain;
         }
 
-        // Dann Wildcard-Mappings prüfen
-        $sql = rex_sql::factory();
-        $sql->setQuery('SELECT target_url, redirect_code, source_path, is_wildcard FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND source_path != "" AND source_path IS NOT NULL AND status = 1 ORDER BY LENGTH(source_path) DESC', [$currentDomain]);
+        // Erst exakte Domain-Mappings prüfen (ohne Wildcard)
+        foreach ($domainsToCheck as $domainToCheck) {
+            $sql = rex_sql::factory();
+            $sql->setQuery('SELECT target_url, redirect_code FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND (source_path = "" OR source_path IS NULL) AND status = 1 ORDER BY id', [$domainToCheck]);
 
-        while ($sql->hasNext()) {
-            $sourcePath = $sql->getValue('source_path');
-            $isWildcard = (bool) $sql->getValue('is_wildcard');
-            
-            if (self::matchesPath($currentPath, $sourcePath, $isWildcard)) {
+            if ($sql->getRows() > 0) {
                 $targetUrl = $sql->getValue('target_url');
                 $httpCode = (int) $sql->getValue('redirect_code');
                 
-                // Wildcard-Ersetzung durchführen
-                if ($isWildcard && str_contains($targetUrl, '*')) {
-                    $targetUrl = self::replaceWildcard($currentPath, $sourcePath, $targetUrl);
-                }
-                
                 self::performRedirect($targetUrl, $httpCode);
             }
-            
-            $sql->next();
+        }
+
+        // Dann Wildcard-Mappings prüfen
+        foreach ($domainsToCheck as $domainToCheck) {
+            $sql = rex_sql::factory();
+            $sql->setQuery('SELECT target_url, redirect_code, source_path, is_wildcard FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE source_domain = ? AND source_path != "" AND source_path IS NOT NULL AND status = 1 ORDER BY LENGTH(source_path) DESC', [$domainToCheck]);
+
+            while ($sql->hasNext()) {
+                $sourcePath = $sql->getValue('source_path');
+                $isWildcard = (bool) $sql->getValue('is_wildcard');
+                
+                if (self::matchesPath($currentPath, $sourcePath, $isWildcard)) {
+                    $targetUrl = $sql->getValue('target_url');
+                    $httpCode = (int) $sql->getValue('redirect_code');
+                    
+                    // Wildcard-Ersetzung durchführen
+                    if ($isWildcard && str_contains($targetUrl, '*')) {
+                        $targetUrl = self::replaceWildcard($currentPath, $sourcePath, $targetUrl);
+                    }
+                    
+                    self::performRedirect($targetUrl, $httpCode);
+                }
+                
+                $sql->next();
+            }
         }
     }
 
