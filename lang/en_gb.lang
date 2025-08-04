@@ -1,0 +1,446 @@
+# General translations
+upkeep_title = Upkeep
+upkeep_dashboard_title = Dashboard
+upkeep_frontend_title = Frontend
+upkeep_backend_title = Backend
+upkeep_domains_title = Domains
+upkeep_domain_mapping_title = Domain Redirect
+
+# Status indicators (Tooltips)
+upkeep_indicator_backend = Backend maintenance mode active
+upkeep_indicator_frontend = Frontend maintenance mode active  
+upkeep_indicator_domains = Domain redirects active
+upkeep_indicator_security = Intrusion Prevention System active
+
+# Domain Redirects (formerly Domain Mapping)
+upkeep_domain_mapping_description = Here you can redirect domains and URL paths to other URLs. Also supports wildcard redirects with dynamic path replacement.
+upkeep_domain_mapping_add = Add domain redirect
+upkeep_domain_mapping_edit = Edit domain redirect
+upkeep_domain_mapping_source_domain = Source domain
+upkeep_domain_mapping_source_path = Source path
+upkeep_domain_mapping_target_url = Target URL
+upkeep_domain_mapping_redirect_code = HTTP Status Code
+upkeep_domain_mapping_is_wildcard = Wildcard redirect
+upkeep_domain_mapping_status = Status
+upkeep_domain_mapping_description_field = Description
+upkeep_domain_mapping_no_entries = No domain redirects available
+
+# General settings & buttons
+upkeep_settings = Settings
+upkeep_general_settings = General settings
+upkeep_access_settings = Access permissions
+upkeep_http_settings = HTTP settings
+upkeep_yrewrite_settings = YRewrite settings
+upkeep_active = Active
+upkeep_inactive = Inactive
+upkeep_save = Save
+upkeep_yes = Yes
+upkeep_no = No
+
+# Frontend settings
+upkeep_frontend_active = Frontend maintenance mode
+upkeep_page_title = Page title
+upkeep_page_message = Maintenance message
+upkeep_frontend_password = Access password
+upkeep_frontend_password_notice = Leave empty to disable password prompt, or enter new password
+upkeep_bypass_logged_in = Exclude logged-in users
+upkeep_allowed_ips = Allowed IP addresses
+upkeep_your_ip = Your IP address
+upkeep_add_ip = Add this IP
+upkeep_allowed_domains = Allowed domains
+upkeep_enter_password = Enter password
+upkeep_wrong_password = Wrong password
+upkeep_submit = Submit
+
+# Frontend tooltips
+upkeep_frontend_active_tooltip = Enables/disables maintenance mode for the frontend. When activated, visitors see a maintenance page.
+upkeep_page_title_tooltip = The title of the maintenance page displayed in the browser tab and as page heading.
+upkeep_page_message_tooltip = Message for visitors during maintenance. Can contain HTML. Explains the reason and expected duration.
+upkeep_frontend_password_tooltip = Optional: Password-protected access to the frontend during maintenance. Leave empty for public maintenance page.
+upkeep_bypass_logged_in_tooltip = When enabled, logged-in REDAXO users can use the frontend normally despite maintenance mode.
+upkeep_allowed_ips_tooltip = Comma-separated list of IP addresses that can use the frontend despite maintenance mode. Supports CIDR notation (e.g. 192.168.1.0/24).
+upkeep_http_status_code_tooltip = HTTP status code for the maintenance page. 503 recommended for temporary maintenance, 403 for access restrictions.
+upkeep_retry_after_tooltip = Tells search engines and clients after how many seconds they should try again. 3600 = 1 hour.
+upkeep_api_token_tooltip = Token for API access to external maintenance mode control. Leave empty to disable API completely.
+
+# Backend settings
+upkeep_backend_active = Backend maintenance mode
+upkeep_backend_settings = Backend settings
+
+# IPS (Intrusion Prevention System)
+upkeep_ips_title = Intrusion Prevention System
+upkeep_ips_overview = Overview
+upkeep_ips_threats = Threats
+upkeep_ips_blocked = Blocked IPs
+upkeep_ips_patterns = Patterns
+upkeep_ips_settings = Settings
+upkeep_ips_disable_system_logging = Disable system logging
+upkeep_ips_disable_system_logging_help = Disables all IPS logs in the REDAXO system log. Threats are only stored in the IPS database. Critical errors (exceptions) are still logged.
+
+# IPS Dashboard
+upkeep_ips_blocked_count = Blocked IPs
+upkeep_ips_threats_today = Threats today
+upkeep_ips_threats_week = Threats this week
+upkeep_ips_status = IPS Status
+upkeep_ips_top_threats = Top threats
+upkeep_ips_threat_type = Threat type
+upkeep_ips_count = Count
+upkeep_ips_quick_actions = Quick actions
+upkeep_ips_view_threats = View threats
+upkeep_ips_manage_blocked = Manage blocked IPs
+upkeep_ips_manage_patterns = Manage patterns
+upkeep_ips_system_info = System information
+upkeep_ips_version = Version
+upkeep_ips_patterns_count = Custom patterns
+upkeep_ips_last_update = Last update
+
+# IPS Threat Log
+upkeep_ips_filter = Filter
+upkeep_ips_threat_log = Threat log
+upkeep_ips_time = Time
+upkeep_ips_ip = IP address
+upkeep_ips_severity = Severity
+upkeep_ips_pattern = Pattern
+upkeep_ips_uri = URI
+upkeep_ips_action = Action
+upkeep_ips_no_threats = No threats found
+upkeep_ips_showing_results = Showing %d results (%d - %d)
+
+# IPS Patterns
+upkeep_ips_add_pattern = Add pattern
+upkeep_ips_edit_pattern = Edit pattern
+upkeep_ips_edit_default_pattern = Edit default pattern
+upkeep_ips_custom_patterns = Custom patterns
+upkeep_ips_default_patterns = Default patterns
+upkeep_ips_default_patterns_info = Customizable default security patterns
+upkeep_ips_pattern = Pattern
+upkeep_ips_category = Category
+upkeep_ips_description = Description
+upkeep_ips_severity_low = Low
+upkeep_ips_severity_medium = Medium
+upkeep_ips_severity_high = High
+upkeep_ips_severity_critical = Critical
+upkeep_ips_is_regex = RegEx
+upkeep_ips_type = Type
+upkeep_ips_default = Default
+upkeep_ips_created = Created
+upkeep_ips_created_at = Created at
+upkeep_ips_updated_at = Updated at
+upkeep_ips_pattern_added = Pattern successfully added
+upkeep_ips_pattern_updated = Pattern successfully updated
+upkeep_ips_pattern_add_error = Error adding pattern
+upkeep_ips_pattern_update_error = Error updating pattern
+upkeep_ips_pattern_empty = Pattern cannot be empty
+upkeep_ips_pattern_deleted = Pattern successfully deleted
+upkeep_ips_pattern_delete_error = Error deleting pattern
+upkeep_ips_pattern_status_changed = Pattern status successfully changed
+upkeep_ips_pattern_status_error = Error changing pattern status
+upkeep_ips_delete_confirm = Are you sure you want to delete this pattern?
+upkeep_ips_no_patterns = No custom patterns available
+upkeep_ips_no_default_patterns = No default patterns available
+
+# Default pattern categories and help
+upkeep_ips_default_patterns_help = Default pattern help
+upkeep_ips_what_are_default_patterns = What are default patterns?
+upkeep_ips_default_patterns_explanation = Default patterns are predefined security rules that detect common attack vectors. These can be individually customized, enabled or disabled.
+upkeep_ips_pattern_categories = Pattern categories
+upkeep_ips_category_immediate_block = Critical threats with immediate blocking
+upkeep_ips_category_cms = CMS-specific access (WordPress, TYPO3, etc.)
+upkeep_ips_category_admin_panels = Admin panel access
+upkeep_ips_category_config_files = Configuration files and sensitive areas
+upkeep_ips_category_shells = Web shells and malware uploads
+upkeep_ips_category_sql_injection = SQL injection attempts
+upkeep_ips_category_regex_patterns = Advanced RegEx patterns
+upkeep_ips_category_readonly = Category (not editable)
+upkeep_ips_editing_warning = Important editing notes
+upkeep_ips_editing_warning_1 = Be careful when editing default patterns - faulty RegEx can cause errors
+upkeep_ips_editing_warning_2 = Only disable patterns if you are sure they are not needed
+upkeep_ips_editing_warning_3 = Changes immediately affect security checks
+
+# Tooltips for pattern forms
+upkeep_ips_pattern_tooltip = URL path or RegEx pattern for threat detection. Examples: /evil.php, ../../../, /union\s+select/i
+upkeep_ips_description_tooltip = Optional description for pattern documentation (e.g. 'SQL Injection Protection')
+upkeep_ips_severity_tooltip = LOW: Logging only | MEDIUM: 15min block | HIGH: 1h block | CRITICAL: Permanent block
+upkeep_ips_severity_low_tooltip = Logging only, no blocking
+upkeep_ips_severity_medium_tooltip = 15 minutes temporary block
+upkeep_ips_severity_high_tooltip = 1 hour temporary block
+upkeep_ips_severity_critical_tooltip = Permanent block
+upkeep_ips_severity_help = Determines the consequence of pattern match
+upkeep_ips_is_regex_tooltip = Enables regular expressions. Without: simple string search (e.g. 'exploit'). With: RegEx pattern (e.g. '/\.(php|asp)$/i')
+upkeep_ips_pattern_status_tooltip = Enables/disables this pattern. Disabled patterns are not checked.
+upkeep_ips_pattern_examples = Pattern examples
+upkeep_ips_string_patterns = String patterns
+upkeep_ips_regex_patterns = RegEx patterns
+upkeep_ips_pattern_help = URL path or RegEx pattern
+
+# IPS Blocked IPs
+upkeep_ips_reason = Reason
+upkeep_ips_expires = Expires
+upkeep_ips_active = IPS enabled
+upkeep_settings_saved = Settings saved
+
+# Manual IP blocking
+upkeep_ips_blocked_add = Block IP manually
+upkeep_ips_blocked_add_info = Manual IP blocking
+upkeep_ips_blocked_help = Here you can manually block IP addresses. This is useful for known attackers or suspected abuse.
+upkeep_ips_blocked_entries = Blocked IP entries
+upkeep_ips_blocked_added = IP successfully blocked
+upkeep_ips_blocked_removed = IP successfully unblocked
+upkeep_ips_blocked_ip_required = IP address is required
+upkeep_ips_no_blocked_entries = No blocked IPs available
+upkeep_ips_block_duration = Block duration
+upkeep_ips_block_duration_permanent = Permanent
+upkeep_ips_block_duration_1h = 1 hour
+upkeep_ips_block_duration_6h = 6 hours
+upkeep_ips_block_duration_24h = 24 hours
+upkeep_ips_block_duration_7d = 7 days
+upkeep_ips_block_duration_30d = 30 days
+upkeep_ips_block_reason_manual = Manually blocked
+upkeep_ips_confirm_unblock = Are you sure you want to unblock this IP?
+upkeep_ips_error_blocking = Error blocking IP address
+upkeep_ips_error_unblocking = Error unblocking IP address
+
+# Actions
+upkeep_actions = Actions
+upkeep_add = Add
+upkeep_edit = Edit
+upkeep_update = Update
+upkeep_cancel = Cancel
+upkeep_delete = Delete
+upkeep_activate = Activate
+upkeep_deactivate = Deactivate
+
+# Permissions
+upkeep[security] = IPS & Security
+upkeep_backend_notice = Backend maintenance mode locks all users except administrators out of the REDAXO backend.
+upkeep_no_permission = You do not have permission to view this page.
+
+# Domain management
+upkeep_domain = Domain
+upkeep_lock_all_domains = Lock all domains
+upkeep_maintenance_active = Maintenance mode
+upkeep_domains_management = Domain management
+upkeep_domains_notice = Here you can enable or disable maintenance mode for individual YRewrite domains. This setting overrides the general frontend setting.
+upkeep_yrewrite_not_available = The YRewrite addon is not installed or enabled. Domain management is not available.
+upkeep_settings_saved = Settings have been saved.
+
+# Maintenance pages
+upkeep_backend_maintenance = Backend maintenance
+
+# Domain Mapping
+upkeep_domain_mapping = Domain Mapping
+upkeep_domain_mapping_description = Here you can redirect domains to URLs
+upkeep_source_domain = Source domain
+upkeep_target_url = Target URL
+upkeep_redirect_code = HTTP Status Code
+upkeep_mapping_status = Status
+upkeep_add_mapping = Add mapping
+upkeep_edit_mapping = Edit mapping
+upkeep_delete_mapping = Delete mapping
+upkeep_no_mappings = No domain mappings available
+upkeep_mapping_saved = Domain mapping has been saved
+upkeep_mapping_deleted = Domain mapping has been deleted
+upkeep_domain_exists = This domain is already configured
+upkeep_invalid_domain = Invalid domain
+upkeep_invalid_url = Invalid URL
+upkeep_backend_maintenance_message = The REDAXO backend is in maintenance mode and temporarily unavailable.
+upkeep_contact_admin = Please contact the administrator for more information.
+upkeep_back_to_website = Back to website
+
+# HTTP settings
+upkeep_http_status_code = HTTP status code
+upkeep_http_503 = 503 Service Unavailable (with Cache-Control)
+upkeep_http_503_no_cache = 503 Service Unavailable (without Cache-Control)
+upkeep_http_403 = 403 Forbidden
+upkeep_http_307 = 307 Temporary Redirect
+upkeep_retry_after = Retry-After Header (seconds)
+upkeep_retry_after_notice = Specifies after how many seconds the client should try to load the page again. 0 = disabled. Recommended: 3600 (1 hour)
+
+# Console commands
+upkeep_console_active = Maintenance mode for {0} has been activated.
+upkeep_console_inactive = Maintenance mode for {0} has been deactivated.
+upkeep_console_already_active = Maintenance mode for {0} is already activated.
+upkeep_console_already_inactive = Maintenance mode for {0} is already deactivated.
+
+# API settings
+upkeep_api_settings = API settings
+upkeep_api_token = API token
+upkeep_api_token_notice = Token for API access. Leave empty to disable the API.
+upkeep_generate_token = Generate token
+
+upkeep_your_ip = Your IP address
+upkeep_add_ip = Add this IP
+upkeep_server_ip = Server IP address
+upkeep_add_server_ip = Add server IP
+
+# IPS Whitelist
+upkeep_ips_positivliste = Whitelist
+upkeep_ips_positivliste_add = Add IP to whitelist
+upkeep_ips_positivliste_info = Whitelist information
+upkeep_ips_positivliste_help = The whitelist protects trusted IP addresses from automatic blocking by the Intrusion Prevention System.
+upkeep_ips_positivliste_entries = Whitelist entries
+upkeep_ips_positivliste_added = IP successfully added to whitelist
+upkeep_ips_positivliste_removed = IP successfully removed from whitelist
+upkeep_ips_positivliste_ip_required = IP address or IP range is required
+upkeep_ips_no_positivliste_entries = No whitelist entries available
+
+upkeep_ips_ip_address = IP address
+upkeep_ips_ip_range = IP range (CIDR)
+upkeep_ips_ip_range_notice = Optional: CIDR notation for IP ranges (e.g. 192.168.1.0/24)
+upkeep_ips_category = Category
+upkeep_ips_category_admin = Admin
+upkeep_ips_category_cdn = CDN
+upkeep_ips_category_monitoring = Monitoring
+upkeep_ips_category_api = API
+upkeep_ips_category_trusted = Trusted
+
+upkeep_ips_category_admin_desc = Administrators and backend users
+upkeep_ips_category_cdn_desc = Content Delivery Networks (Cloudflare, etc.)
+upkeep_ips_category_monitoring_desc = Monitoring services and uptime checkers
+upkeep_ips_category_api_desc = API clients and automated services
+upkeep_ips_category_trusted_desc = Other trusted IP addresses
+
+upkeep_ips_confirm_remove = Are you sure you want to remove this entry?
+upkeep_ips_active = Active
+upkeep_ips_inactive = Inactive
+upkeep_ips_activate = Activate
+upkeep_ips_deactivate = Deactivate
+upkeep_ips_status_updated = Status successfully updated
+upkeep_ips_error_adding = Error adding to whitelist
+upkeep_ips_error_removing = Error removing from whitelist
+upkeep_ips_error_updating = Error updating status
+
+# IPS Cleanup
+upkeep_ips_cleanup = Data cleanup
+upkeep_ips_cleanup_info = Cleanup of old IPS data
+upkeep_ips_cleanup_help = Removes expired IP blocks and old logs to optimize database performance
+upkeep_ips_cleanup_manual = Manual cleanup
+upkeep_ips_cleanup_auto = Automatic cleanup
+upkeep_ips_cleanup_success = Database successfully cleaned
+upkeep_ips_cleanup_nothing = No cleanup necessary - all data is current
+upkeep_ips_cleanup_success_detail = Cleanup successful: {0}
+upkeep_ips_cleanup_found = {0} records were found that can be cleaned up.
+upkeep_ips_cleanup_recommended = Cleanup recommended!
+upkeep_ips_cleanup_database_clean = Database is clean!
+upkeep_ips_cleanup_no_cleanup_needed = No cleanup necessary.
+
+# Pattern help and notes
+upkeep_ips_pattern_notes_title = Important notes for pattern editing
+upkeep_ips_pattern_note_regex = RegEx patterns start and end with slashes: /pattern/flags
+upkeep_ips_pattern_note_string = String patterns are simple text searches without slashes  
+upkeep_ips_pattern_note_test = Testing before activation recommended - wrong patterns can block legitimate users
+upkeep_ips_pattern_note_critical = Severity CRITICAL should only be used for clear attacks
+upkeep_ips_pattern_help_link = Detailed documentation in the README
+
+# Additional help texts - shortened for UI, details in README
+upkeep_help_see_readme = Detailed information in the README file
+upkeep_help_documentation = Documentation
+upkeep_help_more_info = More information
+
+# Domain Mapping validation
+upkeep_domain_mapping_invalid_domain = Invalid domain (RFC compliant required)
+upkeep_domain_mapping_invalid_idn_domain = Invalid IDN domain (Internationalized domain cannot be processed)
+upkeep_domain_mapping_invalid_wildcard_url = Invalid wildcard URL (format with * must result in valid URL)
+upkeep_domain_mapping_invalid_target_url = Invalid target URL
+upkeep_domain_mapping_url_schema_required = Target URL must start with http:// or https://
+
+# Severity and filter
+upkeep_severity_explanation_title = Severity levels and their effects
+upkeep_filter_all_severities = All severity levels
+upkeep_severity_filter_label = Severity
+
+# General UI texts  
+upkeep_global_settings = Global settings
+upkeep_enable_globally = Enable globally
+upkeep_disable_help = When disabled, all settings are ignored
+upkeep_cleanup_recommended_title = Cleanup recommended!
+upkeep_database_clean_title = Database is clean!
+
+# Cronjob texts
+upkeep_ips_cronjob_name = Upkeep IPS: Cleanup of outdated security data
+upkeep_ips_cronjob_description = Automatically removes expired IP blocks, old threat logs, outdated rate limiting entries and CAPTCHA trust entries
+upkeep_ips_cronjob_retention_label = Threat log retention (days)
+upkeep_ips_cronjob_success = IPS data cleanup successfully performed
+upkeep_ips_cronjob_error = Error during IPS data cleanup
+
+# Dashboard texts
+upkeep_dashboard_system_status = System status & notices
+upkeep_dashboard_maintenance_active = Maintenance mode active
+upkeep_dashboard_frontend_blocked = Frontend is blocked for visitors
+upkeep_dashboard_backend_admin_only = Backend is only accessible for admins
+upkeep_dashboard_allowed_ips = {0} IP{1} still have access
+upkeep_dashboard_system_normal = System running normally
+upkeep_dashboard_frontend_public = Frontend is publicly accessible
+upkeep_dashboard_backend_available = Backend is available for all users
+upkeep_dashboard_security_active = Security active
+upkeep_dashboard_ips_running = Intrusion Prevention System running
+upkeep_dashboard_monitor_only = Monitor-only mode - Logging only, no blocking
+upkeep_dashboard_rate_limiting = Rate limiting is enabled
+upkeep_dashboard_ips_blocked = {0} IP{1} currently blocked
+upkeep_dashboard_security_warning = Security warning
+upkeep_dashboard_ips_deactivated = IPS is deactivated!
+upkeep_dashboard_website_unprotected = Website is unprotected from attacks
+upkeep_dashboard_activation_recommended = Immediate activation recommended
+upkeep_dashboard_domain_redirects = Domain redirects
+upkeep_dashboard_active_redirects = {0} active redirect{1}
+upkeep_dashboard_manage = Manage
+upkeep_dashboard_url_redirects = Domain redirects
+upkeep_dashboard_security_threats_title = Security threats by type (7 days)
+upkeep_dashboard_types_count = {0} types
+upkeep_dashboard_threat_type = Threat type
+upkeep_dashboard_severity = Severity
+upkeep_dashboard_detected = Detected
+upkeep_dashboard_blocked = Blocked
+upkeep_dashboard_last_incident = Last incident
+upkeep_dashboard_actions = Actions
+upkeep_dashboard_debug_no_threats = Debug: No threat types found. Stats show {0} threats today.
+upkeep_dashboard_no_security_events = No security events
+upkeep_dashboard_no_threats_7days = No threats detected in the last 7 days.
+upkeep_dashboard_top_threats = Top threat types
+upkeep_dashboard_no_threats_week = No threats this week
+upkeep_dashboard_blocked_ips_countries = Blocked IPs by countries
+upkeep_dashboard_countries_count = {0} countries
+upkeep_dashboard_country = Country
+upkeep_dashboard_blocks = Blocks
+upkeep_dashboard_unique_ips = IPs
+upkeep_dashboard_last_block = Last block
+upkeep_dashboard_show_blocked = Show blocked IPs
+upkeep_dashboard_show_all_countries = Show all {0} countries
+upkeep_dashboard_no_blocked_ips = No blocked IPs
+upkeep_dashboard_no_blocked_or_geo = Currently no IPs are blocked or the GeoIP database is not available.
+upkeep_dashboard_install_geo = Install GeoIP database
+
+# Domain Mapping error messages
+upkeep_domain_mapping_source_required = Source domain is required
+upkeep_domain_mapping_source_path_required = Source path is required for wildcard redirects
+upkeep_domain_mapping_path_security = Paths cannot contain ".." or backslashes
+upkeep_domain_mapping_wildcard_ending = Wildcard paths must end with /*
+upkeep_domain_mapping_path_start = Paths must start with /
+upkeep_domain_mapping_target_required = Target URL is required
+upkeep_domain_mapping_saved = Domain mapping has been saved
+upkeep_domain_mapping_save_error = Error saving
+upkeep_domain_mapping_deleted = Domain mapping has been deleted
+upkeep_domain_mapping_delete_error = Error deleting
+upkeep_domain_mapping_no_entries = No domain mappings available
+upkeep_domain_mapping_help_text = Here you can redirect domains to URLs. The redirect only works if the domain actually points to this server. <strong>IDN domains are supported.</strong> When entering the domain, the redirect automatically applies to domain.tld and www.domain.tld.
+upkeep_domain_mapping_wildcard_note = Source path must end with /*. Target URL can contain * for dynamic replacement.
+upkeep_domain_mapping_global_settings = Global domain mapping settings
+upkeep_domain_mapping_disabled_help = When disabled, all domain mappings are ignored, even if marked as "Active".
+
+# IPS error messages and status
+upkeep_ips_table_missing = Default pattern table missing
+upkeep_ips_table_missing_text = The default pattern table has not been created yet.
+upkeep_ips_reinstall_required = Please reinstall the Upkeep addon via the backend: AddOns → Upkeep → Reinstall
+upkeep_ips_tables_missing = The Intrusion Prevention System tables have not been created yet.
+upkeep_ips_ip_list_required = IP list is required
+upkeep_ips_bulk_success = Successfully blocked {0} IPs.
+upkeep_ips_unblock_error = Error unblocking IP {0}
+upkeep_ips_geo_update_success = GeoIP database successfully updated
+upkeep_ips_geo_update_error = Error updating GeoIP database
+upkeep_ips_captcha_trust_help = How long (in hours) an IP remains trustworthy after successful CAPTCHA unlock (default: 24 hours, maximum: 168 hours/7 days)
+upkeep_ips_temp_whitelist_help = 24h temporary whitelist after successful unlock
+upkeep_ips_cleanup_success_detail = Cleanup successful: {0}
+upkeep_ips_cleanup_manual = Manual cleanup
+upkeep_ips_cleanup_auto = Automatic cleanup
+upkeep_ips_cleanup_found = {0} records were found that can be cleaned up.
+upkeep_ips_important_notes = Important notes

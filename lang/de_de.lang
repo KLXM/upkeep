@@ -4,18 +4,18 @@ upkeep_dashboard_title = Dashboard
 upkeep_frontend_title = Frontend
 upkeep_backend_title = Backend
 upkeep_domains_title = Domains
-upkeep_domain_mapping_title = URL-Redirects
+upkeep_domain_mapping_title = Domain-Redirect
 
 # Status-Indikatoren (Tooltips)
 upkeep_indicator_backend = Backend-Wartungsmodus aktiv
 upkeep_indicator_frontend = Frontend-Wartungsmodus aktiv  
-upkeep_indicator_domains = URL-Redirects aktiv
+upkeep_indicator_domains = Domain-Redirects aktiv
 upkeep_indicator_security = Intrusion Prevention System aktiv
 
-# URL-Redirects (ehemals Domain Mapping)
+# Domain-Redirects (ehemals Domain Mapping)
 upkeep_domain_mapping_description = Hier können Sie Domains und URL-Pfade auf andere URLs umleiten. Unterstützt auch Wildcard-Redirects mit dynamischer Pfad-Ersetzung.
-upkeep_domain_mapping_add = URL-Redirect hinzufügen
-upkeep_domain_mapping_edit = URL-Redirect bearbeiten
+upkeep_domain_mapping_add = Domain-Redirect hinzufügen
+upkeep_domain_mapping_edit = Domain-Redirect bearbeiten
 upkeep_domain_mapping_source_domain = Quell-Domain
 upkeep_domain_mapping_source_path = Quell-Pfad
 upkeep_domain_mapping_target_url = Ziel-URL
@@ -23,7 +23,7 @@ upkeep_domain_mapping_redirect_code = HTTP Status Code
 upkeep_domain_mapping_is_wildcard = Wildcard-Redirect
 upkeep_domain_mapping_status = Status
 upkeep_domain_mapping_description_field = Beschreibung
-upkeep_domain_mapping_no_entries = Keine URL-Redirects vorhanden
+upkeep_domain_mapping_no_entries = Keine Domain-Redirects vorhanden
 
 # Allgemeine Einstellungen & Buttons
 upkeep_settings = Einstellungen
@@ -384,7 +384,7 @@ upkeep_dashboard_activation_recommended = Sofortige Aktivierung empfohlen
 upkeep_dashboard_domain_redirects = Domain-Redirects
 upkeep_dashboard_active_redirects = {0} aktive Weiterleitung{1}
 upkeep_dashboard_manage = Verwalten
-upkeep_dashboard_url_redirects = URL-Redirects
+upkeep_dashboard_url_redirects = Domain-Redirects
 upkeep_dashboard_security_threats_title = Sicherheits-Bedrohungen nach Typ (7 Tage)
 upkeep_dashboard_types_count = {0} Typen
 upkeep_dashboard_threat_type = Bedrohungstyp
