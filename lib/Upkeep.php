@@ -298,7 +298,7 @@ public static function checkFrontend(): void
             return;
         }
 
-        // Domains für das Matching vorbereiten (mit und ohne www)
+        // Domains für das Matching vorbereiten (mit und ohne www + IDN-Varianten)
         $domainsToCheck = [$currentDomain];
         
         // Wenn Domain mit www. beginnt, füge auch Variante ohne www hinzu
@@ -308,6 +308,29 @@ public static function checkFrontend(): void
             // Wenn Domain ohne www, füge auch Variante mit www hinzu
             $domainsToCheck[] = 'www.' . $currentDomain;
         }
+        
+        // IDN-Varianten hinzufügen (sowohl Unicode als auch Punycode)
+        $additionalDomains = [];
+        foreach ($domainsToCheck as $domain) {
+            // Punycode zu Unicode konvertieren (falls aktuell Punycode)
+            if (function_exists('idn_to_utf8') && str_contains($domain, 'xn--')) {
+                $unicodeDomain = idn_to_utf8($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+                if ($unicodeDomain !== false && $unicodeDomain !== $domain) {
+                    $additionalDomains[] = $unicodeDomain;
+                }
+            }
+            
+            // Unicode zu Punycode konvertieren (falls aktuell Unicode)
+            if (function_exists('idn_to_ascii') && !str_contains($domain, 'xn--')) {
+                $punycodeDomain = idn_to_ascii($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+                if ($punycodeDomain !== false && $punycodeDomain !== $domain) {
+                    $additionalDomains[] = $punycodeDomain;
+                }
+            }
+        }
+        
+        // Alle Varianten zusammenführen und doppelte entfernen
+        $domainsToCheck = array_unique(array_merge($domainsToCheck, $additionalDomains));
 
         // Erst exakte Domain-Mappings prüfen (ohne Wildcard)
         foreach ($domainsToCheck as $domainToCheck) {
