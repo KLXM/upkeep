@@ -44,7 +44,7 @@ page:
         domain_mapping:
             title: 'translate:upkeep_domain_mapping_title'
             icon: rex-icon fa fa-share
-            perm: upkeep[domains]
+            perm: upkeep[domain_mapping]
             
 requires:
     redaxo: ^5.18.1
@@ -57,6 +57,7 @@ permissions:
     upkeep[]: 'translate:upkeep[]'
     upkeep[frontend]: 'translate:upkeep[frontend]'
     upkeep[domains]: 'translate:upkeep[domains]'
+    upkeep[domain_mapping]: 'translate:upkeep[domain_mapping]'
     upkeep[security]: 'translate:upkeep[security]'
 
 console_commands:

@@ -27,9 +27,13 @@ if (rex_post('save', 'bool')) {
         'target_url' => trim(rex_request('target_url', 'string', '')),
         'redirect_code' => rex_request('redirect_code', 'int', 301),
         'is_wildcard' => rex_request('is_wildcard', 'bool', false),
-        'status' => rex_request('status', 'bool', true),
+        'status' => rex_request('status', 'int', 0) === 1 ? 1 : 0,
         'description' => trim(rex_request('description', 'string', ''))
     ];
+    
+    // Debug-Ausgabe
+    error_log('Domain Mapping Status Debug - Raw POST: ' . print_r($_POST, true));
+    error_log('Domain Mapping Status Debug - Parsed status: ' . $data['status']);
     
     // Leere source_path zu NULL normalisieren für konsistente Behandlung
     if ($data['source_path'] === '') {
@@ -204,6 +208,11 @@ if ($func == 'add' || $func == 'edit') {
         // Form elements
         $formElements = [];
         
+        // Set default values for new entries
+        if ($func == 'add') {
+            $data['status'] = $data['status'] ?? 1; // Default: aktiv
+        }
+        
         // Source Domain
         $n = [];
         $n['label'] = '<label for="source_domain">Source Domain</label>';
@@ -258,8 +267,9 @@ if ($func == 'add' || $func == 'edit') {
         
         // Status
         $n = [];
-        $n['label'] = '<label for="status">Aktiv</label>';
-        $n['field'] = '<input type="checkbox" id="status" name="status" value="1"' . (($data['status'] ?? 1) ? ' checked' : '') . '>';
+        $n['label'] = '<label for="status">Status</label>';
+        $checked = isset($data['status']) && $data['status'] ? ' checked="checked"' : '';
+        $n['field'] = '<input type="checkbox" id="status" name="status" value="1"' . $checked . '> Weiterleitung ist aktiv';
         $formElements[] = $n;
         
         // Build form
