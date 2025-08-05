@@ -67,6 +67,52 @@ upkeep_api_token_tooltip = Token für API-Zugriff zur externen Steuerung des War
 upkeep_backend_active = Backend-Wartungsmodus
 upkeep_backend_settings = Backend-Einstellungen
 
+# Dashboard-Übersetzungen
+upkeep_dashboard_no_user = Kein gültiger Benutzer gefunden
+upkeep_dashboard_maintenance_toggle = Wartungsmodus umschalten
+upkeep_dashboard_frontend_activate = Frontend aktivieren
+upkeep_dashboard_frontend_maintenance = Frontend-Wartung aktivieren
+upkeep_dashboard_backend_activate = Backend aktivieren
+upkeep_dashboard_backend_maintenance = Backend-Wartung aktivieren
+upkeep_dashboard_domain_mapping_activate = Domain-Mapping-System aktivieren
+upkeep_dashboard_domain_mapping_deactivate = Domain-Mapping-System deaktivieren
+upkeep_dashboard_maintenance = Wartung
+upkeep_dashboard_online = Online
+upkeep_dashboard_redirects = Redirects
+upkeep_dashboard_system_inactive = System inaktiv
+upkeep_dashboard_no_redirects = Keine Redirects
+upkeep_dashboard_all_disabled = Alle deaktiviert
+upkeep_dashboard_all_active = Alle aktiv
+upkeep_dashboard_of = von
+upkeep_dashboard_active = aktiv
+upkeep_dashboard_x_of_y_active = {0} von {1} aktiv
+upkeep_dashboard_maintenance_active = Wartungsmodus aktiv
+upkeep_dashboard_system_normal = System normal
+upkeep_dashboard_frontend_blocked = Frontend für Besucher gesperrt
+upkeep_dashboard_backend_admin_only = Backend nur für Administratoren
+upkeep_dashboard_frontend_public = Frontend öffentlich zugänglich
+upkeep_dashboard_backend_all_users = Backend für alle Benutzer
+upkeep_dashboard_allowed_ips = Erlaubt für {0} IP-Adresse{1}
+upkeep_dashboard_system_status = System-Status
+upkeep_dashboard_no_permission = Keine Berechtigung für diese Aktion
+upkeep_dashboard_frontend_maintenance_toggled = Frontend Wartungsmodus {0}
+upkeep_dashboard_backend_maintenance_toggled = Backend Wartungsmodus {0}
+upkeep_dashboard_domain_redirects_toggled = Domain-Redirects {0}
+upkeep_dashboard_activated = aktiviert
+upkeep_dashboard_deactivated = deaktiviert
+
+# Zusätzliche Dashboard-Übersetzungen
+upkeep_dashboard_blocked_ips = Gesperrte IPs
+upkeep_dashboard_active_blocks = Aktive Sperren
+upkeep_dashboard_threats = Bedrohungen
+upkeep_dashboard_today = Heute
+upkeep_dashboard_allowed_ips_title = Erlaubte IPs
+upkeep_dashboard_maintenance_mode = Wartungsmodus
+upkeep_dashboard_ram_usage = RAM Nutzung
+
+# Domain-Mapping neue Rechte
+upkeep_perm_domain_mapping = Domain-Mapping verwalten
+
 # IPS (Intrusion Prevention System)
 upkeep_ips_title = Intrusion Prevention System
 upkeep_ips_overview = Übersicht
@@ -207,10 +253,24 @@ upkeep_edit = Bearbeiten
 upkeep_update = Aktualisieren
 upkeep_cancel = Abbrechen
 upkeep_delete = Löschen
+# Quick Toggle Buttons
+upkeep_quick_toggle_frontend = Frontend Wartung umschalten
+upkeep_quick_toggle_backend = Backend Wartung umschalten
+upkeep_quick_toggle_domain_mapping = Domain-Redirects umschalten
+upkeep_toggle_on = Einschalten
+upkeep_toggle_off = Ausschalten
+upkeep_toggle_success = Einstellung erfolgreich geändert
+upkeep_toggle_error = Fehler beim Ändern der Einstellung
+upkeep_toggle_no_permission = Keine Berechtigung für diese Aktion
+
 upkeep_activate = Aktivieren
 upkeep_deactivate = Deaktivieren
 
 # Permissions
+upkeep[] = Upkeep Basis
+upkeep[frontend] = Frontend-Wartung
+upkeep[domains] = Domain-Verwaltung
+upkeep[domain_mapping] = Domain-Redirects
 upkeep[security] = IPS & Security
 upkeep_backend_notice = Der Backend-Wartungsmodus sperrt alle Benutzer außer Administratoren aus dem REDAXO-Backend aus.
 upkeep_no_permission = Sie haben keine Berechtigung, diese Seite zu sehen.

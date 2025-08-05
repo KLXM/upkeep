@@ -1,7 +1,19 @@
 # General translations
 upkeep_title = Upkeep
 upkeep_dashboard_title = Dashboard
-upkeep_frontend_title = Frontend
+upkeep_frontend_titlupkeep_dashboard_activated = activated
+upkeep_dashboard_deactivated = deactivated
+
+# Additional Dashboard translations
+upkeep_dashboard_blocked_ips = Blocked IPs
+upkeep_dashboard_active_blocks = Active blocks
+upkeep_dashboard_threats = Threats
+upkeep_dashboard_today = Today
+upkeep_dashboard_allowed_ips_title = Allowed IPs
+upkeep_dashboard_maintenance_mode = Maintenance mode
+upkeep_dashboard_ram_usage = RAM Usage
+
+# Domain-Mapping new permissionsFrontend
 upkeep_backend_title = Backend
 upkeep_domains_title = Domains
 upkeep_domain_mapping_title = Domain Redirect
@@ -66,6 +78,43 @@ upkeep_api_token_tooltip = Token for API access to external maintenance mode con
 # Backend settings
 upkeep_backend_active = Backend maintenance mode
 upkeep_backend_settings = Backend settings
+
+# Dashboard translations
+upkeep_dashboard_no_user = No valid user found
+upkeep_dashboard_maintenance_toggle = Toggle maintenance mode
+upkeep_dashboard_frontend_activate = Activate frontend
+upkeep_dashboard_frontend_maintenance = Activate frontend maintenance
+upkeep_dashboard_backend_activate = Activate backend
+upkeep_dashboard_backend_maintenance = Activate backend maintenance
+upkeep_dashboard_domain_mapping_activate = Activate domain mapping system
+upkeep_dashboard_domain_mapping_deactivate = Deactivate domain mapping system
+upkeep_dashboard_maintenance = Maintenance
+upkeep_dashboard_online = Online
+upkeep_dashboard_redirects = Redirects
+upkeep_dashboard_system_inactive = System inactive
+upkeep_dashboard_no_redirects = No redirects
+upkeep_dashboard_all_disabled = All disabled
+upkeep_dashboard_all_active = All active
+upkeep_dashboard_of = of
+upkeep_dashboard_active = active
+upkeep_dashboard_x_of_y_active = {0} of {1} active
+upkeep_dashboard_maintenance_active = Maintenance mode active
+upkeep_dashboard_system_normal = System normal
+upkeep_dashboard_frontend_blocked = Frontend blocked for visitors
+upkeep_dashboard_backend_admin_only = Backend for administrators only
+upkeep_dashboard_frontend_public = Frontend publicly accessible
+upkeep_dashboard_backend_all_users = Backend for all users
+upkeep_dashboard_allowed_ips = Allowed for {0} IP address{1}
+upkeep_dashboard_system_status = System Status
+upkeep_dashboard_no_permission = No permission for this action
+upkeep_dashboard_frontend_maintenance_toggled = Frontend maintenance mode {0}
+upkeep_dashboard_backend_maintenance_toggled = Backend maintenance mode {0}
+upkeep_dashboard_domain_redirects_toggled = Domain redirects {0}
+upkeep_dashboard_activated = activated
+upkeep_dashboard_deactivated = deactivated
+
+# Domain mapping new permissions
+upkeep_perm_domain_mapping = Manage domain mapping
 
 # IPS (Intrusion Prevention System)
 upkeep_ips_title = Intrusion Prevention System
@@ -207,10 +256,24 @@ upkeep_edit = Edit
 upkeep_update = Update
 upkeep_cancel = Cancel
 upkeep_delete = Delete
+# Quick Toggle Buttons
+upkeep_quick_toggle_frontend = Toggle frontend maintenance
+upkeep_quick_toggle_backend = Toggle backend maintenance
+upkeep_quick_toggle_domain_mapping = Toggle domain redirects
+upkeep_toggle_on = Turn on
+upkeep_toggle_off = Turn off
+upkeep_toggle_success = Setting changed successfully
+upkeep_toggle_error = Error changing setting
+upkeep_toggle_no_permission = No permission for this action
+
 upkeep_activate = Activate
 upkeep_deactivate = Deactivate
 
 # Permissions
+upkeep[] = Upkeep Basic
+upkeep[frontend] = Frontend Maintenance
+upkeep[domains] = Domain Management
+upkeep[domain_mapping] = Domain Redirects
 upkeep[security] = IPS & Security
 upkeep_backend_notice = Backend maintenance mode locks all users except administrators out of the REDAXO backend.
 upkeep_no_permission = You do not have permission to view this page.

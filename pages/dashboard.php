@@ -6,6 +6,57 @@
 use KLXM\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
+$user = rex::getUser();
+
+// Sicherheits-Check für User
+if (!$user) {
+            echo rex_view::error($addon->i18n('upkeep_dashboard_no_user'));
+    return;
+}
+
+// Handle Toggle Requests
+if (rex_post('toggle_action', 'string')) {
+    $action = rex_post('toggle_action', 'string');
+    $user = rex::getUser();
+    $success = false;
+    $message = '';
+    
+    switch ($action) {
+        case 'toggle_frontend':
+            if ($user->hasPerm('upkeep[frontend]') || $user->isAdmin()) {
+                $current = $addon->getConfig('frontend_active', false);
+                $addon->setConfig('frontend_active', !$current);
+                $success = true;
+                $message = $addon->i18n('upkeep_dashboard_frontend_maintenance_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
+            }
+            break;
+            
+        case 'toggle_backend':
+            if ($user->isAdmin()) {
+                $current = $addon->getConfig('backend_active', false);
+                $addon->setConfig('backend_active', !$current);
+                $success = true;
+                $message = $addon->i18n('upkeep_dashboard_backend_maintenance_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
+            }
+            break;
+            
+        case 'toggle_domain_mapping':
+            if ($user->hasPerm('upkeep[domain_mapping]') || $user->isAdmin()) {
+                $current = $addon->getConfig('domain_mapping_active', false);
+                $addon->setConfig('domain_mapping_active', !$current);
+                $success = true;
+                $message = $addon->i18n('upkeep_dashboard_domain_redirects_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
+            }
+            break;
+    }
+    
+    if ($success) {
+        rex_delete_cache();
+        echo rex_view::success($message);
+    } else {
+        echo rex_view::error($addon->i18n('upkeep_dashboard_no_permission'));
+    }
+}
 
 // Live-Statistiken abrufen
 try {
@@ -32,12 +83,15 @@ $rateLimitActive = IntrusionPrevention::isRateLimitingEnabled();
 $monitorOnlyActive = $addon->getConfig('ips_monitor_only', false);
 $frontendMaintenanceActive = $addon->getConfig('frontend_active', false);
 $backendMaintenanceActive = $addon->getConfig('backend_active', false);
-$domainRedirectsActive = $addon->getConfig('domain_mapping_enabled', false);
+$domainMappingSystemActive = $addon->getConfig('domain_mapping_active', false);
 
-// Redirect-Statistiken
+// Domain-Mapping Statistiken
 $sql = rex_sql::factory();
-$sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_domain_mapping') . " WHERE status = 1");
-$activeRedirects = (int) $sql->getValue('count');
+$sql->setQuery("SELECT COUNT(*) as total_count FROM " . rex::getTable('upkeep_domain_mapping'));
+$totalRedirects = (int) $sql->getValue('total_count');
+
+$sql->setQuery("SELECT COUNT(*) as active_count FROM " . rex::getTable('upkeep_domain_mapping') . " WHERE status = 1");
+$activeRedirects = (int) $sql->getValue('active_count');
 
 // Wartungsmodus IP-Zählungen
 $allowedIps = $addon->getConfig('allowed_ips', '');
@@ -193,56 +247,107 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
 
         <!-- Frontend Wartung -->
         <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/frontend') ?>" class="status-card-link">
-                <div class="panel panel-<?= $frontendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                    <div class="panel-body">
+            <div class="panel panel-<?= $frontendMaintenanceActive ? 'warning' : 'success' ?> status-card">
+                <div class="panel-body">
+                    <?php if ($user->hasPerm('upkeep[frontend]') || $user->isAdmin()): ?>
+                    <form method="post" style="position:absolute; top:10px; right:10px;">
+                        <input type="hidden" name="toggle_action" value="toggle_frontend">
+                        <button type="submit" class="btn btn-xs <?= $frontendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>" title="<?= $frontendMaintenanceActive ? $addon->i18n('upkeep_dashboard_frontend_activate') : $addon->i18n('upkeep_dashboard_frontend_maintenance') ?>">
+                            <i class="rex-icon fa-<?= $frontendMaintenanceActive ? 'play' : 'pause' ?>"></i>
+                        </button>
+                    </form>
+                    <?php endif; ?>
+                    
+                    <a href="<?= rex_url::backendPage('upkeep/maintenance') ?>" class="status-card-content-link">
                         <div class="status-icon">
                             <i class="rex-icon fa-globe"></i>
                         </div>
                         <div class="status-content">
                             <h3>Frontend</h3>
-                            <p class="status-text"><?= $frontendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
+                            <p class="status-text"><?= $frontendMaintenanceActive ? $addon->i18n('upkeep_dashboard_maintenance') : $addon->i18n('upkeep_dashboard_online') ?></p>
                             <div class="status-indicator <?= $frontendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
                         </div>
-                    </div>
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- Backend Wartung -->
         <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/backend') ?>" class="status-card-link">
-                <div class="panel panel-<?= $backendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                    <div class="panel-body">
+            <div class="panel panel-<?= $backendMaintenanceActive ? 'warning' : 'success' ?> status-card">
+                <div class="panel-body">
+                    <?php if ($user->isAdmin()): ?>
+                    <form method="post" style="position:absolute; top:10px; right:10px;">
+                        <input type="hidden" name="toggle_action" value="toggle_backend">
+                        <button type="submit" class="btn btn-xs <?= $backendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>" title="<?= $backendMaintenanceActive ? $addon->i18n('upkeep_dashboard_backend_activate') : $addon->i18n('upkeep_dashboard_backend_maintenance') ?>">
+                            <i class="rex-icon fa-<?= $backendMaintenanceActive ? 'play' : 'pause' ?>"></i>
+                        </button>
+                    </form>
+                    <?php endif; ?>
+                    
+                    <a href="<?= rex_url::backendPage('upkeep/maintenance') ?>" class="status-card-content-link">
                         <div class="status-icon">
                             <i class="rex-icon fa-users"></i>
                         </div>
                         <div class="status-content">
                             <h3>Backend</h3>
-                            <p class="status-text"><?= $backendMaintenanceActive ? 'Wartung' : 'Online' ?></p>
+                            <p class="status-text"><?= $backendMaintenanceActive ? $addon->i18n('upkeep_dashboard_maintenance') : $addon->i18n('upkeep_dashboard_online') ?></p>
                             <div class="status-indicator <?= $backendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
                         </div>
-                    </div>
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- Domain Redirects -->
         <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="status-card-link">
-                <div class="panel panel-<?= $domainRedirectsActive ? 'info' : 'default' ?> status-card">
-                    <div class="panel-body">
+            <?php
+            // Bestimme Status-Farbe und Text basierend auf System-Status und Redirect-Anzahl
+            if (!$domainMappingSystemActive) {
+                $panelClass = 'default';
+                $statusText = $addon->i18n('upkeep_dashboard_system_inactive');
+                $statusIndicator = 'inactive';
+            } elseif ($totalRedirects == 0) {
+                $panelClass = 'warning';
+                $statusText = $addon->i18n('upkeep_dashboard_no_redirects');
+                $statusIndicator = 'warning';
+            } elseif ($activeRedirects == 0) {
+                $panelClass = 'warning';
+                $statusText = $addon->i18n('upkeep_dashboard_all_disabled');
+                $statusIndicator = 'warning';
+            } elseif ($activeRedirects < $totalRedirects) {
+                $panelClass = 'info';
+                $statusText = $activeRedirects . ' ' . $addon->i18n('upkeep_dashboard_of') . ' ' . $totalRedirects . ' ' . $addon->i18n('upkeep_dashboard_active');
+                $statusIndicator = 'partial';
+            } else {
+                $panelClass = 'success';
+                $statusText = $addon->i18n('upkeep_dashboard_all_active');
+                $statusIndicator = 'active';
+            }
+            ?>
+            <div class="panel panel-<?= $panelClass ?> status-card">
+                <div class="panel-body">
+                    <?php if ($user->hasPerm('upkeep[domain_mapping]') || $user->isAdmin()): ?>
+                    <form method="post" style="position:absolute; top:10px; right:10px;">
+                        <input type="hidden" name="toggle_action" value="toggle_domain_mapping">
+                        <button type="submit" class="btn btn-xs <?= $domainMappingSystemActive ? 'btn-warning' : 'btn-success' ?>" title="<?= $domainMappingSystemActive ? $addon->i18n('upkeep_dashboard_domain_mapping_deactivate') : $addon->i18n('upkeep_dashboard_domain_mapping_activate') ?>">
+                            <i class="rex-icon fa-<?= $domainMappingSystemActive ? 'pause' : 'play' ?>"></i>
+                        </button>
+                    </form>
+                    <?php endif; ?>
+                    
+                    <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="status-card-content-link">
                         <div class="status-icon">
                             <i class="rex-icon fa-share"></i>
                         </div>
                         <div class="status-content">
-                            <h3><?= $activeRedirects ?></h3>
-                            <p class="status-text">Redirects</p>
-                            <div class="status-indicator <?= $domainRedirectsActive ? 'active' : 'inactive' ?>"></div>
+                            <h3><?= $totalRedirects ?></h3>
+                            <p class="status-text"><?= $statusText ?></p>
+                            <div class="status-indicator <?= $statusIndicator ?>"></div>
                         </div>
-                    </div>
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
     </div>
 
@@ -258,8 +363,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         </div>
                         <div class="status-content">
                             <h3 id="blocked-ips-count"><?= $stats['blocked_ips'] ?></h3>
-                            <p class="status-text">Gesperrte IPs</p>
-                            <small class="text-muted">Aktive Sperren</small>
+                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_blocked_ips') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_active_blocks') ?></small>
                         </div>
                     </div>
                 </div>
@@ -276,8 +381,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         </div>
                         <div class="status-content">
                             <h3 id="threats-today-count"><?= $stats['threats_today'] ?></h3>
-                            <p class="status-text">Bedrohungen</p>
-                            <small class="text-muted">Heute</small>
+                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_threats') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
                         </div>
                     </div>
                 </div>
@@ -294,8 +399,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         </div>
                         <div class="status-content">
                             <h3 id="allowed-ips-count"><?= $allowedIpCount ?></h3>
-                            <p class="status-text">Erlaubte IPs</p>
-                            <small class="text-muted">Wartungsmodus</small>
+                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_allowed_ips_title') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_maintenance_mode') ?></small>
                         </div>
                     </div>
                 </div>
@@ -311,8 +416,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </div>
                     <div class="status-content">
                         <h3><?= $memoryUsage ?>MB</h3>
-                        <p class="status-text">RAM Nutzung</p>
-                        <small class="text-muted">von <?= $memoryLimit ?></small>
+                        <p class="status-text"><?= $addon->i18n('upkeep_dashboard_ram_usage') ?></p>
+                        <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_of') ?> <?= $memoryLimit ?></small>
                     </div>
                 </div>
             </div>

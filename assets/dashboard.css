@@ -50,7 +50,15 @@
     transition: var(--upkeep-transition);
 }
 
-.status-card-link:hover {
+.status-card-content-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--upkeep-transition);
+}
+
+.status-card-link:hover,
+.status-card-content-link:hover {
     text-decoration: none;
     color: inherit;
     transform: translateY(-2px);
@@ -228,6 +236,17 @@
     animation: maintenancePulse 3s infinite;
 }
 
+.status-indicator.warning {
+    background: var(--upkeep-warning);
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.4);
+}
+
+.status-indicator.partial {
+    background: linear-gradient(90deg, var(--upkeep-success) 50%, var(--upkeep-warning) 50%);
+    box-shadow: 0 0 6px rgba(23, 162, 184, 0.4);
+    animation: partialPulse 2.5s infinite;
+}
+
 @keyframes maintenancePulse {
     0%, 100% { 
         opacity: 1; 
@@ -247,6 +266,17 @@
     50% { 
         opacity: 0.7; 
         transform: scale(1.2);
+    }
+}
+
+@keyframes partialPulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8; 
+        transform: scale(1.1);
     }
 }
 
@@ -532,17 +562,40 @@
     opacity: 0.5;
 }
 
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upkeep-dashboard {
+        margin: -15px -15px 0 -15px;
+        padding: 15px;
+    }
+    
+    .dashboard-header .panel-body {
+        padding: 20px;
+    }
+    
+    .dashboard-title {
+        font-size: 1.8rem;
+    }
+    
+    .dashboard-subtitle {
+        font-size: 1rem;
+    }
+    
     .status-card {
-        border-width: 2px;
+        margin-bottom: 15px;
+    }
+    
+    .status-card .panel-body {
+        padding: 15px;
+    }
+    
+    .status-content h3 {
+        font-size: 1.8rem;
     }
     
     .status-indicator {
-        border: 2px solid var(--upkeep-text-primary);
-    }
-    
-    .threat-item:hover {
-        outline: 2px solid var(--upkeep-primary);
+        width: 8px;
+        height: 8px;
     }
 }
+
