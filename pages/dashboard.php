@@ -492,7 +492,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </div>
 
                     <!-- Domain-Redirects Info -->
-                    <?php if ($domainRedirectsActive && $activeRedirects > 0): ?>
+                    <?php if ($domainMappingSystemActive && $activeRedirects > 0): ?>
                     <div class="row">
                         <div class="col-md-12">
                             <div class="alert alert-info">
