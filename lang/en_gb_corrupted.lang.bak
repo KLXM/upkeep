@@ -110,6 +110,106 @@ upkeep_dashboard_allowed_ips_title = Allowed IPs
 upkeep_dashboard_maintenance_mode = Maintenance mode
 upkeep_dashboard_ram_usage = RAM Usage
 
+# Domain-Mapping new permissions
+upkeep_backend_title = Backend
+upkeep_domains_title = Domains
+upkeep_domain_mapping_title = Domain Redirect
+
+# Status indicators (Tooltips)
+upkeep_indicator_backend = Backend maintenance mode active
+upkeep_indicator_frontend = Frontend maintenance mode active  
+upkeep_indicator_domains = Domain redirects active
+upkeep_indicator_security = Intrusion Prevention System active
+
+# Domain Redirects (formerly Domain Mapping)
+upkeep_domain_mapping_description = Here you can redirect domains and URL paths to other URLs. Also supports wildcard redirects with dynamic path replacement.
+upkeep_domain_mapping_add = Add domain redirect
+upkeep_domain_mapping_edit = Edit domain redirect
+upkeep_domain_mapping_source_domain = Source domain
+upkeep_domain_mapping_source_path = Source path
+upkeep_domain_mapping_target_url = Target URL
+upkeep_domain_mapping_redirect_code = HTTP Status Code
+upkeep_domain_mapping_is_wildcard = Wildcard redirect
+upkeep_domain_mapping_status = Status
+upkeep_domain_mapping_description_field = Description
+upkeep_domain_mapping_no_entries = No domain redirects available
+
+# General settings & buttons
+upkeep_settings = Settings
+upkeep_general_settings = General settings
+upkeep_access_settings = Access permissions
+upkeep_http_settings = HTTP settings
+upkeep_yrewrite_settings = YRewrite settings
+upkeep_active = Active
+upkeep_inactive = Inactive
+upkeep_save = Save
+upkeep_yes = Yes
+upkeep_no = No
+
+# Frontend settings
+upkeep_frontend_active = Frontend maintenance mode
+upkeep_page_title = Page title
+upkeep_page_message = Maintenance message
+upkeep_frontend_password = Access password
+upkeep_frontend_password_notice = Leave empty to disable password prompt, or enter new password
+upkeep_bypass_logged_in = Exclude logged-in users
+upkeep_allowed_ips = Allowed IP addresses
+upkeep_your_ip = Your IP address
+upkeep_add_ip = Add this IP
+upkeep_allowed_domains = Allowed domains
+upkeep_enter_password = Enter password
+upkeep_wrong_password = Wrong password
+upkeep_submit = Submit
+
+# Frontend tooltips
+upkeep_frontend_active_tooltip = Enables/disables maintenance mode for the frontend. When activated, visitors see a maintenance page.
+upkeep_page_title_tooltip = The title of the maintenance page displayed in the browser tab and as page heading.
+upkeep_page_message_tooltip = Message for visitors during maintenance. Can contain HTML. Explains the reason and expected duration.
+upkeep_frontend_password_tooltip = Optional: Password-protected access to the frontend during maintenance. Leave empty for public maintenance page.
+upkeep_bypass_logged_in_tooltip = When enabled, logged-in REDAXO users can use the frontend normally despite maintenance mode.
+upkeep_allowed_ips_tooltip = Comma-separated list of IP addresses that can use the frontend despite maintenance mode. Supports CIDR notation (e.g. 192.168.1.0/24).
+upkeep_http_status_code_tooltip = HTTP status code for the maintenance page. 503 recommended for temporary maintenance, 403 for access restrictions.
+upkeep_retry_after_tooltip = Tells search engines and clients after how many seconds they should try again. 3600 = 1 hour.
+upkeep_api_token_tooltip = Token for API access to external maintenance mode control. Leave empty to disable API completely.
+
+# Backend settings
+upkeep_backend_active = Backend maintenance mode
+upkeep_backend_settings = Backend settings
+
+# Dashboard translations
+upkeep_dashboard_no_user = No valid user found
+upkeep_dashboard_maintenance_toggle = Toggle maintenance mode
+upkeep_dashboard_frontend_activate = Activate frontend
+upkeep_dashboard_frontend_maintenance = Activate frontend maintenance
+upkeep_dashboard_backend_activate = Activate backend
+upkeep_dashboard_backend_maintenance = Activate backend maintenance
+upkeep_dashboard_domain_mapping_activate = Activate domain mapping system
+upkeep_dashboard_domain_mapping_deactivate = Deactivate domain mapping system
+upkeep_dashboard_maintenance = Maintenance
+upkeep_dashboard_online = Online
+upkeep_dashboard_redirects = Redirects
+upkeep_dashboard_system_inactive = System inactive
+upkeep_dashboard_no_redirects = No redirects
+upkeep_dashboard_all_disabled = All disabled
+upkeep_dashboard_all_active = All active
+upkeep_dashboard_of = of
+upkeep_dashboard_active = active
+upkeep_dashboard_x_of_y_active = {0} of {1} active
+upkeep_dashboard_maintenance_active = Maintenance mode active
+upkeep_dashboard_system_normal = System normal
+upkeep_dashboard_frontend_blocked = Frontend blocked for visitors
+upkeep_dashboard_backend_admin_only = Backend for administrators only
+upkeep_dashboard_frontend_public = Frontend publicly accessible
+upkeep_dashboard_backend_all_users = Backend for all users
+upkeep_dashboard_allowed_ips = Allowed for {0} IP address{1}
+upkeep_dashboard_system_status = System Status
+upkeep_dashboard_no_permission = No permission for this action
+upkeep_dashboard_frontend_maintenance_toggled = Frontend maintenance mode {0}
+upkeep_dashboard_backend_maintenance_toggled = Backend maintenance mode {0}
+upkeep_dashboard_domain_redirects_toggled = Domain redirects {0}
+upkeep_dashboard_activated = activated
+upkeep_dashboard_deactivated = deactivated
+
 # Domain mapping new permissions
 upkeep_perm_domain_mapping = Manage domain mapping
 
@@ -253,7 +353,6 @@ upkeep_edit = Edit
 upkeep_update = Update
 upkeep_cancel = Cancel
 upkeep_delete = Delete
-
 # Quick Toggle Buttons
 upkeep_quick_toggle_frontend = Toggle frontend maintenance
 upkeep_quick_toggle_backend = Toggle backend maintenance
@@ -287,9 +386,6 @@ upkeep_settings_saved = Settings have been saved.
 
 # Maintenance pages
 upkeep_backend_maintenance = Backend maintenance
-upkeep_backend_maintenance_message = The REDAXO backend is in maintenance mode and temporarily unavailable.
-upkeep_contact_admin = Please contact the administrator for more information.
-upkeep_back_to_website = Back to website
 
 # Domain Mapping
 upkeep_domain_mapping = Domain Mapping
@@ -307,6 +403,9 @@ upkeep_mapping_deleted = Domain mapping has been deleted
 upkeep_domain_exists = This domain is already configured
 upkeep_invalid_domain = Invalid domain
 upkeep_invalid_url = Invalid URL
+upkeep_backend_maintenance_message = The REDAXO backend is in maintenance mode and temporarily unavailable.
+upkeep_contact_admin = Please contact the administrator for more information.
+upkeep_back_to_website = Back to website
 
 # HTTP settings
 upkeep_http_status_code = HTTP status code
