@@ -6,6 +6,56 @@
 use KLXM\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
+
+// Sicherstellen, dass Standard-Konfiguration vorhanden ist
+if ($addon->getConfig('multilanguage_enabled') === null) {
+    $addon->setConfig('multilanguage_enabled', 1);
+}
+
+if ($addon->getConfig('multilanguage_default') === null) {
+    $addon->setConfig('multilanguage_default', 'de');
+}
+
+if ($addon->getConfig('multilanguage_texts', '') === '') {
+    $defaultTexts = [
+        [
+            'language_code' => 'de',
+            'language_name' => 'Deutsch',
+            'title' => 'Wartungsarbeiten',
+            'message' => 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.',
+            'password_label' => 'Passwort eingeben',
+            'password_button' => 'Anmelden',
+            'language_switch' => 'Sprache wählen'
+        ],
+        [
+            'language_code' => 'en',
+            'language_name' => 'English',
+            'title' => 'Maintenance Mode',
+            'message' => 'This website is currently under maintenance. Please try again later.',
+            'password_label' => 'Enter Password',
+            'password_button' => 'Login',
+            'language_switch' => 'Choose Language'
+        ]
+    ];
+    
+    $addon->setConfig('multilanguage_texts', json_encode($defaultTexts));
+}
+
+// Verarbeitung des Sprachtexte-Formulars
+if (rex_post('config-submit', 'int', 0) && rex_post('config', 'array', [])) {
+    $config = rex_post('config', 'array', []);
+    if (isset($config['multilanguage_texts'])) {
+        // JSON validieren
+        $languageTexts = json_decode($config['multilanguage_texts'], true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($languageTexts)) {
+            rex_config::set($addon->getName(), 'multilanguage_texts', $config['multilanguage_texts']);
+            echo rex_view::success($addon->i18n('upkeep_config_saved') ?: 'Einstellungen wurden gespeichert.');
+        } else {
+            echo rex_view::error($addon->i18n('upkeep_config_error') ?: 'Fehler beim Speichern der Einstellungen.');
+        }
+    }
+}
+
 $form = rex_config_form::factory($addon->getName());
 
 // Allgemeine Einstellungen
@@ -18,19 +68,33 @@ $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_active'), 1);
 $select->addOption($addon->i18n('upkeep_inactive'), 0);
 
-// Überschrift für die Wartungsseite
-$field = $form->addTextField('maintenance_page_title');
-$field->setLabel($addon->i18n('upkeep_page_title') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_page_title_tooltip')) . '"></i>');
-$field->setAttribute('class', 'form-control');
+// Mehrsprachigkeit
+$field = $form->addFieldset($addon->i18n('upkeep_multilanguage_settings'));
 
-// Nachricht für die Wartungsseite
-$field = $form->addTextAreaField('maintenance_page_message');
-$field->setLabel($addon->i18n('upkeep_page_message') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_page_message_tooltip')) . '"></i>');
-$field->setAttribute('class', 'form-control');
-$field->setAttribute('rows', 5);
+// Mehrsprachigkeit aktivieren
+$field = $form->addSelectField('multilanguage_enabled');
+$field->setLabel($addon->i18n('upkeep_multilanguage_enabled') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_multilanguage_enabled_tooltip')) . '"></i>');
+$select = $field->getSelect();
+$select->addOption($addon->i18n('upkeep_yes'), 1);
+$select->addOption($addon->i18n('upkeep_no'), 0);
+
+// Sprachtexte als verstecktes Feld (wird über separates Formular verwaltet)
+$field = $form->addHiddenField('multilanguage_texts');
 
 // Einstellungen für Zugriffsberechtigung
 $field = $form->addFieldset($addon->i18n('upkeep_access_settings'));
+
+// URL-Parameter für Bypass
+$field = $form->addSelectField('allow_bypass_param');
+$field->setLabel($addon->i18n('upkeep_allow_bypass_param') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_allow_bypass_param_tooltip')) . '"></i>');
+$select = $field->getSelect();
+$select->addOption($addon->i18n('upkeep_yes'), 1);
+$select->addOption($addon->i18n('upkeep_no'), 0);
+
+$field = $form->addTextField('bypass_param_key');
+$field->setLabel($addon->i18n('upkeep_bypass_param_key') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_bypass_param_key_tooltip')) . '"></i>');
+$field->setAttribute('class', 'form-control');
+$field->setNotice($addon->i18n('upkeep_bypass_param_key_notice'));
 
 // Passwort für Frontend-Zugang
 $field = $form->addTextField('frontend_password');
@@ -108,11 +172,231 @@ $fragment->setVar('class', 'edit', false);
 $fragment->setVar('title', $addon->i18n('upkeep_settings'), false);
 $fragment->setVar('body', $form->get(), false);
 echo $fragment->parse('core/page/section.php');
+
+// Sprachtexte-Repeater am Ende hinzufügen
+$languageTexts = rex_config::get($addon->getName(), 'multilanguage_texts', '[]');
+$textsArray = json_decode($languageTexts, true) ?: [];
+
+// Standard-Eintrag für Deutsch falls noch nicht vorhanden
+if (empty($textsArray)) {
+    $textsArray = [
+        [
+            'language_code' => 'de',
+            'language_name' => 'Deutsch',
+            'title' => 'Wartungsarbeiten',
+            'message' => 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.',
+            'password_label' => 'Passwort eingeben',
+            'password_button' => 'Anmelden',
+            'language_switch' => 'Sprache wählen'
+        ]
+    ];
+}
+
+// Formular für Sprachtexte als separater Bereich
+$languageForm = '
+<form id="language-texts-form" method="post" action="">
+    <input type="hidden" name="config[multilanguage_texts]" id="multilanguage_texts_field" value="' . rex_escape(json_encode($textsArray)) . '">
+    
+    <div class="form-group">
+        <label class="control-label">' . $addon->i18n('upkeep_multilanguage_texts') . ' <i class="rex-icon fa-question-circle" data-toggle="tooltip" data-placement="right" title="' . rex_escape($addon->i18n('upkeep_multilanguage_texts_tooltip')) . '"></i></label>
+        <div id="language-repeater">
+            <div class="language-entries">';
+
+foreach ($textsArray as $index => $text) {
+    $languageForm .= '
+        <div class="language-entry panel panel-default" data-index="' . $index . '">
+            <div class="panel-heading">
+                <h4 class="panel-title">
+                    <span class="language-title">' . rex_escape($text['language_name'] ?? 'Sprache') . ' (' . rex_escape($text['language_code'] ?? '') . ')</span>
+                    <div class="pull-right">
+                        <button type="button" class="btn btn-xs btn-danger remove-language" title="Sprache entfernen">
+                            <i class="rex-icon fa-trash"></i>
+                        </button>
+                    </div>
+                </h4>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Sprachcode (z.B. de, en, fr)</label>
+                            <input type="text" class="form-control language-code" value="' . rex_escape($text['language_code'] ?? '') . '" placeholder="de">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Sprachname (z.B. Deutsch, English)</label>
+                            <input type="text" class="form-control language-name" value="' . rex_escape($text['language_name'] ?? '') . '" placeholder="Deutsch">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Überschrift</label>
+                    <input type="text" class="form-control language-title-input" value="' . rex_escape($text['title'] ?? '') . '" placeholder="Wartungsarbeiten">
+                </div>
+                <div class="form-group">
+                    <label>Hauptnachricht</label>
+                    <textarea class="form-control language-message" rows="3" placeholder="Diese Website befindet sich derzeit im Wartungsmodus...">' . rex_escape($text['message'] ?? '') . '</textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Passwort-Eingabe Bezeichnung</label>
+                            <input type="text" class="form-control language-password-label" value="' . rex_escape($text['password_label'] ?? '') . '" placeholder="Passwort eingeben">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Anmelde-Button Text</label>
+                            <input type="text" class="form-control language-password-button" value="' . rex_escape($text['password_button'] ?? '') . '" placeholder="Anmelden">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Sprachwechsel Bezeichnung</label>
+                    <input type="text" class="form-control language-switch" value="' . rex_escape($text['language_switch'] ?? '') . '" placeholder="Sprache wählen">
+                </div>
+            </div>
+        </div>';
+}
+
+$languageForm .= '
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn btn-success" id="add-language">
+                    <i class="rex-icon fa-plus"></i> Neue Sprache hinzufügen
+                </button>
+                <button type="submit" class="btn btn-save" name="config-submit" value="1">
+                    <i class="rex-icon rex-icon-save"></i> Sprachtexte speichern
+                </button>
+            </div>
+        </div>
+    </div>
+</form>';
+
+// Fragment für die Sprachtexte
+$languageFragment = new rex_fragment();
+$languageFragment->setVar('class', 'edit', false);
+$languageFragment->setVar('title', $addon->i18n('upkeep_multilanguage_texts'), false);
+$languageFragment->setVar('body', $languageForm, false);
+echo $languageFragment->parse('core/page/section.php');
 ?>
 <script type="text/javascript">
 $(document).on('rex:ready', function() {
     // Bootstrap-Tooltips aktivieren
     $('[data-toggle="tooltip"]').tooltip();
+    
+    // Funktion zum Aktualisieren des versteckten JSON-Felds
+    function updateLanguageTexts() {
+        var languages = [];
+        $('.language-entry').each(function() {
+            var entry = {
+                language_code: $(this).find('.language-code').val(),
+                language_name: $(this).find('.language-name').val(),
+                title: $(this).find('.language-title-input').val(),
+                message: $(this).find('.language-message').val(),
+                password_label: $(this).find('.language-password-label').val(),
+                password_button: $(this).find('.language-password-button').val(),
+                language_switch: $(this).find('.language-switch').val()
+            };
+            languages.push(entry);
+        });
+        
+        // Korrekte Feldname-Struktur für das separate Formular
+        $('#multilanguage_texts_field').val(JSON.stringify(languages));
+    }
+    
+    // Neue Sprache hinzufügen
+    $('#add-language').on('click', function() {
+        var newIndex = $('.language-entry').length;
+        var newEntry = $(`
+            <div class="language-entry panel panel-default" data-index="${newIndex}">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <span class="language-title">Neue Sprache</span>
+                        <div class="pull-right">
+                            <button type="button" class="btn btn-xs btn-danger remove-language" title="Sprache entfernen">
+                                <i class="rex-icon fa-trash"></i>
+                            </button>
+                        </div>
+                    </h4>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Sprachcode (z.B. de, en, fr)</label>
+                                <input type="text" class="form-control language-code" placeholder="en">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Sprachname (z.B. Deutsch, English)</label>
+                                <input type="text" class="form-control language-name" placeholder="English">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Überschrift</label>
+                        <input type="text" class="form-control language-title-input" placeholder="Maintenance Mode">
+                    </div>
+                    <div class="form-group">
+                        <label>Hauptnachricht</label>
+                        <textarea class="form-control language-message" rows="3" placeholder="This website is currently under maintenance..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Passwort-Eingabe Bezeichnung</label>
+                                <input type="text" class="form-control language-password-label" placeholder="Enter Password">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Anmelde-Button Text</label>
+                                <input type="text" class="form-control language-password-button" placeholder="Login">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Sprachwechsel Bezeichnung</label>
+                        <input type="text" class="form-control language-switch" placeholder="Choose Language">
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        $('.language-entries').append(newEntry);
+        updateLanguageTexts();
+    });
+    
+    // Sprache entfernen
+    $(document).on('click', '.remove-language', function() {
+        if ($('.language-entry').length > 1) {
+            $(this).closest('.language-entry').remove();
+            updateLanguageTexts();
+        } else {
+            alert('Mindestens eine Sprache muss vorhanden sein.');
+        }
+    });
+    
+    // Panel-Titel beim Ändern von Code oder Name aktualisieren
+    $(document).on('input', '.language-code, .language-name', function() {
+        var entry = $(this).closest('.language-entry');
+        var code = entry.find('.language-code').val();
+        var name = entry.find('.language-name').val();
+        var title = name ? name + (code ? ' (' + code + ')' : '') : (code ? code : 'Neue Sprache');
+        entry.find('.language-title').text(title);
+        updateLanguageTexts();
+    });
+    
+    // Alle anderen Eingabefelder überwachen
+    $(document).on('input', '.language-entry input, .language-entry textarea', function() {
+        updateLanguageTexts();
+    });
+    
+    // Initial das JSON aktualisieren
+    updateLanguageTexts();
     
     // Funktion zum Hinzufügen einer IP-Adresse zum Whitelist-Feld
     function addIpToWhitelist(ip) {

@@ -1,5 +1,60 @@
 # General translations
 upkeep_title = Upkeep
+upkeep_general_settings = General Settings
+upkeep_frontend_active = Frontend Maintenance Mode
+upkeep_frontend_active_tooltip = Enables or disables the maintenance page for frontend visitors
+upkeep_active = Active
+upkeep_inactive = Inactive
+upkeep_page_title = Page Title
+upkeep_page_title_tooltip = The title displayed on the maintenance page
+upkeep_page_message = Message
+upkeep_page_message_tooltip = The message shown to visitors on the maintenance page
+upkeep_multilanguage_settings = Multi-language Settings
+upkeep_multilanguage_enabled = Enable Multi-language Support
+upkeep_multilanguage_enabled_tooltip = Allows displaying the maintenance page in different languages
+upkeep_multilanguage_default = Default Language
+upkeep_multilanguage_default_tooltip = The language used by default
+upkeep_multilanguage_texts = Language Texts
+upkeep_multilanguage_texts_tooltip = Define texts for different languages here. You can add as many languages as needed.
+upkeep_yes = Yes
+upkeep_no = No
+upkeep_allow_bypass_param = Allow URL Parameter Bypass
+upkeep_allow_bypass_param_tooltip = Allows bypassing the maintenance page via URL parameter
+upkeep_bypass_param_key = Bypass Parameter Key
+upkeep_bypass_param_key_tooltip = The URL parameter name for bypassing (e.g. "access")
+upkeep_bypass_param_key_notice = Example URL: https://your-domain.com/?access=1
+upkeep_access_settings = Access Settings
+upkeep_frontend_password = Frontend Password
+upkeep_frontend_password_tooltip = Optional: Password for frontend access to the website during maintenance
+upkeep_frontend_password_notice = Leave empty to require no password
+upkeep_bypass_logged_in = Logged-in Users Bypass Maintenance Mode
+upkeep_bypass_logged_in_tooltip = Logged-in backend users don't see the maintenance page
+upkeep_allowed_ips = Allowed IP Addresses
+upkeep_allowed_ips_tooltip = Comma-separated list of IP addresses that can bypass the maintenance page
+upkeep_your_ip = Your IP
+upkeep_server_ip = Server IP
+upkeep_add_ip = Add
+upkeep_add_server_ip = Add Server IP
+upkeep_http_settings = HTTP Settings
+upkeep_http_status_code = HTTP Status Code
+upkeep_http_status_code_tooltip = The HTTP status code returned for the maintenance page
+upkeep_http_503 = 503 Service Unavailable (with Cache-Control)
+upkeep_http_503_no_cache = 503 Service Unavailable (without Cache-Control)
+upkeep_http_403 = 403 Forbidden
+upkeep_retry_after = Retry-After Header (seconds)
+upkeep_retry_after_tooltip = Tells clients how many seconds to wait before trying again
+upkeep_retry_after_notice = 0 = no header, recommended: 3600 (1 hour)
+upkeep_api_settings = API Settings
+upkeep_api_token = API Token
+upkeep_api_token_tooltip = Token for API authentication
+upkeep_api_token_notice = Required for external API access
+upkeep_generate_token = Generate Token
+upkeep_wrong_password = Wrong password
+upkeep_enter_password = Enter password
+upkeep_submit = Login
+upkeep_settings = Settings
+upkeep_config_saved = Settings saved successfully
+upkeep_config_error = Error saving settings
 upkeep_dashboard_title = Dashboard
 upkeep_frontend_titlupkeep_dashboard_activated = activated
 upkeep_dashboard_deactivated = deactivated
@@ -36,6 +91,22 @@ upkeep_domain_mapping_is_wildcard = Wildcard redirect
 upkeep_domain_mapping_status = Status
 upkeep_domain_mapping_description_field = Description
 upkeep_domain_mapping_no_entries = No domain redirects available
+
+# Multilanguage support
+upkeep_multilanguage_settings = Multilanguage settings
+upkeep_multilanguage_enabled = Enable multilanguage
+upkeep_multilanguage_enabled_tooltip = Enables a multilingual maintenance page with language switcher and customizable texts per language.
+upkeep_multilanguage_default = Default language
+upkeep_multilanguage_default_tooltip = The language that is displayed by default when no other language is detected or selected.
+upkeep_multilanguage_texts = Language texts
+upkeep_multilanguage_texts_tooltip = JSON configuration for multilingual texts. Format: {"language": {"title": "Title", "message": "Message"}}
+upkeep_allow_bypass_param = Allow URL parameter for bypass
+upkeep_allow_bypass_param_tooltip = Allows bypassing the maintenance form via a special URL parameter.
+upkeep_bypass_param_key = Bypass parameter key
+upkeep_bypass_param_key_tooltip = The URL parameter that can be used to bypass the maintenance form (e.g. 'maintenance_bypass').
+upkeep_bypass_param_key_notice = Example: With "bypass" the form can be bypassed with "?bypass=1".
+upkeep_language_switcher = Choose language
+upkeep_switch_language = Switch language to {0}
 
 # General settings & buttons
 upkeep_settings = Settings

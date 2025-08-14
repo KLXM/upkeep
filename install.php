@@ -170,6 +170,40 @@ if ($addon->getConfig('ips_active') === null) {
     $addon->setConfig('ips_active', true);
 }
 
+// Standard-Konfiguration für mehrsprachige Wartungsseiten setzen
+if ($addon->getConfig('multilanguage_enabled') === null) {
+    $addon->setConfig('multilanguage_enabled', 1);
+}
+
+if ($addon->getConfig('multilanguage_default') === null) {
+    $addon->setConfig('multilanguage_default', 'de');
+}
+
+if ($addon->getConfig('multilanguage_texts', '') === '') {
+    $defaultTexts = [
+        [
+            'language_code' => 'de',
+            'language_name' => 'Deutsch',
+            'title' => 'Wartungsarbeiten',
+            'message' => 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.',
+            'password_label' => 'Passwort eingeben',
+            'password_button' => 'Anmelden',
+            'language_switch' => 'Sprache wählen'
+        ],
+        [
+            'language_code' => 'en',
+            'language_name' => 'English',
+            'title' => 'Maintenance Mode',
+            'message' => 'This website is currently under maintenance. Please try again later.',
+            'password_label' => 'Enter Password',
+            'password_button' => 'Login',
+            'language_switch' => 'Choose Language'
+        ]
+    ];
+    
+    $addon->setConfig('multilanguage_texts', json_encode($defaultTexts));
+}
+
 // Rate-Limiting standardmäßig DEAKTIVIERT (Webserver sollte das machen)
 if ($addon->getConfig('ips_rate_limiting_enabled') === null) {
     $addon->setConfig('ips_rate_limiting_enabled', false);

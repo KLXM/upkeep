@@ -151,6 +151,22 @@ public static function checkFrontend(): void
         return;
     }
     
+    // Prüfen, ob bereits eine Session existiert (von Passwort oder vorherigem Bypass)
+    if (rex_session('upkeep_authorized', 'bool', false)) {
+        return;
+    }
+    
+    // URL-Parameter für Bypass prüfen (ZUERST!)
+    $allowBypassParam = self::getConfig('allow_bypass_param', 0);
+    $bypassParamKey = self::getConfig('bypass_param_key', 'access');
+    
+    if ($allowBypassParam && $bypassParamKey && rex_request($bypassParamKey, 'string', '') !== '') {
+        // Bypass-Parameter gefunden - Session setzen wie bei Passwort-Eingabe
+        rex_set_session('upkeep_authorized', true);
+        // Wartungsseite umgehen
+        return;
+    }
+    
     // Prüfen, ob es sich um einen API-Aufruf handelt
     if (rex_request('rex-api-call', 'string', '') === 'upkeep') {
         return; // API-Aufrufe immer erlauben

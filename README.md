@@ -5,6 +5,7 @@ Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 ## Features
 
 - **Wartungsmodi**: Frontend/Backend getrennt steuerbar
+- **Mehrsprachige Wartungsseiten**: Professionelle mehrsprachige Benutzeroberfläche
 - **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* -> /new/*`)
 - **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
 - **Monitor-Only Modus**: Nur loggen ohne automatisches Blocken
@@ -24,12 +25,40 @@ Wartungs- und Sicherheits-AddOn für REDAXO CMS.
 # Wartungsmodus aktivieren
 Backend → Upkeep → Frontend/Backend
 
+# Mehrsprachige Wartungsseite konfigurieren
+Backend → Upkeep → Frontend → Mehrsprachigkeit aktivieren
+
 # Redirects einrichten
 Backend → Upkeep → Domains
 
 # IPS konfigurieren  
 Backend → Upkeep → IPS
 ```
+
+## Mehrsprachige Wartungsseiten einrichten
+
+### 1. Mehrsprachigkeit aktivieren
+```
+Backend → Upkeep → Frontend → "Mehrsprachige Wartungsseite" aktivieren
+```
+
+### 2. Sprachen konfigurieren
+Für jede gewünschte Sprache:
+- **Sprachcode**: z.B. `de`, `en`, `fr`, `es`, `it`
+- **Titel**: Überschrift der Wartungsseite
+- **Nachricht**: Wartungstext für die Benutzer
+
+### 3. URL-Bypass konfigurieren (optional)
+```
+Backend → Upkeep → Frontend → "Bypass-Parameter für URL"
+```
+Beispiel: `?bypass=geheim123` umgeht den Wartungsmodus
+
+### 4. Frontend-Ergebnis
+- Benutzer sehen eine professionelle mehrsprachige Wartungsseite
+- Sprachauswahl mit elegantem Weltkugel-Symbol
+- Sanfte Animationen beim Sprachwechsel
+- Cookie-basierte Sprachspeicherung
 
 ## Detaillierte Funktionen
 
@@ -142,12 +171,35 @@ Automatische Datenbankpflege:
 ### Wartungsmodi
 
 #### Frontend-Wartungsmodus
+- **Mehrsprachige Wartungsseiten**: Professionelle Unterstützung für mehrere Sprachen
+- **Dynamische Sprachauswahl**: Elegant animierte Sprachauswahl mit neutralem Design
+- **Cookie-basierte Sprachpräferenzen**: Sprache wird für Folgebesuche gespeichert
+- **URL-Bypass mit Session-Management**: Wartungsmodus umgehen mit URL-Parameter
 - **Passwort-Schutz**: Optionaler Zugang für bestimmte Benutzer
 - **IP-Erlaubnisliste**: Bestimmte IPs vom Wartungsmodus ausschließen
 - **Angemeldete Benutzer**: REDAXO-Backend-Nutzer automatisch ausschließen
-- **Custom Wartungsseite**: Individueller Titel und Nachricht
+- **Custom Wartungsseite**: Individueller Titel und Nachricht pro Sprache
 - **HTTP-Status-Codes**: SEO-konforme 503/403 Responses
 - **Retry-After Header**: Suchmaschinen-freundliche Signale
+
+#### Mehrsprachige Funktionen
+
+**Backend-Konfiguration**:
+- **Repeater-Interface**: Einfache Verwaltung mehrerer Sprachen
+- **Pro Sprache**: Titel, Nachricht und Sprachcode konfigurierbar
+- **Standard-Sprache**: Erste Sprache im Repeater dient als Standard
+- **Fallback-Logik**: Automatischer Fallback auf verfügbare Sprachen
+
+**Frontend-Features**:
+- **Sprachauswahl**: Neutrales Design mit Weltkugel-Symbol und Sprachcodes
+- **Animierte Übergänge**: Apple-ähnliche Drehungsanimationen beim Sprachwechsel  
+- **Responsive Design**: Optimiert für alle Bildschirmgrößen
+- **Barrierefreiheit**: Semantische Struktur und Keyboard-Navigation
+
+**URL-Parameter-Bypass**:
+- **Session-Management**: Einmalige Autorisierung für gesamte Session
+- **Sicherheitsintegration**: Kombiniert mit Passwort- und IP-Schutz
+- **Backend-Kontrolle**: Bypass-Funktion kann aktiviert/deaktiviert werden
 
 #### Backend-Wartungsmodus
 - **Admin-Only**: Nur Administratoren haben Zugang

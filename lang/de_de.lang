@@ -1,5 +1,60 @@
 # Allgemeine Übersetzungen
 upkeep_title = Upkeep
+upkeep_general_settings = Allgemeine Einstellungen
+upkeep_frontend_active = Frontend-Wartungsmodus
+upkeep_frontend_active_tooltip = Aktiviert oder deaktiviert die Wartungsseite für Frontend-Besucher
+upkeep_active = Aktiv
+upkeep_inactive = Inaktiv
+upkeep_page_title = Seitentitel
+upkeep_page_title_tooltip = Der Titel, der auf der Wartungsseite angezeigt wird
+upkeep_page_message = Nachricht
+upkeep_page_message_tooltip = Die Nachricht, die Besuchern auf der Wartungsseite angezeigt wird
+upkeep_multilanguage_settings = Mehrsprachigkeits-Einstellungen
+upkeep_multilanguage_enabled = Mehrsprachigkeit aktivieren
+upkeep_multilanguage_enabled_tooltip = Ermöglicht die Anzeige der Wartungsseite in verschiedenen Sprachen
+upkeep_multilanguage_default = Standard-Sprache
+upkeep_multilanguage_default_tooltip = Die Sprache, die standardmäßig verwendet wird
+upkeep_multilanguage_texts = Sprachtexte
+upkeep_multilanguage_texts_tooltip = Definieren Sie hier die Texte für verschiedene Sprachen. Sie können beliebig viele Sprachen hinzufügen.
+upkeep_yes = Ja
+upkeep_no = Nein
+upkeep_allow_bypass_param = URL-Parameter für Umgehung erlauben
+upkeep_allow_bypass_param_tooltip = Ermöglicht es, die Wartungsseite über einen URL-Parameter zu umgehen
+upkeep_bypass_param_key = Bypass-Parameter-Schlüssel
+upkeep_bypass_param_key_tooltip = Der URL-Parameter-Name für die Umgehung (z.B. "access")
+upkeep_bypass_param_key_notice = Beispiel-URL: https://ihre-domain.de/?access=1
+upkeep_access_settings = Zugriffs-Einstellungen
+upkeep_frontend_password = Frontend-Passwort
+upkeep_frontend_password_tooltip = Optional: Passwort für den Frontend-Zugang zur Website während der Wartung
+upkeep_frontend_password_notice = Leer lassen, um kein Passwort zu verlangen
+upkeep_bypass_logged_in = Angemeldete Benutzer umgehen Wartungsmodus
+upkeep_bypass_logged_in_tooltip = Angemeldete Backend-Benutzer sehen die Wartungsseite nicht
+upkeep_allowed_ips = Erlaubte IP-Adressen
+upkeep_allowed_ips_tooltip = Komma-getrennte Liste von IP-Adressen, die die Wartungsseite umgehen können
+upkeep_your_ip = Ihre IP
+upkeep_server_ip = Server-IP
+upkeep_add_ip = Hinzufügen
+upkeep_add_server_ip = Server-IP hinzufügen
+upkeep_http_settings = HTTP-Einstellungen
+upkeep_http_status_code = HTTP-Statuscode
+upkeep_http_status_code_tooltip = Der HTTP-Statuscode, der bei der Wartungsseite zurückgegeben wird
+upkeep_http_503 = 503 Service Unavailable (mit Cache-Control)
+upkeep_http_503_no_cache = 503 Service Unavailable (ohne Cache-Control)
+upkeep_http_403 = 403 Forbidden
+upkeep_retry_after = Retry-After Header (Sekunden)
+upkeep_retry_after_tooltip = Teilt Clients mit, nach wie vielen Sekunden sie es erneut versuchen sollen
+upkeep_retry_after_notice = 0 = kein Header, empfohlen: 3600 (1 Stunde)
+upkeep_api_settings = API-Einstellungen
+upkeep_api_token = API-Token
+upkeep_api_token_tooltip = Token für die API-Authentifizierung
+upkeep_api_token_notice = Wird für externe API-Zugriffe benötigt
+upkeep_generate_token = Token generieren
+upkeep_wrong_password = Falsches Passwort
+upkeep_enter_password = Passwort eingeben
+upkeep_submit = Anmelden
+upkeep_settings = Einstellungen
+upkeep_config_saved = Einstellungen wurden erfolgreich gespeichert
+upkeep_config_error = Fehler beim Speichern der Einstellungen
 upkeep_dashboard_title = Dashboard
 upkeep_frontend_title = Frontend
 upkeep_backend_title = Backend
@@ -24,6 +79,22 @@ upkeep_domain_mapping_is_wildcard = Wildcard-Redirect
 upkeep_domain_mapping_status = Status
 upkeep_domain_mapping_description_field = Beschreibung
 upkeep_domain_mapping_no_entries = Keine Domain-Redirects vorhanden
+
+# Mehrsprachigkeit
+upkeep_multilanguage_settings = Mehrsprachigkeits-Einstellungen
+upkeep_multilanguage_enabled = Mehrsprachigkeit aktivieren
+upkeep_multilanguage_enabled_tooltip = Aktiviert eine mehrsprachige Wartungsseite mit Sprachwechsler und individualisierbaren Texten pro Sprache.
+upkeep_multilanguage_default = Standard-Sprache
+upkeep_multilanguage_default_tooltip = Die Sprache, die standardmäßig angezeigt wird, wenn keine andere Sprache erkannt oder gewählt wurde.
+upkeep_multilanguage_texts = Sprachtexte
+upkeep_multilanguage_texts_tooltip = JSON-Konfiguration für mehrsprachige Texte. Format: {"sprache": {"title": "Titel", "message": "Nachricht"}}
+upkeep_allow_bypass_param = URL-Parameter für Bypass erlauben
+upkeep_allow_bypass_param_tooltip = Erlaubt es, das Wartungsformular über einen speziellen URL-Parameter zu umgehen.
+upkeep_bypass_param_key = Bypass Parameter-Schlüssel
+upkeep_bypass_param_key_tooltip = Der URL-Parameter, mit dem das Wartungsformular umgangen werden kann (z.B. 'maintenance_bypass').
+upkeep_bypass_param_key_notice = Beispiel: Bei "bypass" kann das Formular mit "?bypass=1" umgangen werden.
+upkeep_language_switcher = Sprache wählen
+upkeep_switch_language = Sprache wechseln zu {0}
 
 # Allgemeine Einstellungen & Buttons
 upkeep_settings = Einstellungen
