@@ -258,7 +258,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </form>
                     <?php endif; ?>
                     
-                    <a href="<?= rex_url::backendPage('upkeep/maintenance') ?>" class="status-card-content-link">
+                    <a href="<?= rex_url::backendPage('upkeep/frontend') ?>" class="status-card-content-link">
                         <div class="status-icon">
                             <i class="rex-icon fa-globe"></i>
                         </div>
@@ -285,7 +285,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </form>
                     <?php endif; ?>
                     
-                    <a href="<?= rex_url::backendPage('upkeep/maintenance') ?>" class="status-card-content-link">
+                    <a href="<?= rex_url::backendPage('upkeep/backend') ?>" class="status-card-content-link">
                         <div class="status-icon">
                             <i class="rex-icon fa-users"></i>
                         </div>
