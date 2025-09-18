@@ -7,6 +7,56 @@ use KLXM\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 
+// Schnellaktionen verarbeiten
+$action = rex_request::get('action', 'string', '');
+$message = '';
+
+if ($action === 'activate' && $_POST) {
+    $addon->setConfig('frontend_active', true);
+    $message = rex_view::success($addon->i18n('upkeep_frontend_activated'));
+} elseif ($action === 'deactivate' && $_POST) {
+    $addon->setConfig('frontend_active', false);
+    $message = rex_view::success($addon->i18n('upkeep_frontend_deactivated'));
+} elseif ($action === 'activate') {
+    // GET Request - Bestätigungsformular anzeigen
+    echo rex_view::title($addon->i18n('upkeep_frontend_title'));
+    $content = '
+    <div class="alert alert-warning">
+        <h4><i class="rex-icon fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_confirm_activate') . '</h4>
+        <p>' . $addon->i18n('upkeep_frontend_activate_warning') . '</p>
+        <form method="post">
+            <input type="hidden" name="action" value="activate">
+            <button type="submit" class="btn btn-warning">
+                <i class="rex-icon fa fa-power-off"></i> ' . $addon->i18n('upkeep_activate') . '
+            </button>
+            <a href="' . rex_url::backendPage('upkeep/maintenance/frontend') . '" class="btn btn-default">
+                <i class="rex-icon fa fa-times"></i> ' . $addon->i18n('upkeep_cancel') . '
+            </a>
+        </form>
+    </div>';
+    echo $content;
+    return;
+} elseif ($action === 'deactivate') {
+    // GET Request - Bestätigungsformular anzeigen
+    echo rex_view::title($addon->i18n('upkeep_frontend_title'));
+    $content = '
+    <div class="alert alert-info">
+        <h4><i class="rex-icon fa fa-info-circle"></i> ' . $addon->i18n('upkeep_confirm_deactivate') . '</h4>
+        <p>' . $addon->i18n('upkeep_frontend_deactivate_info') . '</p>
+        <form method="post">
+            <input type="hidden" name="action" value="deactivate">
+            <button type="submit" class="btn btn-success">
+                <i class="rex-icon fa fa-power-off"></i> ' . $addon->i18n('upkeep_deactivate') . '
+            </button>
+            <a href="' . rex_url::backendPage('upkeep/maintenance/frontend') . '" class="btn btn-default">
+                <i class="rex-icon fa fa-times"></i> ' . $addon->i18n('upkeep_cancel') . '
+            </a>
+        </form>
+    </div>';
+    echo $content;
+    return;
+}
+
 // Sicherstellen, dass Standard-Konfiguration vorhanden ist
 if ($addon->getConfig('multilanguage_enabled') === null) {
     $addon->setConfig('multilanguage_enabled', 1);

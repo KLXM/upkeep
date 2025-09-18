@@ -575,3 +575,232 @@ upkeep_ips_cleanup_manual = Manuelle Bereinigung
 upkeep_ips_cleanup_auto = Automatische Bereinigung
 upkeep_ips_cleanup_found = Es wurden {0} Datensätze gefunden, die bereinigt werden können.
 upkeep_ips_important_notes = Wichtige Hinweise
+
+# Mail Security
+upkeep_mail_security = Mail Security
+upkeep_mail_security_dashboard = Mail Security Dashboard
+upkeep_mail_security_badwords = Badwords
+upkeep_mail_security_blacklist = IP/Domain Blacklist
+upkeep_mail_security_settings = Mail Security Einstellungen
+upkeep_mail_security_threats = Bedrohungsprotokoll
+upkeep_mail_security_cleanup = Bereinigung
+upkeep_mail_security_quick_actions = Mail Security - Schnellaktionen
+upkeep_mail_security_quick_access = Schnellzugriff auf Mail Security Funktionen
+upkeep_mail_security_threats_blocked = Mail Bedrohungen
+upkeep_mail_security_badwords_detected = Badwords erkannt
+upkeep_mail_security_blacklist_entries = Blacklist Einträge
+upkeep_mail_security_status = Mail Security Status
+upkeep_mail_security_protection = Schutz aktiv
+upkeep_mail_security_email_protection = E-Mail Sicherheit & Spam-Schutz
+upkeep_dashboard_website_security = Website-Sicherheit & Angriffserkennung
+
+# Hilfe/Dokumentation
+help = Hilfe & Dokumentation
+upkeep_mail_security_help_title = Mail Security Dokumentation
+upkeep_maintenance_title = Wartung
+upkeep_maintenance_help_title = Wartung Dokumentation
+
+# Wartung Status
+upkeep_status_active = Aktiv
+upkeep_status_inactive = Inaktiv
+upkeep_configure = Konfigurieren
+upkeep_activate = Aktivieren
+upkeep_deactivate = Deaktivieren
+
+# Frontend Wartung
+upkeep_frontend_active_info = Frontend-Wartungsmodus ist aktiviert. Besucher sehen die Wartungsseite.
+upkeep_frontend_inactive_info = Frontend ist normal erreichbar.
+upkeep_allowed_ips = erlaubte IP-Adressen
+upkeep_confirm_activate = Wartungsmodus wirklich aktivieren?
+upkeep_confirm_deactivate = Wartungsmodus wirklich deaktivieren?
+
+# Backend Wartung
+upkeep_backend_active_info = Backend-Wartungsmodus aktiv. Nur Administratoren haben Zugang.
+upkeep_backend_inactive_info = Backend ist für alle Benutzer zugänglich.
+upkeep_confirm_activate_backend = Backend-Wartungsmodus wirklich aktivieren? Normale Benutzer werden ausgesperrt!
+upkeep_confirm_deactivate_backend = Backend-Wartungsmodus wirklich deaktivieren?
+
+# Domain Wartung
+upkeep_all_domains_locked = Alle Domains gesperrt
+upkeep_domains_locked = Domains gesperrt
+upkeep_no_domains_locked = Keine Domains gesperrt
+upkeep_total_domains = Domains insgesamt
+upkeep_locked_domains = Gesperrte Domains
+upkeep_yrewrite_required = YRewrite AddOn erforderlich
+upkeep_lock_all = Alle sperren
+upkeep_unlock_all = Alle entsperren
+upkeep_confirm_lock_all_domains = Wirklich alle Domains sperren?
+upkeep_confirm_unlock_all_domains = Wirklich alle Domains entsperren?
+
+# Wartung Hinweise
+upkeep_maintenance_active_notice = Wartungsmodus aktiv
+upkeep_maintenance_active_description = Ein oder mehrere Wartungsmodi sind aktiv. Stellen Sie sicher, dass alle geplanten Arbeiten abgeschlossen sind.
+upkeep_emergency_access = Notfallzugang
+upkeep_emergency_access_description = Bei kritischen Problemen können alle Wartungsmodi über diese Datei deaktiviert werden.
+
+# Frontend Wartung erweitert
+upkeep_frontend_activated = Frontend-Wartungsmodus wurde aktiviert.
+upkeep_frontend_deactivated = Frontend-Wartungsmodus wurde deaktiviert.
+upkeep_frontend_activate_warning = Besucher Ihrer Website sehen nach Aktivierung eine Wartungsseite.
+upkeep_frontend_deactivate_info = Der normale Website-Betrieb wird wiederhergestellt.
+upkeep_cancel = Abbrechen
+
+# Wartung Übersicht
+upkeep_maintenance_overview = Übersicht
+upkeep_all_domains_forced_locked = Globale Domain-Sperrung ist aktiv (kann in der Domain-Verwaltung geändert werden)
+
+# Security Advisor
+upkeep_security_advisor_title = Security Advisor
+upkeep_security_advisor_help_title = Security Advisor Dokumentation
+upkeep_security_reports = Detaillierte Berichte
+upkeep_security_score = Sicherheitsbewertung
+upkeep_security_status_success = Sicherheit gut
+upkeep_security_status_warning = Verbesserungen empfohlen
+upkeep_security_status_error = Kritische Probleme
+upkeep_security_issues = Sicherheitsprobleme
+upkeep_critical_issues = Kritische Probleme
+upkeep_warning_issues = Warnungen
+upkeep_critical_issues_warning = Sofortiges Handeln erforderlich!
+upkeep_last_scan = Letzte Prüfung
+upkeep_never_scanned = Nie gescannt
+upkeep_run_security_scan = Sicherheitsprüfung starten
+upkeep_detailed_report = Detaillierter Bericht
+upkeep_security_overview = Sicherheitsübersicht
+upkeep_top_recommendations = Top-Empfehlungen
+upkeep_no_critical_recommendations = Keine kritischen Empfehlungen! Ihre Sicherheit ist gut.
+upkeep_security_scan_completed = Sicherheitsscan abgeschlossen.
+
+# Live-Mode Aktivierung
+upkeep_enable_live_mode = Live-Mode aktivieren
+upkeep_live_mode_warning = Warnung: Deaktivierung nur über config.yml möglich!
+upkeep_live_mode_confirm = Der Live-Mode kann nur durch manuelle Bearbeitung der config.yml wieder deaktiviert werden. Fortfahren?
+upkeep_live_mode_success = Live-Mode erfolgreich aktiviert. Debug-Modus deaktiviert.
+upkeep_live_mode_error = Fehler beim Aktivieren des Live-Modes
+upkeep_quick_action = Quick Action
+
+# CSP Aktivierung
+upkeep_enable_csp = CSP aktivieren
+upkeep_csp_warning = CSP kann Layout und JavaScript beeinträchtigen!
+upkeep_csp_success = Content Security Policy wurde aktiviert. Prüfen Sie Ihre Website auf Funktionalität.
+upkeep_csp_error = Fehler beim Aktivieren der CSP
+upkeep_disable_csp = Backend-CSP deaktivieren
+upkeep_csp_disable_success = Backend Content Security Policy wurde deaktiviert.
+upkeep_csp_disable_error = Fehler beim Deaktivieren der CSP
+
+# Security Reports
+upkeep_security_reports_title = Security Advisor - Detaillierte Berichte
+upkeep_filter_all = Alle
+upkeep_filter_critical = Kritisch
+upkeep_filter_warnings = Warnungen
+upkeep_filter_passed = Bestanden
+upkeep_export_report = Bericht exportieren
+upkeep_back_to_dashboard = Zurück zum Dashboard
+upkeep_security_summary = Sicherheitszusammenfassung
+upkeep_overall_score = Gesamtbewertung
+upkeep_security_grade = Sicherheitsnote
+upkeep_total_checks = Gesamtprüfungen
+upkeep_scan_completed = Scan abgeschlossen
+upkeep_description = Beschreibung
+upkeep_details = Details
+upkeep_recommendations = Empfehlungen
+upkeep_no_checks_found_for_filter = Keine Prüfungen für diesen Filter gefunden.
+
+# Mail Reporting
+upkeep_mail_reporting_title = Mail Reporting
+upkeep_mail_reporting_info = Das Mail-Reporting-System sendet automatische E-Mail-Berichte über alle Upkeep-Aktivitäten. Es kann sofort senden oder Berichte sammeln und in Paketen versenden.
+upkeep_mail_reporting_enabled = Mail Reporting aktiviert
+upkeep_mail_reporting_email = E-Mail-Adresse
+upkeep_mail_reporting_email_note = Leer lassen, um die REDAXO-System-E-Mail zu verwenden
+upkeep_mail_reporting_name = Absendername
+upkeep_mail_reporting_key = Report-Schlüssel
+upkeep_mail_reporting_key_note = Zur Identifikation in E-Mails (z.B. Server-Name)
+upkeep_mail_reporting_mode = Versandmodus
+upkeep_mail_reporting_mode_immediate = Sofort versenden
+upkeep_mail_reporting_mode_bundle = Sammeln und als Paket versenden
+upkeep_mail_reporting_mode_note = Sofort: Jeder Bericht wird sofort versendet. Paket: Berichte werden gesammelt und regelmäßig als Bundle versendet.
+upkeep_mail_reporting_settings = Mail Reporting Einstellungen
+upkeep_mail_reporting_settings_updated = Mail Reporting Einstellungen wurden aktualisiert
+
+# Report Types
+upkeep_mail_reporting_types = Berichtstypen
+upkeep_mail_reporting_security_advisor = Security Advisor Berichte
+upkeep_mail_reporting_ips_threats = IPS Bedrohungsmeldungen
+upkeep_mail_reporting_maintenance = Wartungsmodus-Benachrichtigungen
+upkeep_mail_reporting_phpmailer_errors = PHPMailer Fehlerberichte
+upkeep_mail_reporting_phpmailer_errors_note = Ersetzt die Standard REDAXO Fehler-E-Mails
+upkeep_mail_reporting_status_reports = Status-Berichte
+upkeep_mail_reporting_status_reports_note = Regelmäßige Systemstatus-Übersichten
+upkeep_mail_reporting_bundle_interval = Bundle-Intervall (Sekunden)
+upkeep_mail_reporting_bundle_interval_note = Wie oft Bundle-Berichte versendet werden (300-86400 Sekunden)
+
+# Actions
+upkeep_mail_reporting_actions = Aktionen
+upkeep_mail_reporting_test = Test-E-Mail
+upkeep_mail_reporting_send_test = Test-E-Mail senden
+upkeep_mail_reporting_send_test_note = Sendet eine Test-E-Mail mit dem aktuellen Systemstatus
+upkeep_mail_reporting_test_sent = Test-E-Mail wurde erfolgreich versendet
+upkeep_mail_reporting_test_failed = Test-E-Mail konnte nicht versendet werden
+upkeep_mail_reporting_disabled = Mail Reporting ist deaktiviert
+
+upkeep_mail_reporting_bundle = Bundle-Bericht
+upkeep_mail_reporting_send_bundle = Bundle senden
+upkeep_mail_reporting_send_bundle_note = Sendet alle gesammelten Berichte des angegebenen Zeitraums
+upkeep_mail_reporting_bundle_sent = Bundle-Bericht wurde erfolgreich versendet
+upkeep_mail_reporting_bundle_failed = Bundle-Bericht konnte nicht versendet werden
+
+# Log Management
+upkeep_mail_reporting_log_management = Log-Verwaltung
+upkeep_mail_reporting_logs = Bericht-Logs
+upkeep_mail_reporting_logs_info = {0} Bericht-Dateien in {1}
+upkeep_mail_reporting_log_actions = Log-Aktionen
+upkeep_mail_reporting_delete_logs = Logs löschen
+upkeep_mail_reporting_delete_logs_confirm = Sind Sie sicher, dass Sie alle Log-Dateien löschen möchten?
+upkeep_mail_reporting_logs_deleted = Log-Dateien wurden gelöscht
+upkeep_mail_reporting_path_not_exists = Log-Verzeichnis existiert nicht: {0}
+
+# Information
+upkeep_mail_reporting_info_title = Mail Reporting Information
+upkeep_mail_reporting_info_immediate = Sofort-Modus
+upkeep_mail_reporting_info_immediate_desc = Jeder Bericht wird sofort per E-Mail versendet
+upkeep_mail_reporting_info_bundle = Bundle-Modus
+upkeep_mail_reporting_info_bundle_desc = Berichte werden gesammelt und regelmäßig als Paket versendet
+upkeep_mail_reporting_info_cronjob = Cronjob-Befehl
+
+# Common Labels
+upkeep_enabled = Aktiviert
+upkeep_disabled = Deaktiviert
+upkeep_save = Speichern
+
+# System Health
+upkeep_system_health_title = System Health
+upkeep_system_health_info = Die System Health API ermöglicht es, den Systemstatus über eine URL abzurufen. Ideal für Monitoring-Tools und externe Überwachung.
+upkeep_system_health_enabled = System Health API aktiviert
+upkeep_system_health_key = Health Key
+upkeep_system_health_key_note = Sicherheitsschlüssel für den API-Zugriff. Wird automatisch generiert.
+upkeep_system_health_generate_key = Neuen Key generieren
+upkeep_system_health_settings = System Health Einstellungen
+upkeep_system_health_settings_updated = System Health Einstellungen wurden aktualisiert
+upkeep_system_health_key_generated = Neuer Health Key wurde generiert
+upkeep_system_health_api_usage = API Verwendung
+upkeep_system_health_info_title = System Health Information
+upkeep_system_health_info_desc = Die System Health API stellt Informationen über REDAXO, Upkeep-Module, Sicherheitsstatus und Systemkonfiguration bereit.
+
+# Status Report Actions
+upkeep_mail_reporting_status_report = Status-Bericht
+upkeep_mail_reporting_send_status = Status-Bericht senden
+upkeep_mail_reporting_send_status_note = Sendet einen detaillierten Status-Bericht mit allen Upkeep-Systemdaten
+upkeep_mail_reporting_status_sent = Status-Bericht wurde erfolgreich versendet  
+upkeep_mail_reporting_status_failed = Status-Bericht konnte nicht versendet werden
+
+# Reporting
+upkeep_reporting_title = Reporting
+upkeep_reporting_description = Zentrale Übersicht über alle Reporting-Funktionen des Upkeep AddOns.
+upkeep_reporting_overview = Reporting-Übersicht
+upkeep_system_health_card_description = Überwacht die Systemintegrität und stellt Gesundheitsdaten über eine API zur Verfügung.
+upkeep_mail_reporting_card_description = Automatisches Reporting von Systemereignissen und Fehlern per E-Mail.
+upkeep_configure = Konfigurieren
+upkeep_enabled = Aktiviert
+upkeep_disabled = Deaktiviert
+upkeep_system_health_api_status = API-Status
+upkeep_mail_reporting_status = Status
+upkeep_mail_reporting_mode_label = Modus

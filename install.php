@@ -486,3 +486,176 @@ if ($existingPatterns === 0) {
         }
     }
 }
+
+// Mail Security Tabellen erstellen
+
+// Mail Rate Limiting Tabelle (getrennt von IPS Rate Limiting)
+rex_sql_table::get(rex::getTable('upkeep_mail_rate_limit'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_time', ['ip_address', 'created_at']))
+    ->ensure();
+
+// Mail Badwords Tabelle
+rex_sql_table::get(rex::getTable('upkeep_mail_badwords'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
+    ->ensureColumn(new rex_sql_column('description', 'text', true))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(100)', false, 'general'))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
+    ->ensure();
+
+// Mail Blacklist Tabelle (E-Mail-Adressen und Domains)
+rex_sql_table::get(rex::getTable('upkeep_mail_blacklist'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('email_address', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('domain', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', true)) // IPv4 und IPv6 Support
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(255)', true)) // Für Wildcards wie *.spam.com
+    ->ensureColumn(new rex_sql_column('blacklist_type', 'enum("email","domain","ip","pattern")', false, 'email'))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('reason', 'text', true))
+    ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('email_lookup', ['email_address', 'status']))
+    ->ensureIndex(new rex_sql_index('domain_lookup', ['domain', 'status']))
+    ->ensureIndex(new rex_sql_index('ip_lookup', ['ip_address', 'status']))
+    ->ensure();
+
+// Mail Threat Log Tabelle (detailliertes Logging für Mail-Bedrohungen)
+rex_sql_table::get(rex::getTable('upkeep_mail_threat_log'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false))
+    ->ensureColumn(new rex_sql_column('threat_type', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false))
+    ->ensureColumn(new rex_sql_column('pattern_matched', 'varchar(500)', true))
+    ->ensureColumn(new rex_sql_column('email_subject', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('recipient_email', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('sender_email', 'varchar(255)', true))
+    ->ensureColumn(new rex_sql_column('action_taken', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('details', 'text', true)) // JSON mit zusätzlichen Details
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('ip_time', ['ip_address', 'created_at']))
+    ->ensureIndex(new rex_sql_index('severity_time', ['severity', 'created_at']))
+    ->ensureIndex(new rex_sql_index('threat_type', ['threat_type']))
+    ->ensure();
+
+// Standard Mail Security Konfiguration setzen
+if ($addon->getConfig('mail_security_active') === null) {
+    $addon->setConfig('mail_security_active', false); // Standardmäßig deaktiviert
+}
+
+if ($addon->getConfig('mail_rate_limiting_enabled') === null) {
+    $addon->setConfig('mail_rate_limiting_enabled', false); // Standardmäßig deaktiviert
+}
+
+// Standard Rate-Limits für E-Mail-Versand (konservativ)
+if ($addon->getConfig('mail_rate_limit_per_minute') === null) {
+    $addon->setConfig('mail_rate_limit_per_minute', 10); // 10 E-Mails pro Minute
+}
+
+if ($addon->getConfig('mail_rate_limit_per_hour') === null) {
+    $addon->setConfig('mail_rate_limit_per_hour', 50); // 50 E-Mails pro Stunde
+}
+
+if ($addon->getConfig('mail_rate_limit_per_day') === null) {
+    $addon->setConfig('mail_rate_limit_per_day', 200); // 200 E-Mails pro Tag
+}
+
+// Mail Security Debug standardmäßig deaktiviert
+if ($addon->getConfig('mail_security_debug') === null) {
+    $addon->setConfig('mail_security_debug', false);
+}
+
+// Detailliertes Mail-Logging standardmäßig deaktiviert
+if ($addon->getConfig('mail_security_detailed_logging') === null) {
+    $addon->setConfig('mail_security_detailed_logging', false);
+}
+
+// Standard-Badwords einfügen, falls noch nicht vorhanden
+$sql = rex_sql::factory();
+$sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_mail_badwords'));
+$existingBadwords = (int) $sql->getValue('count');
+
+if ($existingBadwords === 0) {
+    $defaultBadwords = [
+        // Kritische Bedrohungen
+        'critical' => [
+            'viagra' => 'Pharmaceutical spam',
+            'cialis' => 'Pharmaceutical spam',
+            'bitcoin scam' => 'Cryptocurrency fraud',
+            'nigerian prince' => 'Classic fraud scheme',
+            'inheritance fund' => 'Advance fee fraud',
+            'lottery winner' => 'Lottery scam',
+            'covid vaccine scam' => 'Health fraud',
+            '<script' => 'JavaScript injection attempt',
+            '<?php' => 'PHP code injection attempt',
+            'eval(' => 'Code execution attempt',
+            'javascript:' => 'JavaScript protocol injection'
+        ],
+        
+        // Hohe Bedrohungen
+        'high' => [
+            'phishing' => 'Phishing attempt',
+            'malware' => 'Malware distribution',
+            'trojan' => 'Trojan horse',
+            'backdoor' => 'Backdoor access',
+            'botnet' => 'Botnet participation',
+            'keylogger' => 'Keylogger software',
+            'ransomware' => 'Ransomware threat',
+            'credit card theft' => 'Financial fraud',
+            'identity theft' => 'Identity fraud'
+        ],
+        
+        // Mittlere Bedrohungen
+        'medium' => [
+            'free money' => 'Money scam',
+            'work from home' => 'Work from home scam',
+            'make money fast' => 'Get rich quick scheme',
+            'guaranteed income' => 'Income fraud',
+            'risk free' => 'Investment scam',
+            'limited time offer' => 'Pressure tactic',
+            'act now' => 'Urgency spam',
+            'click here' => 'Suspicious link'
+        ],
+        
+        // Niedrige Bedrohungen (Profanity Filter)
+        'low' => [
+            'fuck' => 'Profanity',
+            'shit' => 'Profanity',
+            'damn' => 'Mild profanity',  
+            'bitch' => 'Offensive language',
+            'asshole' => 'Offensive language'
+        ]
+    ];
+    
+    $sql = rex_sql::factory();
+    $currentTime = date('Y-m-d H:i:s');
+    
+    foreach ($defaultBadwords as $severity => $words) {
+        foreach ($words as $word => $description) {
+            $sql->setTable(rex::getTable('upkeep_mail_badwords'));
+            $sql->setValue('pattern', $word);
+            $sql->setValue('description', $description);
+            $sql->setValue('category', $severity === 'low' ? 'profanity' : 'security');
+            $sql->setValue('severity', $severity);
+            $sql->setValue('is_regex', 0);
+            $sql->setValue('status', $severity === 'low' ? 0 : 1); // Profanity standardmäßig deaktiviert
+            $sql->setValue('created_at', $currentTime);
+            $sql->setValue('updated_at', $currentTime);
+            $sql->insert();
+        }
+    }
+}

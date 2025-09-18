@@ -1,352 +1,284 @@
 # REDAXO Upkeep AddOn
 
-Wartungs- und Sicherheits-AddOn für REDAXO CMS.
+Comprehensive maintenance and security add-on for REDAXO CMS.
 
-## Features
+## Core Features
 
-- **Wartungsmodi**: Frontend/Backend getrennt steuerbar
-- **Mehrsprachige Wartungsseiten**: Professionelle mehrsprachige Benutzeroberfläche
-- **URL-Redirects**: Mit Wildcard-Unterstützung (`/old/* -> /new/*`)
-- **Intrusion Prevention System (IPS)**: Automatischer Schutz vor Angriffen
-- **Monitor-Only Modus**: Nur loggen ohne automatisches Blocken
-- **Extension Points**: Externes Logging (fail2ban, Grafana, etc.)
-- **GeoIP-Integration**: Länder-Anzeige für IP-Adressen mit DB-IP.com
-- **Dashboard**: Live-Status aller Systeme mit schnellen Aktionen
-- **API/Console**: Remote-Management
+- **🔧 Maintenance Modes**: Frontend/Backend separately controllable
+- **🌐 Multilingual Maintenance Pages**: Professional multilingual user interface
+- **🔀 URL Redirects**: With wildcard support (`/old/* -> /new/*`)
+- **🛡️ Intrusion Prevention System (IPS)**: Automatic protection against attacks
+- **📊 Security Advisor**: SSL certificates, Live-Mode checks, CSP management
+- **💾 Mail Security**: Badword filter and spam protection for PHPMailer
+- **� Mail Reporting**: Comprehensive email reports for all security events
+- **🏥 System Health API**: JSON/Plain text monitoring endpoints for external tools
+- **�📈 Dashboard**: Live status of all systems with quick actions
+- **⚡ API/Console**: Remote management capabilities
 
 ## Installation
 
-1. AddOn installieren und aktivieren
-2. Konfiguration über Backend → Upkeep
+1. Install and activate the add-on via REDAXO Backend
+2. Configure via Backend → Upkeep
 
 ## Quick Start
 
-```bash
-# Wartungsmodus aktivieren
-Backend → Upkeep → Frontend/Backend
+1. **Maintenance Mode**: Backend → Upkeep → Frontend/Backend
+2. **Security Setup**: Backend → Upkeep → IPS → Enable Protection
+3. **Security Review**: Backend → Upkeep → Security Advisor → Run Scan
+4. **Mail Security**: Automatically active after installation
 
-# Mehrsprachige Wartungsseite konfigurieren
-Backend → Upkeep → Frontend → Mehrsprachigkeit aktivieren
+## Main Components
 
-# Redirects einrichten
-Backend → Upkeep → Domains
+All features include comprehensive documentation directly in the Backend interface:
 
-# IPS konfigurieren  
-Backend → Upkeep → IPS
-```
+### 🔧 Maintenance Modes
+**Location**: `Backend → Upkeep → Frontend/Backend`
+- Multilingual maintenance pages with elegant language switching
+- IP allowlists and password protection
+- URL bypass functionality with session management
 
-## Mehrsprachige Wartungsseiten einrichten
+### 🛡️ Intrusion Prevention System (IPS)  
+**Location**: `Backend → Upkeep → IPS`
+- Automatic threat detection with pattern matching
+- GeoIP integration and country-based analysis
+- Rate limiting and CAPTCHA system
+- Monitor-Only mode for safe testing
 
-### 1. Mehrsprachigkeit aktivieren
-```
-Backend → Upkeep → Frontend → "Mehrsprachige Wartungsseite" aktivieren
-```
+### 📊 Security Advisor
+**Location**: `Backend → Upkeep → Security Advisor`
+- SSL certificate validation
+- REDAXO Live-Mode detection
+- Server security headers analysis
+- CSP (Content Security Policy) management
+- Automated security scoring
 
-### 2. Sprachen konfigurieren
-Für jede gewünschte Sprache:
-- **Sprachcode**: z.B. `de`, `en`, `fr`, `es`, `it`
-- **Titel**: Überschrift der Wartungsseite
-- **Nachricht**: Wartungstext für die Benutzer
+### 💾 Mail Security
+**Location**: `Backend → Upkeep → Mail Security`  
+- Badword filtering for PHPMailer messages
+- Spam protection with customizable patterns
+- Integration via `PHPMAILER_PRE_SEND` extension point
 
-### 3. URL-Bypass konfigurieren (optional)
-```
-Backend → Upkeep → Frontend → "Bypass-Parameter für URL"
-```
-Beispiel: `?bypass=geheim123` umgeht den Wartungsmodus
+### 🔀 Domain & URL Management
+**Location**: `Backend → Upkeep → Domains`
+- Powerful redirect system with wildcard support
+- SEO-friendly HTTP status codes
+- Domain mapping capabilities
 
-### 4. Frontend-Ergebnis
-- Benutzer sehen eine professionelle mehrsprachige Wartungsseite
-- Sprachauswahl mit elegantem Weltkugel-Symbol
-- Sanfte Animationen beim Sprachwechsel
-- Cookie-basierte Sprachspeicherung
+### � Mail Reporting
+**Location**: `Backend → Upkeep → Mail Reporting`
+- Comprehensive email reports for all Upkeep activities
+- Immediate and bundle sending modes
+- Security Advisor scan reports
+- IPS threat notifications
+- Maintenance mode changes
+- PHPMailer error replacement
+- Console command for cronjob integration
 
-## Detaillierte Funktionen
+### 🏥 System Health API
+**Location**: `Backend → Upkeep → System Health`
+- JSON and plain text monitoring endpoints
+- External monitoring tool integration (Nagios, Zabbix, Grafana)
+- Comprehensive system status information
+- Secure API key authentication
+- Real-time health status levels
 
-### Dashboard
+### �📈 Dashboard
+**Location**: `Backend → Upkeep` (Main page)
+- Live system status overview
+- Security threat statistics  
+- Quick action buttons for common tasks
 
-Das Dashboard bietet eine zentrale Übersicht über alle Upkeep-Funktionen:
-
-- **System-Status**: Zeigt den aktuellen Status von Wartungsmodi, IPS und Domain-Redirects
-- **Sicherheits-Übersicht**: Live-Statistiken zu Bedrohungen und gesperrten IPs
-- **Länder-Analyse**: Visualisierung gesperrter IPs nach Herkunftsländern
-- **Schnellaktionen**: Direkter Zugriff auf wichtige Funktionen
-
-#### Status-Indikatoren
-
-- **Wartungsmodus aktiv**: Frontend/Backend-Status mit Anzahl erlaubter IPs
-- **System läuft normal**: Alle Dienste verfügbar
-- **Sicherheit aktiv**: IPS läuft mit Rate-Limiting-Status
-- **Monitor-Only Modus**: Nur Logging, keine automatischen Sperrungen
-- **Sicherheitswarnung**: IPS deaktiviert - sofortige Aktivierung empfohlen
-
-### Domain Mapping & URL-Redirects
-
-Leistungsstarkes System für Domain- und URL-Weiterleitungen:
-
-#### Funktionen
-- **Domain-Redirects**: Vollständige Domain-Weiterleitung
-- **Pfad-basierte Redirects**: Spezifische URL-Pfade umleiten
-- **Wildcard-Unterstützung**: Dynamische Pfad-Ersetzung (`/old/* -> /new/*`)
-- **HTTP-Status-Codes**: 301, 302, 307, 308 für SEO-optimierte Redirects
-- **Global aktivieren/deaktivieren**: Master-Schalter für alle Mappings
-
-#### Wildcard-Redirects
-```
-Quelle: example.com/old/*
-Ziel: https://new-domain.com/new/*
-
-Beispiel:
-example.com/old/category/page -> https://new-domain.com/new/category/page
-```
-
-#### Sicherheitsfeatures
-- **Path Traversal Schutz**: Verhindert "../" in Pfaden
-- **RFC-konforme Domain-Validierung**
-- **URL-Format-Prüfung**
-
-#### Fehlermeldungen
-- **Pfade müssen mit / beginnen**: Korrekte URL-Struktur erforderlich
-- **Wildcard-Pfade müssen mit /* enden**: Für dynamische Ersetzung
-- **Pfade dürfen keine ".." enthalten**: Sicherheitsschutz
-- **Target URL ist erforderlich**: Ziel-URL muss angegeben werden
-
-### Intrusion Prevention System (IPS)
-
-Umfassendes Sicherheitssystem mit mehreren Schutzebenen:
-
-#### Pattern-System
-
-**Standard-Patterns**: Vordefinierte Sicherheitsregeln für häufige Angriffsvektoren
-- **Kritische Bedrohungen**: Sofortige permanente Sperrung
-- **CMS-spezifische Zugriffe**: WordPress, TYPO3, etc. Detection
-- **Admin-Panel-Zugriffe**: Schutz vor Brute-Force-Angriffen
-- **Konfigurationsdateien**: Schutz sensibler Bereiche
-- **Web-Shells**: Malware-Upload-Erkennung
-- **SQL-Injection**: Pattern für Datenbankattacken
-- **RegEx-Patterns**: Erweiterte reguläre Ausdrücke
-
-**Custom Patterns**: Eigene Sicherheitsregeln definieren
-- **String-Patterns**: Einfache Textsuche
-- **RegEx-Patterns**: Komplexe Muster mit Flags
-- **Schweregrade**: LOW (nur Log) → CRITICAL (permanent gesperrt)
-
-#### Schweregrade und Konsequenzen
-- **LOW**: Nur Protokollierung, keine Sperrung
-- **MEDIUM**: 15 Minuten temporäre Sperrung
-- **HIGH**: 1 Stunde temporäre Sperrung
-- **CRITICAL**: Permanente Sperrung
-
-#### Monitor-Only Modus
-Für Testumgebungen und neue Pattern:
-- Alle Bedrohungen werden protokolliert
-- Keine automatischen Sperrungen
-- Ideal für Pattern-Tests vor Produktivsetzung
-
-#### GeoIP-Integration
-- **Länder-Erkennung**: IP-Adressen zu Ländern zuordnen
-- **Statistiken**: Bedrohungen nach Herkunftsländern
-- **DB-IP.com Database**: Kostenlose, regelmäßig aktualisierte GeoIP-Daten
-
-#### Positivliste (Whitelist)
-Vertrauenswürdige IPs vor automatischer Sperrung schützen:
-- **Admin-IPs**: Backend-Administratoren
-- **CDN-IPs**: Cloudflare, etc.
-- **Monitoring-Services**: Uptime-Checker
-- **API-Clients**: Vertrauenswürdige automatisierte Services
-- **CIDR-Notation**: IP-Bereiche (z.B. 192.168.1.0/24)
-
-#### Rate-Limiting
-- **Request-Limits**: Schutz vor DoS-Angriffen
-- **CAPTCHA-System**: Entsperrung für legitime Benutzer
-- **Vertrauens-Zeitraum**: 24h Schutz nach erfolgreicher CAPTCHA-Lösung
-
-#### Cleanup-System
-Automatische Datenbankpflege:
-- **Abgelaufene Sperrungen**: Temporäre Blocks automatisch entfernen
-- **Alte Logs**: Threat-Logs nach 30 Tagen löschen
-- **Rate-Limit-Einträge**: Nach 2 Stunden bereinigen
-- **CAPTCHA-Vertrauen**: Veraltete Einträge entfernen
-- **Cronjob-Integration**: Automatische nächtliche Bereinigung
-
-### Wartungsmodi
-
-#### Frontend-Wartungsmodus
-- **Mehrsprachige Wartungsseiten**: Professionelle Unterstützung für mehrere Sprachen
-- **Dynamische Sprachauswahl**: Elegant animierte Sprachauswahl mit neutralem Design
-- **Cookie-basierte Sprachpräferenzen**: Sprache wird für Folgebesuche gespeichert
-- **URL-Bypass mit Session-Management**: Wartungsmodus umgehen mit URL-Parameter
-- **Passwort-Schutz**: Optionaler Zugang für bestimmte Benutzer
-- **IP-Erlaubnisliste**: Bestimmte IPs vom Wartungsmodus ausschließen
-- **Angemeldete Benutzer**: REDAXO-Backend-Nutzer automatisch ausschließen
-- **Custom Wartungsseite**: Individueller Titel und Nachricht pro Sprache
-- **HTTP-Status-Codes**: SEO-konforme 503/403 Responses
-- **Retry-After Header**: Suchmaschinen-freundliche Signale
-
-#### Mehrsprachige Funktionen
-
-**Backend-Konfiguration**:
-- **Repeater-Interface**: Einfache Verwaltung mehrerer Sprachen
-- **Pro Sprache**: Titel, Nachricht und Sprachcode konfigurierbar
-- **Standard-Sprache**: Erste Sprache im Repeater dient als Standard
-- **Fallback-Logik**: Automatischer Fallback auf verfügbare Sprachen
-
-**Frontend-Features**:
-- **Sprachauswahl**: Neutrales Design mit Weltkugel-Symbol und Sprachcodes
-- **Animierte Übergänge**: Apple-ähnliche Drehungsanimationen beim Sprachwechsel  
-- **Responsive Design**: Optimiert für alle Bildschirmgrößen
-- **Barrierefreiheit**: Semantische Struktur und Keyboard-Navigation
-
-**URL-Parameter-Bypass**:
-- **Session-Management**: Einmalige Autorisierung für gesamte Session
-- **Sicherheitsintegration**: Kombiniert mit Passwort- und IP-Schutz
-- **Backend-Kontrolle**: Bypass-Funktion kann aktiviert/deaktiviert werden
-
-#### Backend-Wartungsmodus
-- **Admin-Only**: Nur Administratoren haben Zugang
-- **Vollständige Sperrung**: Alle anderen Benutzer werden ausgeschlossen
-- **Sichere Wartung**: Updates ohne Benutzer-Interferenz
-
-### API & Console Commands
-
-#### Console Commands
-```bash
-# Wartungsmodus steuern
-php redaxo/bin/console upkeep:mode frontend on
-php redaxo/bin/console upkeep:mode backend off
-
-# IPS Cleanup
-php redaxo/bin/console upkeep:ips:cleanup
-```
-
-#### REST API
-```php
-// API-Token in den Einstellungen generieren
-POST /upkeep/api
-{
-    "action": "toggle_maintenance",
-    "type": "frontend",
-    "active": true,
-    "token": "your-api-token"
-}
-```
-
-## Wartungshinweise und Best Practices
-
-### Standard-Pattern Bearbeitung
-⚠️ **Wichtige Hinweise**:
-- **Vorsicht bei RegEx**: Fehlerhafte reguläre Ausdrücke können Fehler verursachen
-- **Deaktivierung überdenken**: Patterns nur deaktivieren wenn sicher nicht benötigt
-- **Sofortige Wirkung**: Änderungen wirken sich sofort auf Sicherheitsprüfungen aus
-- **Backup empfohlen**: Vor größeren Änderungen Datenbank-Backup erstellen
-
-### Pattern-Kategorien Erklärung
-
-#### Kritische Bedrohungen (Immediate Block)
-Patterns die sofortige permanente Sperrung auslösen:
-- Shell-Injections: `system(`, `exec(`, `passthru(`
-- PHP-Code-Injection: `<?php`, `eval(`
-- Path-Traversal: `../../../`
-- Null-Byte-Attacks: `%00`
-
-#### CMS-spezifische Zugriffe
-Erkennung von CMS-Scanner und Exploit-Versuchen:
-- WordPress: `/wp-admin/`, `/wp-content/`, `wp-config.php`
-- TYPO3: `/typo3/`, `/typo3conf/`, `typo3temp`
-- Joomla: `/administrator/`, `configuration.php`
-- Drupal: `/sites/default/`, `settings.php`
-
-#### Admin-Panel-Zugriffe
-Schutz vor Brute-Force-Angriffen:
-- `/admin`, `/administrator`, `/login`
-- `/panel`, `/control`, `/manage`
-- `/backend`, `/cms`, `/wp-admin`
-
-### Cleanup und Performance
-
-#### Automatische Bereinigung
-- **Häufigkeit**: Bei jedem Request 1% Wahrscheinlichkeit
-- **Abgelaufene IPs**: Werden bei Prüfung automatisch ignoriert
-- **Alte Logs**: Werden nach 30 Tagen gelöscht
-- **Rate-Limits**: Werden nach 2 Stunden gelöscht
-- **Cronjob**: Tägliche vollständige Bereinigung empfohlen
-
-#### Performance-Optimierung
-- **Datenbank-Indizes**: Automatisch für alle relevanten Felder gesetzt
-- **Lazy Loading**: Nur benötigte Daten werden geladen
-- **Cache-friendly**: Minimale Datenbankabfragen pro Request
-
-## Fehlerbehebung
-
-### Häufige Probleme
-
-#### "Standard-Pattern-Tabelle fehlt"
-**Ursache**: AddOn-Installation unvollständig
-**Lösung**: AddOns → Upkeep → Reinstall
-
-#### "GeoIP-Datenbank nicht verfügbar"
-**Ursache**: GeoIP-Datenbank nicht installiert
-**Lösung**: IPS → Einstellungen → "GeoIP-Datenbank installieren"
-
-#### Legitime Benutzer werden gesperrt
-**Ursache**: Zu restriktive Custom Patterns
-**Lösung**: 
-1. Monitor-Only Modus aktivieren
-2. Logs analysieren 
-3. Patterns anpassen
-4. Betroffene IPs zur Positivliste hinzufügen
-
-#### Performance-Probleme
-**Ursache**: Große Threat-Log-Tabelle
-**Lösung**: IPS → Cleanup → Manuelle Bereinigung
-
-### Debug-Modus
-
-Für Entwicklung und Fehlersuche:
-```php
-// Debug-Modus in config.yml aktivieren
-ips_debug_mode: true
-```
-
-Debug-Informationen in REDAXO-Log:
-- Jede IPS-Prüfung wird protokolliert
-- Pattern-Matches werden geloggt
-- Performance-Metriken werden erfasst
-
-## Developer Info
-
-### Requirements
+## Requirements
 - REDAXO 5.15+
 - PHP 8.0+  
 - MySQL 5.7+ / MariaDB 10.3+
 
-### API Usage
+## Console Commands
 
-```php
-// Wartungsmodus
-use KLXM\Upkeep\Upkeep;
-$isActive = Upkeep::isFrontendMaintenanceActive();
+```bash
+# Maintenance modes
+php bin/console upkeep:mode frontend on|off
+php bin/console upkeep:mode backend on|off
+php bin/console upkeep:status
 
-// IPS
-use KLXM\Upkeep\IntrusionPrevention;
-IntrusionPrevention::checkRequest();
-$isBlocked = IntrusionPrevention::isBlocked($ip);
+# IPS cleanup
+php bin/console upkeep:ips:cleanup
 
-// Monitor-Only Modus (nur loggen, nicht blocken)
-$isMonitorOnly = IntrusionPrevention::isMonitorOnlyMode();
+# Security scans
+php bin/console upkeep:security:scan
 
-// Redirects
-use KLXM\Upkeep\DomainMapping;
-DomainMapping::checkAndRedirect();
-
-// GeoIP
-use KLXM\Upkeep\GeoIP;
-$country = GeoIP::getCountry('8.8.8.8');
-// Returns: ['code' => 'US', 'name' => 'United States']
-$countryInfo = IntrusionPrevention::getCountryByIp('8.8.8.8');
-// Returns: ['code' => 'US', 'name' => 'United States']
+# Mail reporting bundle
+php bin/console upkeep:mail-reporting:send-bundle --interval=3600
 ```
 
-### Extension Points
+## REST API
+
+### System Health API 🏥
+
+**Location**: `Backend → Upkeep → System Health`
+
+The System Health API provides comprehensive monitoring capabilities for external tools like Nagios, Zabbix, or custom monitoring scripts.
+
+#### Configuration
+1. **Enable API**: `Backend → Upkeep → System Health → Enable System Health API`
+2. **Generate Key**: Secure access key is automatically generated
+3. **Test Endpoints**: Use built-in test buttons to verify functionality
+
+#### API Endpoints
+
+```bash
+# Basic JSON Status
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY"
+
+# Detailed JSON Status (includes PHP extensions, database info)
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&detailed=1"
+
+# Plain Text Status (for simple monitoring)
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&format=text"
+```
+
+#### Response Format
+
+**JSON Response Structure:**
+```json
+{
+  "timestamp": 1726677123,
+  "datetime": "2025-09-18 18:40:43",
+  "server": "localhost",
+  "status": "ok",
+  "upkeep": {
+    "version": "1.9.0",
+    "maintenance": {
+      "frontend": false,
+      "backend": false
+    },
+    "security_advisor": {
+      "enabled": true,
+      "score": 85,
+      "grade": "B",
+      "critical_issues": 0,
+      "warning_issues": 2
+    },
+    "ips": {
+      "enabled": true,
+      "active": true,
+      "monitor_only": false,
+      "recent_threats_24h": 3
+    },
+    "mail_reporting": {
+      "enabled": true,
+      "mode": "bundle",
+      "log_files_count": 5
+    }
+  },
+  "redaxo": {
+    "version": "5.20.0",
+    "safe_mode": false,
+    "debug_mode": false,
+    "live_mode": true
+  },
+  "system": {
+    "php_version": "8.4.11",
+    "memory_limit": "256M",
+    "max_execution_time": "30"
+  }
+}
+```
+
+**Plain Text Response:**
+```
+Upkeep System Health Status
+===========================
+
+Status: OK
+Timestamp: 2025-09-18 18:40:43
+Server: localhost
+
+REDAXO:
+- Version: 5.20.0
+- Live Mode: Yes
+- Debug Mode: No
+
+Security Advisor:
+- Score: 85
+- Grade: B
+- Critical Issues: 0
+
+IPS:
+- Active: Yes
+- Recent Threats (24h): 3
+```
+
+#### Status Levels
+- **`ok`**: All systems operational
+- **`warning`**: Maintenance mode active or high threat activity
+- **`critical`**: Critical security issues detected
+
+#### Integration Examples
+
+**Nagios/Icinga Check:**
+```bash
+#!/bin/bash
+HEALTH_KEY="your-health-key-here"
+URL="https://your-domain.com/?rex-api-call=upkeep_system_health&health_key=$HEALTH_KEY"
+
+STATUS=$(curl -s "$URL" | jq -r '.status')
+
+case $STATUS in
+  "ok")     echo "OK - System healthy"; exit 0 ;;
+  "warning") echo "WARNING - System issues detected"; exit 1 ;;
+  "critical") echo "CRITICAL - Critical issues detected"; exit 2 ;;
+  *)        echo "UNKNOWN - Unable to determine status"; exit 3 ;;
+esac
+```
+
+**Grafana Integration:**
+```bash
+# Add as Grafana data source (JSON API)
+curl -H "Content-Type: application/json" \
+  "https://your-domain.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&detailed=1"
+```
+
+### Legacy Maintenance API
+
+```bash
+# Get system status
+curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=status"
+
+# Toggle maintenance mode
+curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=set_frontend&status=1"
+```
+
+## Extension Points
+
+```php
+// External threat logging
+rex_extension::register('UPKEEP_IPS_THREAT_DETECTED', function($ep) {
+    $data = $ep->getSubject();
+    // Send to external monitoring systems
+});
+
+// Mail security filtering
+rex_extension::register('PHPMAILER_PRE_SEND', function($ep) {
+    // Automatic badword and spam filtering
+});
+```
+
+## Database Tables
+
+The add-on creates these tables:
+- `rex_upkeep_domain_mapping` - URL redirects
+- `rex_upkeep_ips_blocked_ips` - Blocked IP addresses  
+- `rex_upkeep_ips_threat_log` - Security event log
+- `rex_upkeep_ips_custom_patterns` - Custom security patterns
+- `rex_upkeep_mail_security` - Mail filtering rules
+
+---
+
+**Maintainer**: KLXM Crossmedia  
+**License**: MIT
+
+🛡️ **Upkeep** - Your reliable partner for REDAXO maintenance and security!### Extension Points
 
 ```php
 // Externes Logging für jede erkannte Bedrohung

@@ -4,6 +4,7 @@
  */
 
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\MailSecurityFilter;
 
 $addon = rex_addon::get('upkeep');
 $user = rex::getUser();
@@ -67,6 +68,22 @@ try {
         'blocked_ips' => 0,
         'threats_today' => 0,
         'threats_week' => 0,
+        'top_threats' => []
+    ];
+}
+
+// Mail-Security-Statistiken abrufen
+try {
+    $mailStats = MailSecurityFilter::getDashboardStats();
+} catch (Exception $e) {
+    // Fallback wenn Mail-Security noch nicht installiert
+    $mailStats = [
+        'active' => false,
+        'threats_24h' => 0,
+        'blocked_emails_24h' => 0,
+        'badwords_count' => 0,
+        'blacklist_count' => 0,
+        'rate_limit_blocks_24h' => 0,
         'top_threats' => []
     ];
 }
@@ -351,7 +368,16 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         </div>
     </div>
 
-    <!-- Security Status Cards -->
+    <!-- Intrusion Prevention System (IPS) -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3 class="dashboard-section-title">
+                <i class="rex-icon fa-shield"></i> 
+                <?= $addon->i18n('upkeep_ips_title') ?>
+                <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_website_security') ?></small>
+            </h3>
+        </div>
+    </div>
     <div class="row dashboard-cards">
         <!-- Gesperrte IPs -->
         <div class="col-md-3 col-sm-6">
@@ -421,6 +447,90 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Mail Security System -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3 class="dashboard-section-title">
+                <i class="rex-icon fa-envelope-o"></i> 
+                <?= $addon->i18n('upkeep_mail_security') ?>
+                <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_email_protection') ?></small>
+            </h3>
+        </div>
+    </div>
+    <div class="row dashboard-cards">
+        <!-- Mail Threats Blocked -->
+        <div class="col-md-3 col-sm-6">
+            <a href="<?= rex_url::backendPage('upkeep/mail_security/threats') ?>" class="status-card-link">
+                <div class="panel panel-danger status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-shield"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="mail-threats-count"><?= $mailStats['threats_24h'] ?? 0 ?></h3>
+                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_threats_blocked') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Badwords Detected -->
+        <div class="col-md-3 col-sm-6">
+            <a href="<?= rex_url::backendPage('upkeep/mail_security/badwords') ?>" class="status-card-link">
+                <div class="panel panel-warning status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="badwords-count"><?= $mailStats['badwords_count'] ?? 0 ?></h3>
+                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_badwords_detected') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Blacklisted IPs/Domains -->
+        <div class="col-md-3 col-sm-6">
+            <a href="<?= rex_url::backendPage('upkeep/mail_security/blacklist') ?>" class="status-card-link">
+                <div class="panel panel-info status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-ban"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="blacklist-entries-count"><?= $mailStats['blacklist_count'] ?? 0 ?></h3>
+                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_blacklist_entries') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_active_blocks') ?></small>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Mail Security Status -->
+        <div class="col-md-3 col-sm-6">
+            <a href="<?= rex_url::backendPage('upkeep/mail_security/dashboard') ?>" class="status-card-link">
+                <div class="panel panel-success status-card">
+                    <div class="panel-body">
+                        <div class="status-icon">
+                            <i class="rex-icon fa-envelope-o"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3 id="mail-security-status"><?= ($mailStats['active'] ?? false) ? $addon->i18n('upkeep_active') : $addon->i18n('upkeep_inactive') ?></h3>
+                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_status') ?></p>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_protection') ?></small>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 
@@ -708,6 +818,49 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mail Security Quick Actions -->
+    <div class="row dashboard-section">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <i class="rex-icon fa-envelope-o"></i> 
+                        <?= $addon->i18n('upkeep_mail_security_quick_actions') ?>
+                        <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_quick_access') ?></small>
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6">
+                            <a href="<?= rex_url::backendPage('upkeep/mail_security/dashboard') ?>" class="btn btn-block btn-primary">
+                                <i class="rex-icon fa-dashboard"></i>
+                                <?= $addon->i18n('upkeep_mail_security_dashboard') ?>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="<?= rex_url::backendPage('upkeep/mail_security/badwords') ?>" class="btn btn-block btn-warning">
+                                <i class="rex-icon fa-exclamation-triangle"></i>
+                                <?= $addon->i18n('upkeep_mail_security_badwords') ?>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="<?= rex_url::backendPage('upkeep/mail_security/blacklist') ?>" class="btn btn-block btn-danger">
+                                <i class="rex-icon fa-ban"></i>
+                                <?= $addon->i18n('upkeep_mail_security_blacklist') ?>
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="<?= rex_url::backendPage('upkeep/mail_security/settings') ?>" class="btn btn-block btn-default">
+                                <i class="rex-icon fa-cog"></i>
+                                <?= $addon->i18n('upkeep_mail_security_settings') ?>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

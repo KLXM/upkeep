@@ -578,3 +578,222 @@ upkeep_ips_cleanup_manual = Manual cleanup
 upkeep_ips_cleanup_auto = Automatic cleanup
 upkeep_ips_cleanup_found = {0} records were found that can be cleaned up.
 upkeep_ips_important_notes = Important notes
+
+# Help/Documentation
+help = Help & Documentation
+upkeep_mail_security_help_title = Mail Security Documentation
+upkeep_maintenance_title = Maintenance
+upkeep_maintenance_help_title = Maintenance Documentation
+
+# Maintenance Status
+upkeep_status_active = Active
+upkeep_status_inactive = Inactive
+upkeep_configure = Configure
+upkeep_activate = Activate
+upkeep_deactivate = Deactivate
+
+# Frontend Maintenance
+upkeep_frontend_active_info = Frontend maintenance mode is active. Visitors see the maintenance page.
+upkeep_frontend_inactive_info = Frontend is normally accessible.
+upkeep_allowed_ips = allowed IP addresses
+upkeep_confirm_activate = Really activate maintenance mode?
+upkeep_confirm_deactivate = Really deactivate maintenance mode?
+
+# Backend Maintenance
+upkeep_backend_active_info = Backend maintenance mode active. Only administrators have access.
+upkeep_backend_inactive_info = Backend is accessible to all users.
+upkeep_confirm_activate_backend = Really activate backend maintenance mode? Normal users will be locked out!
+upkeep_confirm_deactivate_backend = Really deactivate backend maintenance mode?
+
+# Domain Maintenance
+upkeep_all_domains_locked = All domains locked
+upkeep_domains_locked = domains locked
+upkeep_no_domains_locked = No domains locked
+upkeep_total_domains = total domains
+upkeep_locked_domains = Locked domains
+upkeep_yrewrite_required = YRewrite addon required
+upkeep_lock_all = Lock all
+upkeep_unlock_all = Unlock all
+upkeep_confirm_lock_all_domains = Really lock all domains?
+upkeep_confirm_unlock_all_domains = Really unlock all domains?
+
+# Maintenance Notices
+upkeep_maintenance_active_notice = Maintenance mode active
+upkeep_maintenance_active_description = One or more maintenance modes are active. Make sure all planned work is completed.
+upkeep_emergency_access = Emergency access
+upkeep_emergency_access_description = In case of critical problems, all maintenance modes can be deactivated via this file.
+
+# Frontend Maintenance extended
+upkeep_frontend_activated = Frontend maintenance mode has been activated.
+upkeep_frontend_deactivated = Frontend maintenance mode has been deactivated.
+upkeep_frontend_activate_warning = Visitors to your website will see a maintenance page after activation.
+upkeep_frontend_deactivate_info = Normal website operation will be restored.
+upkeep_cancel = Cancel
+
+# Maintenance Overview
+upkeep_maintenance_overview = Overview
+upkeep_all_domains_forced_locked = Global domain lock is active (can be changed in domain management)
+
+# Security Advisor
+upkeep_security_advisor_title = Security Advisor
+upkeep_security_advisor_help_title = Security Advisor Documentation
+upkeep_security_reports = Detailed Reports
+upkeep_security_score = Security Score
+upkeep_security_status_success = Security Good
+upkeep_security_status_warning = Improvements Recommended
+upkeep_security_status_error = Critical Issues
+upkeep_security_issues = Security Issues
+upkeep_critical_issues = Critical Issues
+upkeep_warning_issues = Warnings
+upkeep_critical_issues_warning = Immediate action required!
+upkeep_last_scan = Last Scan
+upkeep_never_scanned = Never Scanned
+upkeep_run_security_scan = Run Security Scan
+upkeep_detailed_report = Detailed Report
+upkeep_security_overview = Security Overview
+upkeep_top_recommendations = Top Recommendations
+upkeep_no_critical_recommendations = No critical recommendations! Your security is good.
+upkeep_security_scan_completed = Security scan completed.
+
+# Security Reports
+upkeep_security_reports_title = Security Advisor - Detailed Reports
+upkeep_filter_all = All
+upkeep_filter_critical = Critical
+upkeep_filter_warnings = Warnings
+upkeep_filter_passed = Passed
+upkeep_export_report = Export Report
+upkeep_back_to_dashboard = Back to Dashboard
+upkeep_security_summary = Security Summary
+upkeep_overall_score = Overall Score
+upkeep_security_grade = Security Grade
+upkeep_total_checks = Total Checks
+upkeep_scan_completed = Scan completed
+upkeep_description = Description
+upkeep_details = Details
+upkeep_recommendations = Recommendations
+upkeep_no_checks_found_for_filter = No checks found for this filter.
+
+# Live-Mode Activation
+upkeep_enable_live_mode = Enable Live Mode
+upkeep_live_mode_warning = Warning: Can only be deactivated via config.yml!
+upkeep_live_mode_confirm = Live mode can only be deactivated by manually editing config.yml. Continue?
+upkeep_live_mode_success = Live mode successfully activated. Debug mode disabled.
+upkeep_live_mode_error = Error activating live mode
+upkeep_quick_action = Quick Action
+
+# CSP Activation
+upkeep_enable_csp = Enable CSP
+upkeep_csp_warning = CSP may affect layout and JavaScript functionality!
+upkeep_csp_success = Content Security Policy has been activated. Check your website functionality.
+upkeep_csp_error = Error activating CSP
+upkeep_disable_csp = Disable Backend CSP
+upkeep_csp_disable_success = Backend Content Security Policy has been disabled.
+upkeep_csp_disable_error = Error disabling CSP
+
+# Mail Reporting
+upkeep_mail_reporting_title = Mail Reporting
+upkeep_mail_reporting_info = The Mail Reporting system sends automatic email reports about all Upkeep activities. It can send immediately or collect reports and send in bundles.
+upkeep_mail_reporting_enabled = Mail Reporting enabled
+upkeep_mail_reporting_email = Email address
+upkeep_mail_reporting_email_note = Leave empty to use REDAXO system email
+upkeep_mail_reporting_name = Sender name
+upkeep_mail_reporting_key = Report key
+upkeep_mail_reporting_key_note = For identification in emails (e.g. server name)
+upkeep_mail_reporting_mode = Sending mode
+upkeep_mail_reporting_mode_immediate = Send immediately
+upkeep_mail_reporting_mode_bundle = Collect and send as bundle
+upkeep_mail_reporting_mode_note = Immediate: Each report is sent immediately. Bundle: Reports are collected and sent regularly as bundles.
+upkeep_mail_reporting_settings = Mail Reporting Settings
+upkeep_mail_reporting_settings_updated = Mail Reporting settings have been updated
+
+# Report Types
+upkeep_mail_reporting_types = Report Types
+upkeep_mail_reporting_security_advisor = Security Advisor Reports
+upkeep_mail_reporting_ips_threats = IPS Threat Notifications
+upkeep_mail_reporting_maintenance = Maintenance Mode Notifications
+upkeep_mail_reporting_phpmailer_errors = PHPMailer Error Reports
+upkeep_mail_reporting_phpmailer_errors_note = Replaces standard REDAXO error emails
+upkeep_mail_reporting_status_reports = Status Reports
+upkeep_mail_reporting_status_reports_note = Regular system status overviews
+upkeep_mail_reporting_bundle_interval = Bundle interval (seconds)
+upkeep_mail_reporting_bundle_interval_note = How often bundle reports are sent (300-86400 seconds)
+
+# Actions
+upkeep_mail_reporting_actions = Actions
+upkeep_mail_reporting_test = Test Email
+upkeep_mail_reporting_send_test = Send test email
+upkeep_mail_reporting_send_test_note = Sends a test email with current system status
+upkeep_mail_reporting_test_sent = Test email was sent successfully
+upkeep_mail_reporting_test_failed = Test email could not be sent
+upkeep_mail_reporting_disabled = Mail Reporting is disabled
+
+upkeep_mail_reporting_bundle = Bundle Report
+upkeep_mail_reporting_send_bundle = Send bundle
+upkeep_mail_reporting_send_bundle_note = Sends all collected reports from specified time period
+upkeep_mail_reporting_bundle_sent = Bundle report was sent successfully
+upkeep_mail_reporting_bundle_failed = Bundle report could not be sent
+
+# Log Management
+upkeep_mail_reporting_log_management = Log Management
+upkeep_mail_reporting_logs = Report Logs
+upkeep_mail_reporting_logs_info = {0} report files in {1}
+upkeep_mail_reporting_log_actions = Log Actions
+upkeep_mail_reporting_delete_logs = Delete logs
+upkeep_mail_reporting_delete_logs_confirm = Are you sure you want to delete all log files?
+upkeep_mail_reporting_logs_deleted = Log files have been deleted
+upkeep_mail_reporting_path_not_exists = Log directory does not exist: {0}
+
+# Information
+upkeep_mail_reporting_info_title = Mail Reporting Information
+upkeep_mail_reporting_info_immediate = Immediate Mode
+upkeep_mail_reporting_info_immediate_desc = Each report is sent immediately via email
+upkeep_mail_reporting_info_bundle = Bundle Mode
+upkeep_mail_reporting_info_bundle_desc = Reports are collected and sent regularly as bundles
+upkeep_mail_reporting_info_cronjob = Cronjob Command
+
+# Common Labels
+upkeep_enabled = Enabled
+upkeep_disabled = Disabled
+upkeep_save = Save
+
+# System Health
+upkeep_system_health_title = System Health
+upkeep_system_health_info = The System Health API allows retrieving system status via URL. Ideal for monitoring tools and external supervision.
+upkeep_system_health_enabled = System Health API enabled
+upkeep_system_health_key = Health Key
+upkeep_system_health_key_note = Security key for API access. Generated automatically.
+upkeep_system_health_generate_key = Generate new key
+upkeep_system_health_settings = System Health Settings
+upkeep_system_health_settings_updated = System Health settings have been updated
+upkeep_system_health_key_generated = New Health Key has been generated
+upkeep_system_health_api_usage = API Usage
+upkeep_system_health_info_title = System Health Information
+upkeep_system_health_info_desc = The System Health API provides information about REDAXO, Upkeep modules, security status and system configuration.
+
+# Status Report Actions
+upkeep_mail_reporting_status_report = Status Report
+upkeep_mail_reporting_send_status = Send status report
+upkeep_mail_reporting_send_status_note = Sends a detailed status report with all Upkeep system data
+upkeep_mail_reporting_status_sent = Status report was sent successfully
+upkeep_mail_reporting_status_failed = Status report could not be sent
+
+# Status Report Actions
+upkeep_mail_reporting_status_report = Status Report
+upkeep_mail_reporting_send_status = Send status report
+upkeep_mail_reporting_send_status_note = Sends a detailed status report with all Upkeep system data
+upkeep_mail_reporting_status_sent = Status report was sent successfully
+upkeep_mail_reporting_status_failed = Status report could not be sent
+
+
+# Reporting
+upkeep_reporting_title = Reporting
+upkeep_reporting_description = Central overview of all reporting functions of the Upkeep AddOn.
+upkeep_reporting_overview = Reporting Overview
+upkeep_system_health_card_description = Monitors system integrity and provides health data via API.
+upkeep_mail_reporting_card_description = Automatic reporting of system events and errors via email.
+upkeep_configure = Configure
+upkeep_enabled = Enabled
+upkeep_disabled = Disabled
+upkeep_system_health_api_status = API Status
+upkeep_mail_reporting_status = Status
+upkeep_mail_reporting_mode_label = Mode
