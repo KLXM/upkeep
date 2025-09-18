@@ -66,3 +66,35 @@ if (rex_addon::get('phpmailer')->isAvailable()) {
         }
     });
 }
+
+// Security Advisor API Route registrieren
+if (rex::isBackend() && rex_request::get('api') === 'security_advisor') {
+    include rex_addon::get('upkeep')->getPath('api/security_advisor.php');
+    exit;
+}
+
+// Content Security Policy für Backend - nach Security AddOn Vorbild
+if (rex::isBackend() && rex_addon::get('upkeep')->getConfig('csp_enabled', false)) {
+    // CSP Header direkt in boot.php setzen wie das Security AddOn
+    $cspRules = [
+        'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        'style-src' => ["'self'", "'unsafe-inline'"],
+        'base-uri' => ["'self'"],
+        'object-src' => ["'none'"],
+        'frame-ancestors' => ["'self'"],
+        'form-action' => ["'self'"],
+        'img-src' => ["'self'", 'data:', 'https:'],
+        'connect-src' => ["'self'"]
+    ];
+    
+    // CSP-String bauen
+    $cspValues = [];
+    foreach ($cspRules as $directive => $sources) {
+        $cspValues[] = $directive . ' ' . implode(' ', $sources);
+    }
+    $cspHeader = implode('; ', $cspValues);
+    
+    rex_response::setHeader('Content-Security-Policy', $cspHeader);
+    rex_response::sendCacheControl('no-store');
+    rex_response::setHeader('Pragma', 'no-cache');
+}

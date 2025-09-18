@@ -633,3 +633,60 @@ upkeep_cancel = Cancel
 # Maintenance Overview
 upkeep_maintenance_overview = Overview
 upkeep_all_domains_forced_locked = Global domain lock is active (can be changed in domain management)
+
+# Security Advisor
+upkeep_security_advisor_title = Security Advisor
+upkeep_security_advisor_help_title = Security Advisor Documentation
+upkeep_security_reports = Detailed Reports
+upkeep_security_score = Security Score
+upkeep_security_status_success = Security Good
+upkeep_security_status_warning = Improvements Recommended
+upkeep_security_status_error = Critical Issues
+upkeep_security_issues = Security Issues
+upkeep_critical_issues = Critical Issues
+upkeep_warning_issues = Warnings
+upkeep_critical_issues_warning = Immediate action required!
+upkeep_last_scan = Last Scan
+upkeep_never_scanned = Never Scanned
+upkeep_run_security_scan = Run Security Scan
+upkeep_detailed_report = Detailed Report
+upkeep_security_overview = Security Overview
+upkeep_top_recommendations = Top Recommendations
+upkeep_no_critical_recommendations = No critical recommendations! Your security is good.
+upkeep_security_scan_completed = Security scan completed.
+
+# Security Reports
+upkeep_security_reports_title = Security Advisor - Detailed Reports
+upkeep_filter_all = All
+upkeep_filter_critical = Critical
+upkeep_filter_warnings = Warnings
+upkeep_filter_passed = Passed
+upkeep_export_report = Export Report
+upkeep_back_to_dashboard = Back to Dashboard
+upkeep_security_summary = Security Summary
+upkeep_overall_score = Overall Score
+upkeep_security_grade = Security Grade
+upkeep_total_checks = Total Checks
+upkeep_scan_completed = Scan completed
+upkeep_description = Description
+upkeep_details = Details
+upkeep_recommendations = Recommendations
+upkeep_no_checks_found_for_filter = No checks found for this filter.
+
+# Live-Mode Activation
+upkeep_enable_live_mode = Enable Live Mode
+upkeep_live_mode_warning = Warning: Can only be deactivated via config.yml!
+upkeep_live_mode_confirm = Live mode can only be deactivated by manually editing config.yml. Continue?
+upkeep_live_mode_success = Live mode successfully activated. Debug mode disabled.
+upkeep_live_mode_error = Error activating live mode
+upkeep_quick_action = Quick Action
+
+# CSP Activation
+upkeep_enable_csp = Enable CSP
+upkeep_csp_warning = CSP may affect layout and JavaScript functionality!
+upkeep_csp_success = Content Security Policy has been activated. Check your website functionality.
+upkeep_csp_error = Error activating CSP
+upkeep_disable_csp = Disable Backend CSP
+upkeep_csp_disable_success = Backend Content Security Policy has been disabled.
+upkeep_csp_disable_error = Error disabling CSP
+

@@ -648,3 +648,60 @@ upkeep_cancel = Abbrechen
 # Wartung Übersicht
 upkeep_maintenance_overview = Übersicht
 upkeep_all_domains_forced_locked = Globale Domain-Sperrung ist aktiv (kann in der Domain-Verwaltung geändert werden)
+
+# Security Advisor
+upkeep_security_advisor_title = Security Advisor
+upkeep_security_advisor_help_title = Security Advisor Dokumentation
+upkeep_security_reports = Detaillierte Berichte
+upkeep_security_score = Sicherheitsbewertung
+upkeep_security_status_success = Sicherheit gut
+upkeep_security_status_warning = Verbesserungen empfohlen
+upkeep_security_status_error = Kritische Probleme
+upkeep_security_issues = Sicherheitsprobleme
+upkeep_critical_issues = Kritische Probleme
+upkeep_warning_issues = Warnungen
+upkeep_critical_issues_warning = Sofortiges Handeln erforderlich!
+upkeep_last_scan = Letzte Prüfung
+upkeep_never_scanned = Nie gescannt
+upkeep_run_security_scan = Sicherheitsprüfung starten
+upkeep_detailed_report = Detaillierter Bericht
+upkeep_security_overview = Sicherheitsübersicht
+upkeep_top_recommendations = Top-Empfehlungen
+upkeep_no_critical_recommendations = Keine kritischen Empfehlungen! Ihre Sicherheit ist gut.
+upkeep_security_scan_completed = Sicherheitsscan abgeschlossen.
+
+# Live-Mode Aktivierung
+upkeep_enable_live_mode = Live-Mode aktivieren
+upkeep_live_mode_warning = Warnung: Deaktivierung nur über config.yml möglich!
+upkeep_live_mode_confirm = Der Live-Mode kann nur durch manuelle Bearbeitung der config.yml wieder deaktiviert werden. Fortfahren?
+upkeep_live_mode_success = Live-Mode erfolgreich aktiviert. Debug-Modus deaktiviert.
+upkeep_live_mode_error = Fehler beim Aktivieren des Live-Modes
+upkeep_quick_action = Quick Action
+
+# CSP Aktivierung
+upkeep_enable_csp = CSP aktivieren
+upkeep_csp_warning = CSP kann Layout und JavaScript beeinträchtigen!
+upkeep_csp_success = Content Security Policy wurde aktiviert. Prüfen Sie Ihre Website auf Funktionalität.
+upkeep_csp_error = Fehler beim Aktivieren der CSP
+upkeep_disable_csp = Backend-CSP deaktivieren
+upkeep_csp_disable_success = Backend Content Security Policy wurde deaktiviert.
+upkeep_csp_disable_error = Fehler beim Deaktivieren der CSP
+
+# Security Reports
+upkeep_security_reports_title = Security Advisor - Detaillierte Berichte
+upkeep_filter_all = Alle
+upkeep_filter_critical = Kritisch
+upkeep_filter_warnings = Warnungen
+upkeep_filter_passed = Bestanden
+upkeep_export_report = Bericht exportieren
+upkeep_back_to_dashboard = Zurück zum Dashboard
+upkeep_security_summary = Sicherheitszusammenfassung
+upkeep_overall_score = Gesamtbewertung
+upkeep_security_grade = Sicherheitsnote
+upkeep_total_checks = Gesamtprüfungen
+upkeep_scan_completed = Scan abgeschlossen
+upkeep_description = Beschreibung
+upkeep_details = Details
+upkeep_recommendations = Empfehlungen
+upkeep_no_checks_found_for_filter = Keine Prüfungen für diesen Filter gefunden.
+

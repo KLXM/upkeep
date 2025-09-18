@@ -29,6 +29,13 @@ page:
                 default_patterns: {title: 'translate:upkeep_ips_default_patterns', icon: rex-icon fa fa-cogs}
                 settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
                 cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
+        security_advisor:
+            title: 'translate:upkeep_security_advisor_title'
+            icon: rex-icon fa fa-shield
+            perm: upkeep[security]
+            subpages:
+                reports: {title: 'translate:upkeep_security_reports', icon: rex-icon fa fa-list}
+                help: {title: 'translate:upkeep_security_advisor_help_title', subPath: SECURITY_ADVISOR.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
         mail_security:
             title: 'Mail Security'
             icon: rex-icon fa fa-envelope-o
@@ -77,6 +84,7 @@ permissions:
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
     upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
+    upkeep:security:scan: rex_upkeep_security_scan_command
 
 default_config:
     frontend_active: 0
