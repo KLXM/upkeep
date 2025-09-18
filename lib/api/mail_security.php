@@ -91,8 +91,8 @@ class rex_api_upkeep_mail_security extends rex_api_function
                 return $this->getStatus();
             case 'badwords':
                 return $this->getBadwords();
-            case 'blacklist':
-                return $this->getBlacklist();
+            case 'blocklist':
+                return $this->getBlocklist();
             case 'threats':
                 return $this->getThreats();
             case 'stats':
@@ -121,8 +121,8 @@ class rex_api_upkeep_mail_security extends rex_api_function
         switch ($endpoint) {
             case 'badwords':
                 return $this->addBadword($data);
-            case 'blacklist':
-                return $this->addToBlacklist($data);
+            case 'blocklist':
+                return $this->addToBlocklist($data);
             default:
                 return $this->sendError('Invalid endpoint');
         }
@@ -148,8 +148,8 @@ class rex_api_upkeep_mail_security extends rex_api_function
         switch ($endpoint) {
             case 'badwords':
                 return $this->updateBadword($id, $data);
-            case 'blacklist':
-                return $this->updateBlacklistEntry($id, $data);
+            case 'blocklist':
+                return $this->updateBlocklistEntry($id, $data);
             default:
                 return $this->sendError('Invalid endpoint');
         }
@@ -170,8 +170,8 @@ class rex_api_upkeep_mail_security extends rex_api_function
         switch ($endpoint) {
             case 'badwords':
                 return $this->deleteBadword($id);
-            case 'blacklist':
-                return $this->deleteBlacklistEntry($id);
+            case 'blocklist':
+                return $this->deleteBlocklistEntry($id);
             default:
                 return $this->sendError('Invalid endpoint');
         }
@@ -192,7 +192,7 @@ class rex_api_upkeep_mail_security extends rex_api_function
                     'threats_24h' => $stats['threats_24h'],
                     'blocked_emails_24h' => $stats['blocked_emails_24h'] ?? 0,
                     'badwords_count' => $stats['badwords_count'],
-                    'blacklist_count' => $stats['blacklist_count'],
+                    'blocklist_count' => $stats['blocklist_count'],
                     'rate_limit_blocks_24h' => $stats['rate_limit_blocks_24h']
                 ]
             ]);
@@ -334,9 +334,9 @@ class rex_api_upkeep_mail_security extends rex_api_function
     }
 
     /**
-     * Get Blacklist
+     * Get Blocklist
      */
-    private function getBlacklist(): rex_api_result
+    private function getBlocklist(): rex_api_result
     {
         try {
             $sql = rex_sql::factory();
@@ -345,7 +345,7 @@ class rex_api_upkeep_mail_security extends rex_api_function
             $type = rex_request::get('type', 'string', null);
             $status = rex_request::get('status', 'int', null);
 
-            $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blacklist');
+            $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist');
             $params = [];
             $where = [];
 
@@ -368,26 +368,26 @@ class rex_api_upkeep_mail_security extends rex_api_function
             $params[] = $offset;
 
             $sql->setQuery($query, $params);
-            $blacklist = $sql->getArray();
+            $blocklist = $sql->getArray();
 
             return $this->sendResponse([
                 'status' => 'success',
-                'data' => $blacklist,
+                'data' => $blocklist,
                 'meta' => [
                     'limit' => $limit,
                     'offset' => $offset,
-                    'count' => count($blacklist)
+                    'count' => count($blocklist)
                 ]
             ]);
         } catch (Exception $e) {
-            return $this->sendError('Failed to get blacklist: ' . $e->getMessage(), 500);
+            return $this->sendError('Failed to get blocklist: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * Add to Blacklist
+     * Add to Blocklist
      */
-    private function addToBlacklist(array $data): rex_api_result
+    private function addToBlocklist(array $data): rex_api_result
     {
         try {
             if (empty($data['entry']) || empty($data['type'])) {
@@ -395,7 +395,7 @@ class rex_api_upkeep_mail_security extends rex_api_function
             }
 
             $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+            $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
             $sql->setValue('entry', $data['entry']);
             $sql->setValue('type', $data['type']);
             $sql->setValue('reason', $data['reason'] ?? '');
@@ -414,18 +414,18 @@ class rex_api_upkeep_mail_security extends rex_api_function
 
             return $this->sendResponse([
                 'status' => 'success',
-                'message' => 'Entry added to blacklist successfully',
+                'message' => 'Entry added to blocklist successfully',
                 'data' => ['id' => $sql->getLastId()]
             ], 201);
         } catch (Exception $e) {
-            return $this->sendError('Failed to add to blacklist: ' . $e->getMessage(), 500);
+            return $this->sendError('Failed to add to blocklist: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * Update Blacklist Entry
+     * Update Blocklist Entry
      */
-    private function updateBlacklistEntry(int $id, array $data): rex_api_result
+    private function updateBlocklistEntry(int $id, array $data): rex_api_result
     {
         try {
             if ($id <= 0) {
@@ -433,7 +433,7 @@ class rex_api_upkeep_mail_security extends rex_api_function
             }
 
             $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+            $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
             $sql->setWhere(['id' => $id]);
 
             if (isset($data['entry'])) $sql->setValue('entry', $data['entry']);
@@ -447,20 +447,20 @@ class rex_api_upkeep_mail_security extends rex_api_function
             if ($affected > 0) {
                 return $this->sendResponse([
                     'status' => 'success',
-                    'message' => 'Blacklist entry updated successfully'
+                    'message' => 'Blocklist entry updated successfully'
                 ]);
             } else {
-                return $this->sendError('Blacklist entry not found', 404);
+                return $this->sendError('Blocklist entry not found', 404);
             }
         } catch (Exception $e) {
-            return $this->sendError('Failed to update blacklist entry: ' . $e->getMessage(), 500);
+            return $this->sendError('Failed to update blocklist entry: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * Delete Blacklist Entry
+     * Delete Blocklist Entry
      */
-    private function deleteBlacklistEntry(int $id): rex_api_result
+    private function deleteBlocklistEntry(int $id): rex_api_result
     {
         try {
             if ($id <= 0) {
@@ -468,20 +468,20 @@ class rex_api_upkeep_mail_security extends rex_api_function
             }
 
             $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+            $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
             $sql->setWhere(['id' => $id]);
             $affected = $sql->delete();
 
             if ($affected > 0) {
                 return $this->sendResponse([
                     'status' => 'success',
-                    'message' => 'Blacklist entry deleted successfully'
+                    'message' => 'Blocklist entry deleted successfully'
                 ]);
             } else {
-                return $this->sendError('Blacklist entry not found', 404);
+                return $this->sendError('Blocklist entry not found', 404);
             }
         } catch (Exception $e) {
-            return $this->sendError('Failed to delete blacklist entry: ' . $e->getMessage(), 500);
+            return $this->sendError('Failed to delete blocklist entry: ' . $e->getMessage(), 500);
         }
     }
 

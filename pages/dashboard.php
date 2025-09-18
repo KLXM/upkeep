@@ -82,7 +82,7 @@ try {
         'threats_24h' => 0,
         'blocked_emails_24h' => 0,
         'badwords_count' => 0,
-        'blacklist_count' => 0,
+        'blocklist_count' => 0,
         'rate_limit_blocks_24h' => 0,
         'top_threats' => []
     ];
@@ -497,17 +497,17 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
             </a>
         </div>
 
-        <!-- Blacklisted IPs/Domains -->
+        <!-- Blocklisted IPs/Domains -->
         <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/mail_security/blacklist') ?>" class="status-card-link">
+            <a href="<?= rex_url::backendPage('upkeep/mail_security/blocklist') ?>" class="status-card-link">
                 <div class="panel panel-info status-card">
                     <div class="panel-body">
                         <div class="status-icon">
                             <i class="rex-icon fa-ban"></i>
                         </div>
                         <div class="status-content">
-                            <h3 id="blacklist-entries-count"><?= $mailStats['blacklist_count'] ?? 0 ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_blacklist_entries') ?></p>
+                            <h3 id="blocklist-entries-count"><?= $mailStats['blocklist_count'] ?? 0 ?></h3>
+                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_blocklist_entries') ?></p>
                             <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_active_blocks') ?></small>
                         </div>
                     </div>
@@ -849,9 +849,9 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             </a>
                         </div>
                         <div class="col-md-3 col-sm-6">
-                            <a href="<?= rex_url::backendPage('upkeep/mail_security/blacklist') ?>" class="btn btn-block btn-danger">
+                            <a href="<?= rex_url::backendPage('upkeep/mail_security/blocklist') ?>" class="btn btn-block btn-danger">
                                 <i class="rex-icon fa-ban"></i>
-                                <?= $addon->i18n('upkeep_mail_security_blacklist') ?>
+                                <?= $addon->i18n('upkeep_mail_security_blocklist') ?>
                             </a>
                         </div>
                         <div class="col-md-3 col-sm-6">

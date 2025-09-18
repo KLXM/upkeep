@@ -1,5 +1,5 @@
 package: upkeep
-version: '1.8.1'
+version: '2.0.0-alpha1'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
@@ -44,7 +44,7 @@ page:
                 dashboard: {title: 'Dashboard', icon: rex-icon fa fa-dashboard}
                 threats: {title: 'Threat Log', icon: rex-icon fa fa-exclamation-triangle}
                 badwords: {title: 'Badwords', icon: rex-icon fa fa-filter}
-                blacklist: {title: 'Blacklist', icon: rex-icon fa fa-ban}
+                blocklist: {title: 'Blocklist', icon: rex-icon fa fa-ban}
                 settings: {title: 'Settings', icon: rex-icon fa fa-cog}
                 cleanup: {title: 'Cleanup', icon: rex-icon fa fa-trash}
                 help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
