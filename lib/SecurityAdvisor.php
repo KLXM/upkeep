@@ -41,6 +41,8 @@ class SecurityAdvisor
         $this->checkServerHeaders();
         $this->checkPhpConfiguration();
         $this->checkSystemVersions();
+        $this->checkWebserverVersion();
+        $this->checkProductionMode();
         $this->checkDirectoryPermissions();
         $this->checkDatabaseSecurity();
         $this->checkContentSecurityPolicy();
@@ -350,15 +352,16 @@ class SecurityAdvisor
     }
 
     /**
-     * Prüft PHP-Konfiguration
+     * Prüft PHP-Konfiguration und System-Sicherheitseinstellungen
      */
     private function checkPhpConfiguration(): void
     {
         $issues = [];
+        $warnings = [];
         $score = 10;
 
-        // Gefährliche Funktionen
-        $dangerousFunctions = ['eval', 'exec', 'system', 'shell_exec', 'passthru'];
+        // 1. Gefährliche Funktionen
+        $dangerousFunctions = ['eval', 'exec', 'system', 'shell_exec', 'passthru', 'popen', 'proc_open'];
         $disabled = array_map('trim', explode(',', ini_get('disable_functions')));
         
         foreach ($dangerousFunctions as $func) {
@@ -368,13 +371,13 @@ class SecurityAdvisor
             }
         }
 
-        // PHP-Einstellungen prüfen
+        // 2. PHP-Grundeinstellungen
         $settings = [
-            'display_errors' => ['Off', 'Fehlermeldungen werden angezeigt'],
-            'expose_php' => ['Off', 'PHP-Version wird preisgegeben'],
-            'allow_url_fopen' => ['Off', 'URL-Includes sind erlaubt'],
-            'allow_url_include' => ['Off', 'URL-Includes sind erlaubt'],
-            'register_globals' => ['Off', 'Register Globals aktiviert']
+            'display_errors' => ['Off', 'Fehlermeldungen werden angezeigt (Informationsleckage)'],
+            'expose_php' => ['Off', 'PHP-Version wird preisgegeben (Information Disclosure)'],
+            'allow_url_fopen' => ['Off', 'Remote URL-Includes sind erlaubt (SSRF-Risiko)'],
+            'allow_url_include' => ['Off', 'Remote URL-Includes sind erlaubt (RCE-Risiko)'],
+            'register_globals' => ['Off', 'Register Globals aktiviert (veraltet/unsicher)']
         ];
 
         foreach ($settings as $setting => $config) {
@@ -385,20 +388,75 @@ class SecurityAdvisor
             }
         }
 
-        $status = empty($issues) ? 'success' : ($score > 7 ? 'warning' : 'error');
+        // 3. Memory Limit (DoS-Schutz)
+        $memoryLimit = ini_get('memory_limit');
+        $memoryBytes = $this->convertToBytes($memoryLimit);
+        if ($memoryBytes > 512 * 1024 * 1024) { // > 512MB
+            $warnings[] = "Memory Limit sehr hoch ({$memoryLimit}) - DoS-Risiko";
+        } elseif ($memoryBytes === -1) {
+            $issues[] = "Memory Limit unbegrenzt (-1) - schwerwiegendes DoS-Risiko";
+            $score -= 2;
+        }
+
+        // 4. Upload-Limits
+        $maxFileSize = ini_get('upload_max_filesize');
+        $postMaxSize = ini_get('post_max_size');
+        $maxFileSizeBytes = $this->convertToBytes($maxFileSize);
+        $postMaxSizeBytes = $this->convertToBytes($postMaxSize);
+        
+        if ($maxFileSizeBytes > 50 * 1024 * 1024) { // > 50MB
+            $warnings[] = "Upload max filesize sehr hoch ({$maxFileSize})";
+        }
+        if ($postMaxSizeBytes > 100 * 1024 * 1024) { // > 100MB
+            $warnings[] = "Post max size sehr hoch ({$postMaxSize})";
+        }
+
+        // 5. Open Basedir (Chroot-ähnliche Beschränkung)
+        $openBasedir = ini_get('open_basedir');
+        if (empty($openBasedir)) {
+            $warnings[] = "Open Basedir nicht gesetzt - PHP kann auf ganze Festplatte zugreifen";
+        }
+
+        // 6. Error Reporting in Produktion
+        $errorReporting = ini_get('error_reporting');
+        $logErrors = ini_get('log_errors');
+        if ($errorReporting != 0 && ini_get('display_errors') == 'On') {
+            $issues[] = "Error Reporting aktiv in Produktion (Informationsleckage)";
+            $score -= 1;
+        }
+        if (!$logErrors) {
+            $warnings[] = "Error Logging deaktiviert - Fehler werden nicht protokolliert";
+        }
+
+        // Status bestimmen
+        $allIssues = array_merge($issues, $warnings);
+        if (!empty($issues)) {
+            $status = $score > 5 ? 'warning' : 'error';
+        } elseif (!empty($warnings)) {
+            $status = 'warning';
+        } else {
+            $status = 'success';
+        }
 
         $this->results['checks']['php_configuration'] = [
-            'name' => 'PHP-Konfiguration',
+            'name' => 'PHP & System-Sicherheit',
             'status' => $status,
-            'severity' => 'medium',
+            'severity' => 'high',
             'score' => max(0, $score),
             'details' => [
                 'php_version' => PHP_VERSION,
                 'disabled_functions' => $disabled,
-                'issues' => $issues
+                'memory_limit' => $memoryLimit,
+                'upload_max_filesize' => $maxFileSize,
+                'post_max_size' => $postMaxSize,
+                'open_basedir' => $openBasedir ?: 'nicht gesetzt',
+                'error_reporting' => $errorReporting,
+                'log_errors' => $logErrors ? 'On' : 'Off',
+                'critical_issues' => $issues,
+                'warnings' => $warnings
             ],
-            'recommendations' => $this->getPhpConfigRecommendations($issues),
-            'description' => 'PHP sollte sicher konfiguriert sein ohne gefährliche Funktionen.'
+            'recommendations' => $this->getPhpConfigRecommendations($allIssues),
+            'description' => 'PHP sollte sicher konfiguriert sein mit angemessenen Limits und ohne gefährliche Funktionen.'
         ];
     }
 
@@ -1276,5 +1334,241 @@ class SecurityAdvisor
             'recommendations' => $allIssues,
             'description' => 'System-Versionen sollten aktuell und sicher sein. Nutzt REDAXOs integrierte EOL-Prüfungen.'
         ];
+    }
+
+    /**
+     * Prüft Webserver-Version auf EOL-Status
+     */
+    private function checkWebserverVersion(): void
+    {
+        $serverSoftware = $_SERVER['SERVER_SOFTWARE'] ?? 'unbekannt';
+        $issues = [];
+        $warnings = [];
+        $score = 10;
+        $status = 'success';
+        
+        // Server-Software analysieren
+        $serverInfo = [
+            'software' => $serverSoftware,
+            'type' => 'unbekannt',
+            'version' => 'unbekannt',
+            'eol_status' => 'unbekannt'
+        ];
+        
+        // Apache Version prüfen
+        if (preg_match('/Apache\/([0-9\.]+)/i', $serverSoftware, $matches)) {
+            $serverInfo['type'] = 'Apache';
+            $serverInfo['version'] = $matches[1];
+            
+            // Apache EOL-Daten (vereinfacht)
+            $apacheEol = [
+                '2.2' => '2017-07-01',
+                '2.4.0' => '2021-06-01', // Beispiel für ältere 2.4.x Versionen
+            ];
+            
+            $majorMinor = preg_replace('/^(\d+\.\d+)\..*/', '$1', $serverInfo['version']);
+            if (version_compare($serverInfo['version'], '2.4.0', '<')) {
+                $issues[] = "Apache {$serverInfo['version']} ist End-of-Life";
+                $serverInfo['eol_status'] = 'EOL';
+                $score = 0;
+                $status = 'error';
+            } elseif (version_compare($serverInfo['version'], '2.4.10', '<')) {
+                $warnings[] = "Apache {$serverInfo['version']} ist sehr alt, Update empfohlen";
+                $serverInfo['eol_status'] = 'alt';
+                $score = 5;
+                $status = 'warning';
+            } else {
+                $serverInfo['eol_status'] = 'aktuell';
+            }
+        }
+        
+        // Nginx Version prüfen
+        elseif (preg_match('/nginx\/([0-9\.]+)/i', $serverSoftware, $matches)) {
+            $serverInfo['type'] = 'Nginx';
+            $serverInfo['version'] = $matches[1];
+            
+            if (version_compare($serverInfo['version'], '1.20.0', '<')) {
+                $warnings[] = "Nginx {$serverInfo['version']} ist alt, Update empfohlen";
+                $serverInfo['eol_status'] = 'alt';
+                $score = 7;
+                $status = 'warning';
+            } else {
+                $serverInfo['eol_status'] = 'aktuell';
+            }
+        }
+        
+        // Unbekannter Webserver
+        else {
+            $warnings[] = "Webserver-Version konnte nicht ermittelt werden";
+            $serverInfo['eol_status'] = 'unbekannt';
+            $score = 8;
+            $status = 'warning';
+        }
+        
+        // Version wird preisgegeben?
+        if (!empty($serverSoftware) && $serverSoftware !== 'unbekannt') {
+            $warnings[] = "Server-Header gibt Version preis (Information Disclosure)";
+        }
+        
+        $allIssues = array_merge($issues, $warnings);
+        if (empty($allIssues)) {
+            $allIssues[] = 'Webserver-Konfiguration erscheint sicher';
+        }
+
+        $this->results['checks']['webserver_version'] = [
+            'name' => 'Webserver-Version',
+            'status' => $status,
+            'severity' => 'medium',
+            'score' => $score,
+            'details' => $serverInfo + [
+                'server_header' => $serverSoftware,
+                'version_disclosed' => !empty($serverSoftware) && $serverSoftware !== 'unbekannt',
+                'critical_issues' => $issues,
+                'warnings' => $warnings
+            ],
+            'recommendations' => $allIssues,
+            'description' => 'Webserver sollte aktuell sein und keine Versionsinformationen preisgeben.'
+        ];
+    }
+
+    /**
+     * Prüft REDAXO-spezifische Produktions-Sicherheit
+     */
+    private function checkProductionMode(): void
+    {
+        $issues = [];
+        $warnings = [];
+        $score = 10;
+        $status = 'success';
+        
+        // 1. Setup-Modus noch aktiv?
+        $setupEnabled = \rex_setup::isEnabled();
+        if ($setupEnabled) {
+            $issues[] = "REDAXO Setup-Modus ist noch aktiv - schwerwiegendes Sicherheitsrisiko!";
+            $score -= 5;
+            $status = 'error';
+        }
+        
+        // 2. Debug-Modus in Produktion
+        $debugMode = \rex::isDebugMode();
+        if ($debugMode) {
+            $issues[] = "Debug-Modus in Produktion aktiv - Informationsleckage möglich";
+            $score -= 3;
+            if ($status !== 'error') {
+                $status = 'error';
+            }
+        }
+        
+        // 3. Standard-Admin-Login prüfen
+        try {
+            $sql = \rex_sql::factory();
+            $sql->setQuery('SELECT login, password FROM ' . \rex::getTable('user') . ' WHERE login = ?', ['admin']);
+            
+            if ($sql->getRows() > 0) {
+                $passwordHash = $sql->getValue('password');
+                // Prüfen ob Standard-Passwort (admin) verwendet wird
+                if (password_verify('admin', $passwordHash)) {
+                    $issues[] = "Standard-Login admin/admin wird verwendet - kritisches Sicherheitsrisiko!";
+                    $score -= 5;
+                    $status = 'error';
+                } else {
+                    // Admin-Account existiert, aber mit anderem Passwort
+                    $warnings[] = "Standard-Login 'admin' existiert - sollte umbenannt werden";
+                    $score -= 1;
+                }
+            }
+        } catch (Exception $e) {
+            $warnings[] = "Benutzer-Prüfung fehlgeschlagen: " . $e->getMessage();
+        }
+        
+        // 4. Leere Passwörter prüfen
+        try {
+            $sql = \rex_sql::factory();
+            $sql->setQuery('SELECT COUNT(*) as count FROM ' . \rex::getTable('user') . ' WHERE password = "" OR password IS NULL');
+            $emptyPasswords = $sql->getValue('count');
+            
+            if ($emptyPasswords > 0) {
+                $issues[] = "{$emptyPasswords} Benutzer ohne Passwort gefunden";
+                $score -= 3;
+                if ($status !== 'error') {
+                    $status = 'error';
+                }
+            }
+        } catch (Exception $e) {
+            $warnings[] = "Passwort-Prüfung fehlgeschlagen: " . $e->getMessage();
+        }
+        
+        // 5. Live-Modus prüfen
+        if (!\rex::isLiveMode()) {
+            $warnings[] = "REDAXO nicht im Live-Modus - Performance und Sicherheit können beeinträchtigt sein";
+            $score -= 1;
+            if ($status === 'success') {
+                $status = 'warning';
+            }
+        }
+        
+        // 6. Backend-Passwort-Policy prüfen
+        $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+        $passwordPolicy = $config['password_policy'] ?? [];
+        if (empty($passwordPolicy['length']) || $passwordPolicy['length'] < 8) {
+            $warnings[] = "Keine Passwort-Policy konfiguriert - schwache Passwörter möglich";
+            $score -= 1;
+        }
+
+        // Status final bestimmen
+        if (!empty($issues) && $status !== 'error') {
+            $status = 'warning';
+        } elseif (empty($issues) && empty($warnings)) {
+            $status = 'success';
+        }
+        
+        $allIssues = array_merge($issues, $warnings);
+        if (empty($allIssues)) {
+            $allIssues[] = 'REDAXO-Produktions-Konfiguration ist sicher';
+        }
+
+        $this->results['checks']['production_mode'] = [
+            'name' => 'REDAXO-Produktionsmodus',
+            'status' => $status,
+            'severity' => 'high',
+            'score' => max(0, $score),
+            'details' => [
+                'setup_enabled' => $setupEnabled,
+                'debug_mode' => $debugMode,
+                'live_mode' => \rex::isLiveMode(),
+                'admin_user_exists' => isset($sql) && $sql->getRows() > 0,
+                'empty_passwords' => $emptyPasswords ?? 0,
+                'password_policy' => $passwordPolicy,
+                'critical_issues' => $issues,
+                'warnings' => $warnings
+            ],
+            'recommendations' => $allIssues,
+            'description' => 'REDAXO sollte sicher für den Produktionsbetrieb konfiguriert sein.'
+        ];
+    }
+
+    /**
+     * Konvertiert PHP-Speicherwerte (z.B. "128M", "2G") in Bytes
+     */
+    private function convertToBytes(string $value): int
+    {
+        if ($value === '-1') {
+            return -1;
+        }
+        
+        $value = trim($value);
+        $lastChar = strtolower($value[strlen($value) - 1]);
+        $number = (int) $value;
+        
+        switch ($lastChar) {
+            case 'g':
+                return $number * 1024 * 1024 * 1024;
+            case 'm':
+                return $number * 1024 * 1024;
+            case 'k':
+                return $number * 1024;
+            default:
+                return $number;
+        }
     }
 }
