@@ -403,6 +403,14 @@ class IntrusionPrevention
     }
 
     /**
+     * Öffentliche Methode zum Anzeigen der Sperrseite (für externe Aufrufe wie Mail Security)
+     */
+    public static function showBlockedPage(string $reason, string $ip): void
+    {
+        self::blockRequest($reason, $ip, rex_server('REQUEST_URI', 'string', ''));
+    }
+
+    /**
      * Blockiert Request und zeigt 403-Seite
      */
     private static function blockRequest(string $reason, string $ip, string $uri): void

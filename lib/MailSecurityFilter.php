@@ -274,10 +274,9 @@ class MailSecurityFilter
                 self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
                 
                 if ($recipientThreat['severity'] === 'critical') {
-                    // An IPS weiterleiten statt Exception werfen
+                    // An IPS weiterleiten und zur Sperrseite weiterleiten
                     self::escalateToIPS($clientIp, $recipientThreat);
-                    // IPS übernimmt die Sperrung und Anzeige der Sperrseite
-                    return null; // Stoppt weitere Verarbeitung
+                    self::redirectToBlockedPage('Empfänger auf Blocklist', $clientIp);
                 }
             }
 
@@ -287,9 +286,9 @@ class MailSecurityFilter
                 self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat);
                 
                 if ($senderThreat['severity'] === 'high') {
-                    // An IPS weiterleiten statt Exception werfen
+                    // An IPS weiterleiten und zur Sperrseite weiterleiten
                     self::escalateToIPS($clientIp, $senderThreat);
-                    return null; // Stoppt weitere Verarbeitung
+                    self::redirectToBlockedPage('Ungültige Absender-Domain', $clientIp);
                 }
             }
 
@@ -301,8 +300,8 @@ class MailSecurityFilter
                 // Bei Code-Injection sofort blockieren und IP zur IPS-Bedrohung hinzufügen
                 self::escalateToIPS($clientIp, $injectionThreat);
                 
-                // IPS übernimmt die Sperrung und Anzeige der Sperrseite
-                return null; // Stoppt weitere Verarbeitung
+                // Direkt zur IPS-Sperrseite weiterleiten
+                self::redirectToBlockedPage('Code-Injection in E-Mail erkannt', $clientIp);
             }
 
             // 5. Badword-Filter auf E-Mail-Inhalt anwenden
@@ -313,11 +312,11 @@ class MailSecurityFilter
                 if ($contentThreat['severity'] === 'critical') {
                     // Kritische Badwords auch an IPS eskalieren
                     self::escalateToIPS($clientIp, $contentThreat);
-                    return null; // IPS übernimmt die Sperrung
+                    self::redirectToBlockedPage('Kritische Inhalte in E-Mail erkannt', $clientIp);
                 } elseif ($contentThreat['severity'] === 'high') {
                     // Hohe Bedrohungen auch an IPS weiterleiten
                     self::escalateToIPS($clientIp, $contentThreat);
-                    return null; // IPS übernimmt die Sperrung
+                    self::redirectToBlockedPage('Bedenkliche Inhalte in E-Mail erkannt', $clientIp);
                 } else {
                     // Medium/Low: Nur loggen, weiterleiten
                     self::debugLog("Mail content flagged but allowed: " . $contentThreat['pattern']);
@@ -333,7 +332,7 @@ class MailSecurityFilter
                     // Wiederholte Spam-Versuche an IPS eskalieren
                     if (self::getSpamAttemptCount($clientIp) >= 3) {
                         self::escalateToIPS($clientIp, $spamThreat);
-                        return null; // IPS übernimmt die Sperrung
+                        self::redirectToBlockedPage('Wiederholte Spam-Versuche erkannt', $clientIp);
                     }
                     // Ersten/zweiten Spam-Versuch: Nur loggen, aber nicht blockieren
                     self::debugLog("Spam pattern detected but not yet escalated: " . $spamThreat['pattern']);
@@ -1142,6 +1141,21 @@ class MailSecurityFilter
         } catch (Exception $e) {
             self::debugLog("Failed to get mail security stats: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Leitet direkt zur IPS-Sperrseite weiter
+     */
+    private static function redirectToBlockedPage(string $reason, string $ip): void
+    {
+        // Importiere IntrusionPrevention Klasse
+        if (class_exists('\KLXM\Upkeep\IntrusionPrevention')) {
+            // Verwende die öffentliche showBlockedPage Methode des IPS-Systems
+            \KLXM\Upkeep\IntrusionPrevention::showBlockedPage($reason, $ip);
+        } else {
+            // Fallback: Exception werfen wenn IPS nicht verfügbar
+            throw new \Exception('Mail blockiert: ' . $reason);
         }
     }
 }
