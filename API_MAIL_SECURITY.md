@@ -54,7 +54,7 @@ Gibt den aktuellen Status des Mail Security Systems zurück.
         "threats_24h": 45,
         "blocked_emails_24h": 12,
         "badwords_count": 156,
-        "blacklist_count": 89,
+        "blocklist_count": 89,
         "rate_limit_blocks_24h": 3
     }
 }
@@ -184,11 +184,11 @@ curl -X DELETE \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 3. Blacklist Management
+### 3. Blocklist Management
 
-#### Blacklist abrufen
+#### Blocklist abrufen
 
-**GET** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist`
+**GET** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist`
 
 **Parameter**:
 - `limit` (int): Anzahl Einträge
@@ -199,7 +199,7 @@ curl -X DELETE \
 **Beispiel**:
 ```bash
 curl -X GET \
-  "https://example.com/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist&type=ip&status=1" \
+  "https://example.com/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist&type=ip&status=1" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -228,9 +228,9 @@ curl -X GET \
 }
 ```
 
-#### Zur Blacklist hinzufügen
+#### Zur Blocklist hinzufügen
 
-**POST** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist`
+**POST** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist`
 
 **Body**:
 ```json
@@ -245,7 +245,7 @@ curl -X GET \
 **Beispiel**:
 ```bash
 curl -X POST \
-  "https://example.com/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist" \
+  "https://example.com/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -255,9 +255,9 @@ curl -X POST \
   }'
 ```
 
-#### Blacklist-Eintrag aktualisieren
+#### Blocklist-Eintrag aktualisieren
 
-**PUT** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist&id=123`
+**PUT** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist&id=123`
 
 **Body**:
 ```json
@@ -268,9 +268,9 @@ curl -X POST \
 }
 ```
 
-#### Blacklist-Eintrag löschen
+#### Blocklist-Eintrag löschen
 
-**DELETE** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blacklist&id=123`
+**DELETE** `/redaxo/index.php?rex-api-call=upkeep_mail_security&endpoint=blocklist&id=123`
 
 ### 4. Threat Log
 
@@ -340,7 +340,7 @@ curl -X GET \
         "threats_24h": 45,
         "blocked_emails_24h": 12,
         "badwords_count": 156,
-        "blacklist_count": 89,
+        "blocklist_count": 89,
         "rate_limit_blocks_24h": 3,
         "top_threats": [
             {
@@ -348,7 +348,7 @@ curl -X GET \
                 "count": 25
             },
             {
-                "threat_type": "mail_blacklist_domain",
+                "threat_type": "mail_blocklist_domain",
                 "count": 15
             }
         ],
@@ -478,9 +478,9 @@ class UpkeepMailSecurityAPI
         ]);
     }
 
-    public function addToBlacklist(string $entry, string $type, string $reason = ''): array
+    public function addToBlocklist(string $entry, string $type, string $reason = ''): array
     {
-        return $this->request('POST', 'blacklist', [
+        return $this->request('POST', 'blocklist', [
             'entry' => $entry,
             'type' => $type,
             'reason' => $reason
@@ -508,7 +508,7 @@ if ($result['status'] === 'success') {
 }
 
 // Domain sperren
-$result = $api->addToBlacklist('spam-domain.com', 'domain', 'Bekannte Spam-Domain');
+$result = $api->addToBlocklist('spam-domain.com', 'domain', 'Bekannte Spam-Domain');
 
 // Bedrohungen der letzten 24h
 $threats = $api->getThreats(['from_date' => date('Y-m-d', strtotime('-1 day'))]);

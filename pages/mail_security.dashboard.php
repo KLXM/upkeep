@@ -126,15 +126,15 @@ if (!empty($stats['threats_24h'])) {
     $content .= '<a href="' . rex_url::backendPage('upkeep/mail_security/badwords') . '" class="btn btn-sm btn-info">Verwalten</a>';
     $content .= '</div>';
     
-    // Blacklist-Statistik
+    // Blocklist-Statistik
     try {
         $sql = rex_sql::factory();
-        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_blacklist') . " WHERE status = 1");
-        $blacklistCount = (int) $sql->getValue('count');
+        $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE status = 1");
+        $blocklistCount = (int) $sql->getValue('count');
         
         $content .= '<div class="alert alert-warning">';
-        $content .= '<strong>' . $blacklistCount . '</strong> Blacklist-Einträge<br>';
-        $content .= '<a href="' . rex_url::backendPage('upkeep/mail_security/blacklist') . '" class="btn btn-sm btn-warning">Verwalten</a>';
+        $content .= '<strong>' . $blocklistCount . '</strong> Blocklist-Einträge<br>';
+        $content .= '<a href="' . rex_url::backendPage('upkeep/mail_security/blocklist') . '" class="btn btn-sm btn-warning">Verwalten</a>';
         $content .= '</div>';
     } catch (Exception $e) {
         // Tabelle existiert noch nicht

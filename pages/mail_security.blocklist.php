@@ -6,16 +6,16 @@ $error = '';
 $success = '';
 $addon = rex_addon::get('upkeep');
 
-// Blacklist-Eintrag hinzufügen
-if (rex_post('add-blacklist', 'string') === '1') {
-    $email = trim(rex_post('blacklist_email', 'string', ''));
-    $domain = trim(rex_post('blacklist_domain', 'string', ''));
-    $ip = trim(rex_post('blacklist_ip', 'string', ''));
-    $pattern = trim(rex_post('blacklist_pattern', 'string', ''));
-    $type = rex_post('blacklist_type', 'string', 'email');
-    $severity = rex_post('blacklist_severity', 'string', 'medium');
-    $reason = trim(rex_post('blacklist_reason', 'string', ''));
-    $expires = rex_post('blacklist_expires', 'string', '');
+// Blocklist-Eintrag hinzufügen
+if (rex_post('add-blocklist', 'string') === '1') {
+    $email = trim(rex_post('blocklist_email', 'string', ''));
+    $domain = trim(rex_post('blocklist_domain', 'string', ''));
+    $ip = trim(rex_post('blocklist_ip', 'string', ''));
+    $pattern = trim(rex_post('blocklist_pattern', 'string', ''));
+    $type = rex_post('blocklist_type', 'string', 'email');
+    $severity = rex_post('blocklist_severity', 'string', 'medium');
+    $reason = trim(rex_post('blocklist_reason', 'string', ''));
+    $expires = rex_post('blocklist_expires', 'string', '');
     
     // Validierung basierend auf Typ
     $isValid = false;
@@ -65,7 +65,7 @@ if (rex_post('add-blacklist', 'string') === '1') {
         
         try {
             $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+            $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
             
             if ($type === 'email') {
                 $sql->setValue('email_address', $targetValue);
@@ -89,7 +89,7 @@ if (rex_post('add-blacklist', 'string') === '1') {
                 $sql->setValue('pattern', $targetValue);
             }
             
-            $sql->setValue('blacklist_type', $type);
+            $sql->setValue('blocklist_type', $type);
             $sql->setValue('severity', $severity);
             $sql->setValue('reason', $reason);
             $sql->setValue('expires_at', $expiresAt);
@@ -98,50 +98,50 @@ if (rex_post('add-blacklist', 'string') === '1') {
             $sql->setValue('updated_at', date('Y-m-d H:i:s'));
             $sql->insert();
             
-            $success = 'Eintrag erfolgreich zur Blacklist hinzugefügt.';
+            $success = 'Eintrag erfolgreich zur Blocklist hinzugefügt.';
         } catch (Exception $e) {
             $error = 'Fehler beim Hinzufügen: ' . $e->getMessage();
         }
     }
 }
 
-// Blacklist-Eintrag entfernen
-if (rex_post('remove-blacklist', 'int') > 0) {
-    $blacklistId = rex_post('remove-blacklist', 'int');
+// Blocklist-Eintrag entfernen
+if (rex_post('remove-blocklist', 'int') > 0) {
+    $blocklistId = rex_post('remove-blocklist', 'int');
     
     try {
         $sql = rex_sql::factory();
-        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blacklist') . " WHERE id = ?", [$blacklistId]);
-        $success = 'Blacklist-Eintrag erfolgreich entfernt.';
+        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE id = ?", [$blocklistId]);
+        $success = 'Blocklist-Eintrag erfolgreich entfernt.';
     } catch (Exception $e) {
         $error = 'Fehler beim Entfernen: ' . $e->getMessage();
     }
 }
 
-// Blacklist-Status ändern
-if (rex_post('toggle-blacklist', 'int') > 0) {
-    $blacklistId = rex_post('toggle-blacklist', 'int');
+// Blocklist-Status ändern
+if (rex_post('toggle-blocklist', 'int') > 0) {
+    $blocklistId = rex_post('toggle-blocklist', 'int');
     $currentStatus = rex_post('current-status', 'int', 1);
     $newStatus = $currentStatus ? 0 : 1;
     
     try {
         $sql = rex_sql::factory();
-        $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
-        $sql->setWhere(['id' => $blacklistId]);
+        $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
+        $sql->setWhere(['id' => $blocklistId]);
         $sql->setValue('status', $newStatus);
         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
         $sql->update();
         
-        $success = 'Blacklist-Status erfolgreich geändert.';
+        $success = 'Blocklist-Status erfolgreich geändert.';
     } catch (Exception $e) {
         $error = 'Fehler beim Ändern des Status: ' . $e->getMessage();
     }
 }
 
 // Bulk-Aktionen
-if (rex_post('bulk-action', 'string') && rex_post('selected-blacklist', 'array')) {
+if (rex_post('bulk-action', 'string') && rex_post('selected-blocklist', 'array')) {
     $action = rex_post('bulk-action', 'string');
-    $selectedIds = rex_post('selected-blacklist', 'array');
+    $selectedIds = rex_post('selected-blocklist', 'array');
     $affectedCount = 0;
     
     try {
@@ -152,11 +152,11 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-blacklist', 'array')
             if ($id > 0) {
                 switch ($action) {
                     case 'delete':
-                        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blacklist') . " WHERE id = ?", [$id]);
+                        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE id = ?", [$id]);
                         $affectedCount++;
                         break;
                     case 'activate':
-                        $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+                        $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
                         $sql->setWhere(['id' => $id]);
                         $sql->setValue('status', 1);
                         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
@@ -164,7 +164,7 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-blacklist', 'array')
                         $affectedCount++;
                         break;
                     case 'deactivate':
-                        $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+                        $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
                         $sql->setWhere(['id' => $id]);
                         $sql->setValue('status', 0);
                         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
@@ -181,7 +181,7 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-blacklist', 'array')
             'deactivate' => 'deaktiviert'
         ];
         
-        $success = $affectedCount . ' Blacklist-Einträge wurden ' . ($actionNames[$action] ?? 'bearbeitet') . '.';
+        $success = $affectedCount . ' Blocklist-Einträge wurden ' . ($actionNames[$action] ?? 'bearbeitet') . '.';
         
     } catch (Exception $e) {
         $error = 'Fehler bei Bulk-Aktion: ' . $e->getMessage();
@@ -202,12 +202,12 @@ $filterSeverity = rex_request('filter_severity', 'string', '');
 $filterStatus = rex_request('filter_status', 'string', '');
 $filterSearch = rex_request('filter_search', 'string', '');
 
-// Blacklist-Einträge laden mit Filter
+// Blocklist-Einträge laden mit Filter
 $whereConditions = [];
 $whereParams = [];
 
 if (!empty($filterType)) {
-    $whereConditions[] = "blacklist_type = ?";
+    $whereConditions[] = "blocklist_type = ?";
     $whereParams[] = $filterType;
 }
 if (!empty($filterSeverity)) {
@@ -230,10 +230,10 @@ $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereCond
 
 try {
     $sql = rex_sql::factory();
-    $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blacklist') . " {$whereClause} ORDER BY severity DESC, created_at DESC";
+    $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " {$whereClause} ORDER BY severity DESC, created_at DESC";
     $sql->setQuery($query, $whereParams);
     
-    $blacklistEntries = [];
+    $blocklistEntries = [];
     while ($sql->hasNext()) {
         $entry = [
             'id' => (int) $sql->getValue('id'),
@@ -241,7 +241,7 @@ try {
             'domain' => $sql->getValue('domain'),
             'ip_address' => $sql->getValue('ip_address'),
             'pattern' => $sql->getValue('pattern'),
-            'blacklist_type' => $sql->getValue('blacklist_type'),
+            'blocklist_type' => $sql->getValue('blocklist_type'),
             'severity' => $sql->getValue('severity'),
             'reason' => $sql->getValue('reason'),
             'expires_at' => $sql->getValue('expires_at'),
@@ -259,20 +259,20 @@ try {
             $entry['is_expired'] = true;
         }
         
-        $blacklistEntries[] = $entry;
+        $blocklistEntries[] = $entry;
         $sql->next();
     }
     
 } catch (Exception $e) {
-    $blacklistEntries = [];
-    echo rex_view::error('Fehler beim Laden der Blacklist: ' . $e->getMessage());
+    $blocklistEntries = [];
+    echo rex_view::error('Fehler beim Laden der Blocklist: ' . $e->getMessage());
 }
 
 // Filter-Panel
 $content = '<form method="get" action="' . rex_url::currentBackendPage() . '">';
 $content .= '<input type="hidden" name="page" value="upkeep" />';
 $content .= '<input type="hidden" name="subpage" value="mail_security" />';
-$content .= '<input type="hidden" name="subsubpage" value="blacklist" />';
+$content .= '<input type="hidden" name="subsubpage" value="blocklist" />';
 
 $content .= '<div class="panel panel-default">';
 $content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> Filter & Suche</h3></div>';
@@ -327,18 +327,18 @@ $fragment->setVar('title', '', false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
-// Blacklist-Eintrag hinzufügen Panel
+// Blocklist-Eintrag hinzufügen Panel
 $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">';
-$content .= '<input type="hidden" name="add-blacklist" value="1" />';
+$content .= '<input type="hidden" name="add-blocklist" value="1" />';
 
 $content .= '<div class="panel panel-danger">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> Zur Blacklist hinzufügen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> Zur Blocklist hinzufügen</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-2">';
 $content .= '<label>Typ *</label>';
-$content .= '<select class="form-control" name="blacklist_type" id="blacklist-type" onchange="toggleBlacklistFields()">';
+$content .= '<select class="form-control" name="blocklist_type" id="blocklist-type" onchange="toggleBlocklistFields()">';
 $content .= '<option value="email">E-Mail</option>';
 $content .= '<option value="domain">Domain</option>';
 $content .= '<option value="ip">IP-Adresse</option>';
@@ -348,28 +348,28 @@ $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="email-field">';
 $content .= '<label>E-Mail-Adresse *</label>';
-$content .= '<input type="email" class="form-control" name="blacklist_email" placeholder="spam@example.com" />';
+$content .= '<input type="email" class="form-control" name="blocklist_email" placeholder="spam@example.com" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="domain-field" style="display:none;">';
 $content .= '<label>Domain *</label>';
-$content .= '<input type="text" class="form-control" name="blacklist_domain" placeholder="spam.com" />';
+$content .= '<input type="text" class="form-control" name="blocklist_domain" placeholder="spam.com" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="ip-field" style="display:none;">';
 $content .= '<label>IP-Adresse *</label>';
-$content .= '<input type="text" class="form-control" name="blacklist_ip" placeholder="192.168.1.100 oder 192.168.*" />';
+$content .= '<input type="text" class="form-control" name="blocklist_ip" placeholder="192.168.1.100 oder 192.168.*" />';
 $content .= '<small class="help-block">Wildcards möglich: 192.168.* oder 10.0.0.*</small>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="pattern-field" style="display:none;">';
 $content .= '<label>Pattern *</label>';
-$content .= '<input type="text" class="form-control" name="blacklist_pattern" placeholder="*.spam.com" />';
+$content .= '<input type="text" class="form-control" name="blocklist_pattern" placeholder="*.spam.com" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<label>Schweregrad</label>';
-$content .= '<select class="form-control" name="blacklist_severity">';
+$content .= '<select class="form-control" name="blocklist_severity">';
 $content .= '<option value="low">Niedrig</option>';
 $content .= '<option value="medium" selected>Mittel</option>';
 $content .= '<option value="high">Hoch</option>';
@@ -379,7 +379,7 @@ $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<label>Gültig bis</label>';
-$content .= '<input type="datetime-local" class="form-control" name="blacklist_expires" />';
+$content .= '<input type="datetime-local" class="form-control" name="blocklist_expires" />';
 $content .= '<small class="help-block">Leer = permanent</small>';
 $content .= '</div>';
 
@@ -388,12 +388,12 @@ $content .= '</div>';
 $content .= '<div class="row" style="margin-top: 15px;">';
 $content .= '<div class="col-md-10">';
 $content .= '<label>Grund</label>';
-$content .= '<input type="text" class="form-control" name="blacklist_reason" placeholder="Grund für Blacklisting (z.B. Spam, Phishing, etc.)" />';
+$content .= '<input type="text" class="form-control" name="blocklist_reason" placeholder="Grund für Blocklisting (z.B. Spam, Phishing, etc.)" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<label>&nbsp;</label><br>';
-$content .= '<button type="submit" class="btn btn-danger">Zur Blacklist hinzufügen</button>';
+$content .= '<button type="submit" class="btn btn-danger">Zur Blocklist hinzufügen</button>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -404,8 +404,8 @@ $content .= '</form>';
 
 // JavaScript für Feld-Toggle
 $content .= '<script>
-function toggleBlacklistFields() {
-    const type = document.getElementById("blacklist-type").value;
+function toggleBlocklistFields() {
+    const type = document.getElementById("blocklist-type").value;
     document.getElementById("email-field").style.display = (type === "email") ? "block" : "none";
     document.getElementById("domain-field").style.display = (type === "domain") ? "block" : "none";
     document.getElementById("ip-field").style.display = (type === "ip") ? "block" : "none";
@@ -418,13 +418,13 @@ $fragment->setVar('title', '', false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
-// Blacklist-Einträge anzeigen
-if (!empty($blacklistEntries)) {
-    $content = '<form action="' . rex_url::currentBackendPage() . '" method="post" id="blacklist-form">';
+// Blocklist-Einträge anzeigen
+if (!empty($blocklistEntries)) {
+    $content = '<form action="' . rex_url::currentBackendPage() . '" method="post" id="blocklist-form">';
     
     $content .= '<div class="panel panel-default">';
     $content .= '<div class="panel-heading">';
-    $content .= '<h3 class="panel-title"><i class="fa fa-ban"></i> Blacklist-Einträge (' . count($blacklistEntries) . ' gefunden)</h3>';
+    $content .= '<h3 class="panel-title"><i class="fa fa-ban"></i> Blocklist-Einträge (' . count($blocklistEntries) . ' gefunden)</h3>';
     $content .= '</div>';
     
     $content .= '<div class="panel-body">';
@@ -446,8 +446,8 @@ if (!empty($blacklistEntries)) {
     $content .= '</div>';
     
     $content .= '<div class="col-md-6 text-right">';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blacklist-form input[type=checkbox]\').prop(\'checked\', true)">Alle auswählen</button> ';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blacklist-form input[type=checkbox]\').prop(\'checked\', false)">Alle abwählen</button>';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', true)">Alle auswählen</button> ';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', false)">Alle abwählen</button>';
     $content .= '</div>';
     $content .= '</div>';
     
@@ -468,7 +468,7 @@ if (!empty($blacklistEntries)) {
     $content .= '</thead>';
     $content .= '<tbody>';
     
-    foreach ($blacklistEntries as $entry) {
+    foreach ($blocklistEntries as $entry) {
         $severityClass = match($entry['severity']) {
             'critical' => 'danger',
             'high' => 'warning',
@@ -497,9 +497,9 @@ if (!empty($blacklistEntries)) {
         $rowClass = (!$entry['status'] || $entry['is_expired']) ? ' text-muted' : '';
         
         $content .= '<tr' . $rowClass . '>';
-        $content .= '<td><input type="checkbox" name="selected-blacklist[]" value="' . $entry['id'] . '" /></td>';
+        $content .= '<td><input type="checkbox" name="selected-blocklist[]" value="' . $entry['id'] . '" /></td>';
         $content .= '<td><code>' . rex_escape($entry['identifier']) . '</code></td>';
-        $content .= '<td><span class="label label-primary">' . ($typeLabels[$entry['blacklist_type']] ?? $entry['blacklist_type']) . '</span></td>';
+        $content .= '<td><span class="label label-primary">' . ($typeLabels[$entry['blocklist_type']] ?? $entry['blocklist_type']) . '</span></td>';
         $content .= '<td><span class="label label-' . $severityClass . '">' . rex_escape($entry['severity']) . '</span></td>';
         $content .= '<td><span class="label label-' . $statusClass . '">' . $statusText . '</span></td>';
         $content .= '<td>' . rex_escape(substr($entry['reason'] ?? '', 0, 50)) . (strlen($entry['reason'] ?? '') > 50 ? '...' : '') . '</td>';
@@ -519,7 +519,7 @@ if (!empty($blacklistEntries)) {
         if (!$entry['is_expired']) {
             // Status-Toggle
             $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
-            $content .= '<input type="hidden" name="toggle-blacklist" value="' . $entry['id'] . '" />';
+            $content .= '<input type="hidden" name="toggle-blocklist" value="' . $entry['id'] . '" />';
             $content .= '<input type="hidden" name="current-status" value="' . ($entry['status'] ? 1 : 0) . '" />';
             $content .= '<button type="submit" class="btn btn-xs btn-' . ($entry['status'] ? 'warning' : 'success') . '" title="' . ($entry['status'] ? 'Deaktivieren' : 'Aktivieren') . '">';
             $content .= '<i class="fa fa-' . ($entry['status'] ? 'pause' : 'play') . '"></i>';
@@ -529,8 +529,8 @@ if (!empty($blacklistEntries)) {
         
         // Löschen
         $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
-        $content .= '<input type="hidden" name="remove-blacklist" value="' . $entry['id'] . '" />';
-        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'Blacklist-Eintrag wirklich löschen?\')" title="Löschen">';
+        $content .= '<input type="hidden" name="remove-blocklist" value="' . $entry['id'] . '" />';
+        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'Blocklist-Eintrag wirklich löschen?\')" title="Löschen">';
         $content .= '<i class="fa fa-trash"></i>';
         $content .= '</button>';
         $content .= '</form>';
@@ -550,14 +550,14 @@ if (!empty($blacklistEntries)) {
     $content .= '<script>
     jQuery(document).ready(function($) {
         $("#select-all").change(function() {
-            $("#blacklist-form input[type=checkbox]").prop("checked", this.checked);
+            $("#blocklist-form input[type=checkbox]").prop("checked", this.checked);
         });
     });
     </script>';
     
 } else {
     $content = '<div class="alert alert-info">';
-    $content .= '<h4>Keine Blacklist-Einträge gefunden</h4>';
+    $content .= '<h4>Keine Blocklist-Einträge gefunden</h4>';
     $content .= '<p>Es wurden noch keine E-Mail-Adressen oder Domains blockiert oder Ihre Filter haben keine Ergebnisse geliefert.</p>';
     $content .= '</div>';
 }

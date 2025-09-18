@@ -513,14 +513,14 @@ rex_sql_table::get(rex::getTable('upkeep_mail_badwords'))
     ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
     ->ensure();
 
-// Mail Blacklist Tabelle (E-Mail-Adressen und Domains)
-rex_sql_table::get(rex::getTable('upkeep_mail_blacklist'))
+// Mail Blocklist Tabelle (E-Mail-Adressen und Domains)
+rex_sql_table::get(rex::getTable('upkeep_mail_blocklist'))
     ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
     ->ensureColumn(new rex_sql_column('email_address', 'varchar(255)', true))
     ->ensureColumn(new rex_sql_column('domain', 'varchar(255)', true))
     ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', true)) // IPv4 und IPv6 Support
     ->ensureColumn(new rex_sql_column('pattern', 'varchar(255)', true)) // Für Wildcards wie *.spam.com
-    ->ensureColumn(new rex_sql_column('blacklist_type', 'enum("email","domain","ip","pattern")', false, 'email'))
+    ->ensureColumn(new rex_sql_column('blocklist_type', 'enum("email","domain","ip","pattern")', false, 'email'))
     ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
     ->ensureColumn(new rex_sql_column('reason', 'text', true))
     ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent

@@ -19,7 +19,7 @@ use rex_extension_point;
  * - Badword-Filter für E-Mail-Inhalte
  * - Spam-Erkennung und Rate-Limiting für E-Mail-Versand
  * - Integration in das bestehende Threat-Logging System
- * - Blacklist-Management für E-Mail-Adressen und Domains
+ * - Blocklist-Management für E-Mail-Adressen und Domains
  */
 class MailSecurityFilter
 {
@@ -165,7 +165,7 @@ class MailSecurityFilter
             'threats_24h' => 0,
             'blocked_emails_24h' => 0,
             'badwords_count' => 0,
-            'blacklist_count' => 0,
+            'blocklist_count' => 0,
             'rate_limit_blocks_24h' => 0,
             'top_threats' => []
         ];
@@ -191,11 +191,11 @@ class MailSecurityFilter
                 $stats['badwords_count'] = (int) $sql->getValue('count');
             }
 
-            // Aktive Blacklist-Einträge
-            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_blacklist') . " 
+            // Aktive Blocklist-Einträge
+            $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_blocklist') . " 
                            WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW())");
             if ($sql->getRows() > 0) {
-                $stats['blacklist_count'] = (int) $sql->getValue('count');
+                $stats['blocklist_count'] = (int) $sql->getValue('count');
             }
 
             // Top Mail-Bedrohungen der letzten 7 Tage
@@ -258,20 +258,20 @@ class MailSecurityFilter
                 throw new \Exception('E-Mail-Rate-Limit überschritten. Versuchen Sie es später erneut.');
             }
 
-                        // 2. IP-Blacklist prüfen
-            $ipThreat = self::checkIpBlacklist($clientIp);
+                        // 2. IP-Blocklist prüfen
+            $ipThreat = self::checkIpBlocklist($clientIp);
             if ($ipThreat) {
-                self::logMailThreat('blacklisted_ip', $clientIp, $ipThreat);
+                self::logMailThreat('blocklisted_ip', $clientIp, $ipThreat);
                 
                 if ($ipThreat['severity'] === 'critical' || $ipThreat['severity'] === 'high') {
                     throw new \Exception('Ihre IP-Adresse ist gesperrt: ' . $ipThreat['reason']);
                 }
             }
 
-            // 3. Empfänger-Blacklist prüfen
-            $recipientThreat = self::checkRecipientBlacklist($mailer);
+            // 3. Empfänger-Blocklist prüfen
+            $recipientThreat = self::checkRecipientBlocklist($mailer);
             if ($recipientThreat) {
-                self::logMailThreat('blacklisted_recipient', $clientIp, $recipientThreat);
+                self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
                 
                 if ($recipientThreat['severity'] === 'critical') {
                     throw new \Exception('E-Mail-Adresse oder Domain ist gesperrt.');
@@ -423,9 +423,9 @@ class MailSecurityFilter
     }
 
     /**
-     * Prüft Empfänger gegen Blacklist
+     * Prüft Empfänger gegen Blocklist
      */
-    private static function checkRecipientBlacklist($mailer): ?array
+    private static function checkRecipientBlocklist($mailer): ?array
     {
         $recipients = [];
         
@@ -455,13 +455,13 @@ class MailSecurityFilter
             }
         }
 
-        // Prüfe jeden Empfänger gegen Blacklist
+        // Prüfe jeden Empfänger gegen Blocklist
         foreach ($recipients as $email) {
             if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
 
-            $threat = self::checkEmailBlacklist($email);
+            $threat = self::checkEmailBlocklist($email);
             if ($threat) {
                 $threat['email'] = $email;
                 return $threat;
@@ -472,17 +472,17 @@ class MailSecurityFilter
     }
 
     /**
-     * Prüft einzelne E-Mail-Adresse gegen Blacklist
+     * Prüft einzelne E-Mail-Adresse gegen Blocklist
      */
-    private static function checkEmailBlacklist(string $email): ?array
+    private static function checkEmailBlocklist(string $email): ?array
     {
         $sql = rex_sql::factory();
         
         // Domain extrahieren
         $domain = substr(strrchr($email, "@"), 1);
         
-        // Prüfe gegen E-Mail-Blacklist
-        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blacklist') . " 
+        // Prüfe gegen E-Mail-Blocklist
+        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " 
                   WHERE (email_address = ? OR domain = ? OR pattern = ?) 
                   AND status = 1 
                   AND (expires_at IS NULL OR expires_at > NOW())
@@ -492,7 +492,7 @@ class MailSecurityFilter
         
         if ($sql->getRows() > 0) {
             return [
-                'type' => 'blacklisted_' . $sql->getValue('blacklist_type'),
+                'type' => 'blocklisted_' . $sql->getValue('blocklist_type'),
                 'severity' => $sql->getValue('severity'),
                 'pattern' => $sql->getValue('email_address') ?: $sql->getValue('domain'),
                 'reason' => $sql->getValue('reason')
@@ -503,15 +503,15 @@ class MailSecurityFilter
     }
 
     /**
-     * Prüft IP-Adresse gegen Blacklist
+     * Prüft IP-Adresse gegen Blocklist
      */
-    private static function checkIpBlacklist(string $clientIp): ?array
+    private static function checkIpBlocklist(string $clientIp): ?array
     {
         $sql = rex_sql::factory();
         
         // Direkte IP-Prüfung und Pattern-Matching
-        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blacklist') . " 
-                  WHERE blacklist_type = 'ip' 
+        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " 
+                  WHERE blocklist_type = 'ip' 
                   AND (ip_address = ? OR ? LIKE REPLACE(pattern, '*', '%'))
                   AND status = 1 
                   AND (expires_at IS NULL OR expires_at > NOW())
@@ -521,7 +521,7 @@ class MailSecurityFilter
         
         if ($sql->getRows() > 0) {
             return [
-                'type' => 'blacklisted_ip',
+                'type' => 'blocklisted_ip',
                 'severity' => $sql->getValue('severity'),
                 'pattern' => $sql->getValue('ip_address') ?: $sql->getValue('pattern'),
                 'reason' => $sql->getValue('reason') ?: 'IP-Adresse ist gesperrt',
@@ -578,10 +578,10 @@ class MailSecurityFilter
             ];
         }
 
-        // Prüfe gegen Domain-Blacklist
-        $threat = self::checkEmailBlacklist($fromEmail);
+        // Prüfe gegen Domain-Blocklist
+        $threat = self::checkEmailBlocklist($fromEmail);
         if ($threat) {
-            $threat['type'] = 'blacklisted_sender_domain';
+            $threat['type'] = 'blocklisted_sender_domain';
             return $threat;
         }
 
@@ -1036,16 +1036,16 @@ class MailSecurityFilter
     }
 
     /**
-     * Fügt E-Mail zur Blacklist hinzu
+     * Fügt E-Mail zur Blocklist hinzu
      */
-    public static function addEmailBlacklist(string $email, string $domain = '', string $reason = '', string $severity = 'medium', string $type = 'email'): bool
+    public static function addEmailBlocklist(string $email, string $domain = '', string $reason = '', string $severity = 'medium', string $type = 'email'): bool
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_mail_blacklist'));
+            $sql->setTable(rex::getTable('upkeep_mail_blocklist'));
             $sql->setValue('email_address', $email);
             $sql->setValue('domain', $domain);
-            $sql->setValue('blacklist_type', $type);
+            $sql->setValue('blocklist_type', $type);
             $sql->setValue('severity', $severity);
             $sql->setValue('reason', $reason);
             $sql->setValue('status', 1);
@@ -1055,7 +1055,7 @@ class MailSecurityFilter
             
             return true;
         } catch (Exception $e) {
-            self::debugLog("Failed to add email blacklist: " . $e->getMessage());
+            self::debugLog("Failed to add email blocklist: " . $e->getMessage());
             return false;
         }
     }

@@ -2,13 +2,13 @@
 
 ## Übersicht
 
-Das Mail Security System ist ein umfassendes Sicherheitsmodul des Upkeep AddOns, das E-Mail-Kommunikation vor Spam, Badwords und schädlichen Inhalten schützt. Es integriert sich nahtlos in PHPMailer und bietet erweiterte Funktionen wie IP/Domain-Blacklisting, Rate-Limiting und umfangreiche Protokollierung.
+Das Mail Security System ist ein umfassendes Sicherheitsmodul des Upkeep AddOns, das E-Mail-Kommunikation vor Spam, Badwords und schädlichen Inhalten schützt. Es integriert sich nahtlos in PHPMailer und bietet erweiterte Funktionen wie IP/Domain-Blocklisting, Rate-Limiting und umfangreiche Protokollierung.
 
 ## Features
 
 ### 🛡️ Kernfunktionen
 - **Badword-Filter**: Automatische Erkennung und Blockierung von unerwünschten Begriffen
-- **IP/Domain Blacklist**: Sperrung von E-Mails basierend auf Absender-IP oder Domain
+- **IP/Domain Blocklist**: Sperrung von E-Mails basierend auf Absender-IP oder Domain
 - **Rate Limiting**: Schutz vor E-Mail-Spam durch Frequenzbegrenzung
 - **Threat Detection**: Erkennung von Code-Injection und anderen Bedrohungen
 - **Integration**: Nahtlose Integration in PHPMailer über Extension Points
@@ -21,7 +21,7 @@ Das Mail Security System ist ein umfassendes Sicherheitsmodul des Upkeep AddOns,
 
 ### ⚙️ Verwaltung
 - **Backend-Interface**: Vollständige Verwaltung über REDAXO-Backend
-- **Bulk-Operationen**: Massenbearbeitung von Blacklist-Einträgen
+- **Bulk-Operationen**: Massenbearbeitung von Blocklist-Einträgen
 - **Export/Import**: Datenaustausch für Backup und Migration
 - **Automatische Bereinigung**: Regelmäßige Bereinigung alter Logs
 
@@ -30,7 +30,7 @@ Das Mail Security System ist ein umfassendes Sicherheitsmodul des Upkeep AddOns,
 Das Mail Security System ist Teil des Upkeep AddOns und wird automatisch installiert. Nach der Installation sind folgende Schritte erforderlich:
 
 1. **Aktivierung**: Mail Security über die Einstellungen aktivieren
-2. **Konfiguration**: Badwords und Blacklist-Einträge definieren
+2. **Konfiguration**: Badwords und Blocklist-Einträge definieren
 3. **Testing**: Funktionalität mit Test-E-Mails verifizieren
 
 ## Konfiguration
@@ -44,8 +44,8 @@ $addon->setConfig('mail_security_active', true);
 // Badword-Filter aktivieren
 $addon->setConfig('badword_filter_enabled', true);
 
-// IP/Domain Blacklist aktivieren
-$addon->setConfig('blacklist_enabled', true);
+// IP/Domain Blocklist aktivieren
+$addon->setConfig('blocklist_enabled', true);
 
 // Rate Limiting aktivieren
 $addon->setConfig('mail_rate_limiting_enabled', true);
@@ -116,27 +116,27 @@ foreach ($badwords as $badword) {
 | **Malware** | Schädliche Begriffe | download now, infected, virus |
 | **Custom** | Benutzerdefiniert | Projektspezifische Begriffe |
 
-## IP/Domain Blacklist
+## IP/Domain Blocklist
 
-### Blacklist-Einträge verwalten
+### Blocklist-Einträge verwalten
 
-**Backend**: `Upkeep → Mail Security → Blacklist`
+**Backend**: `Upkeep → Mail Security → Blocklist`
 
 **Programmatisch**:
 ```php
 use KLXM\Upkeep\MailSecurityFilter;
 
 // IP-Adresse sperren
-MailSecurityFilter::addToBlacklist('192.168.1.100', 'ip', 'Spam-Quelle');
+MailSecurityFilter::addToBlocklist('192.168.1.100', 'ip', 'Spam-Quelle');
 
 // Domain sperren
-MailSecurityFilter::addToBlacklist('spam-domain.com', 'domain', 'Bekannte Spam-Domain');
+MailSecurityFilter::addToBlocklist('spam-domain.com', 'domain', 'Bekannte Spam-Domain');
 
 // E-Mail-Adresse sperren
-MailSecurityFilter::addToBlacklist('spammer@evil.com', 'email', 'Spam-Account');
+MailSecurityFilter::addToBlocklist('spammer@evil.com', 'email', 'Spam-Account');
 
 // Mit Ablaufzeit (24 Stunden)
-MailSecurityFilter::addToBlacklist(
+MailSecurityFilter::addToBlocklist(
     '10.0.0.50', 
     'ip', 
     'Temporäre Sperrung',
@@ -144,7 +144,7 @@ MailSecurityFilter::addToBlacklist(
 );
 ```
 
-### Blacklist-Typen
+### Blocklist-Typen
 
 | Typ | Beschreibung | Format | Beispiel |
 |-----|--------------|---------|----------|
@@ -157,10 +157,10 @@ MailSecurityFilter::addToBlacklist(
 
 ```php
 // Domain-Wildcards
-MailSecurityFilter::addToBlacklist('*.spam-network.com', 'domain', 'Spam-Netzwerk');
+MailSecurityFilter::addToBlocklist('*.spam-network.com', 'domain', 'Spam-Netzwerk');
 
 // E-Mail-Wildcards
-MailSecurityFilter::addToBlacklist('*@phishing-site.org', 'email', 'Phishing-Domain');
+MailSecurityFilter::addToBlocklist('*@phishing-site.org', 'email', 'Phishing-Domain');
 ```
 
 ## Rate Limiting
@@ -210,8 +210,8 @@ if ($isBlocked) {
 | Typ | Beschreibung | Aktion |
 |-----|--------------|--------|
 | **mail_badword** | Badword in E-Mail erkannt | Block + Log |
-| **mail_blacklist_ip** | IP auf Blacklist | Block + Log |
-| **mail_blacklist_domain** | Domain auf Blacklist | Block + Log |
+| **mail_blocklist_ip** | IP auf Blocklist | Block + Log |
+| **mail_blocklist_domain** | Domain auf Blocklist | Block + Log |
 | **mail_code_injection** | Code-Injection Versuch | Block + Log |
 | **mail_rate_limit** | Rate Limit überschritten | Block + Log |
 | **mail_html_injection** | HTML-Injection erkannt | Block + Log |
@@ -276,7 +276,7 @@ Authorization: Bearer {token}
         "threats_24h": 45,
         "blocked_emails_24h": 12,
         "badwords_count": 156,
-        "blacklist_count": 89,
+        "blocklist_count": 89,
         "rate_limit_blocks_24h": 3
     }
 }
@@ -323,17 +323,17 @@ DELETE /api/upkeep/mail-security/badwords/{id}
 Authorization: Bearer {token}
 ```
 
-#### Blacklist verwalten
+#### Blocklist verwalten
 
-**Blacklist-Einträge abrufen**:
+**Blocklist-Einträge abrufen**:
 ```http
-GET /api/upkeep/mail-security/blacklist
+GET /api/upkeep/mail-security/blocklist
 Authorization: Bearer {token}
 ```
 
-**Zur Blacklist hinzufügen**:
+**Zur Blocklist hinzufügen**:
 ```http
-POST /api/upkeep/mail-security/blacklist
+POST /api/upkeep/mail-security/blocklist
 Authorization: Bearer {token}
 Content-Type: application/json
 
@@ -345,9 +345,9 @@ Content-Type: application/json
 }
 ```
 
-**Blacklist-Eintrag entfernen**:
+**Blocklist-Eintrag entfernen**:
 ```http
-DELETE /api/upkeep/mail-security/blacklist/{id}
+DELETE /api/upkeep/mail-security/blocklist/{id}
 Authorization: Bearer {token}
 ```
 
@@ -391,8 +391,8 @@ $stats = MailSecurityFilter::getDashboardStats();
 // Badword prüfen
 $hasBadword = MailSecurityFilter::containsBadwords($text);
 
-// IP auf Blacklist prüfen
-$isBlacklisted = MailSecurityFilter::isBlacklisted('192.168.1.100', 'ip');
+// IP auf Blocklist prüfen
+$isBlocklisted = MailSecurityFilter::isBlocklisted('192.168.1.100', 'ip');
 
 // Rate Limit prüfen
 $isLimited = MailSecurityFilter::isRateLimitExceeded('192.168.1.100');
@@ -448,9 +448,9 @@ CREATE TABLE upkeep_mail_badwords (
 );
 ```
 
-#### upkeep_mail_blacklist
+#### upkeep_mail_blocklist
 ```sql
-CREATE TABLE upkeep_mail_blacklist (
+CREATE TABLE upkeep_mail_blocklist (
     id INT PRIMARY KEY AUTO_INCREMENT,
     entry VARCHAR(500) NOT NULL,
     type ENUM('ip', 'domain', 'email') NOT NULL,
@@ -507,7 +507,7 @@ Das Mail Security Dashboard zeigt folgende Metriken:
 - **Bedrohungen (24h)**: Anzahl erkannter Bedrohungen
 - **Blockierte E-Mails (24h)**: Anzahl blockierter E-Mails
 - **Aktive Badwords**: Anzahl aktiver Badword-Filter
-- **Blacklist-Einträge**: Anzahl aktiver Sperren
+- **Blocklist-Einträge**: Anzahl aktiver Sperren
 - **Rate Limit Blocks**: Rate-Limiting Ereignisse
 
 ### Logging
@@ -538,7 +538,7 @@ $config = [
     'threat_threshold_per_hour' => 100,
     'blocked_emails_threshold_per_day' => 1000,
     'new_badwords_alert' => true,
-    'blacklist_changes_alert' => true
+    'blocklist_changes_alert' => true
 ];
 
 // Alert-Empfänger
@@ -554,7 +554,7 @@ $alert_recipients = [
 
 Das System nutzt effizientes Caching für:
 - **Badwords**: In-Memory Cache für häufige Prüfungen
-- **Blacklist**: Redis/Memcache für schnelle IP-Lookups
+- **Blocklist**: Redis/Memcache für schnelle IP-Lookups
 - **Rate Limits**: Temporäre Speicherung für aktuelle Limits
 
 ### Database-Optimierung
@@ -564,7 +564,7 @@ Das System nutzt effizientes Caching für:
 CREATE INDEX idx_mail_threats_composite ON upkeep_mail_threat_log 
     (threat_type, created_at, severity);
 
-CREATE INDEX idx_mail_blacklist_lookup ON upkeep_mail_blacklist 
+CREATE INDEX idx_mail_blocklist_lookup ON upkeep_mail_blocklist 
     (type, entry(100), status, expires_at);
 
 -- Partitionierung für große Tabellen
@@ -603,7 +603,7 @@ $cleanup_config = [
    - Entfernen Sie überreaktive Badwords
    - Verwenden Sie präzisere RegEx-Patterns
 
-3. **Blacklist prüfen**:
+3. **Blocklist prüfen**:
    - Überprüfen Sie IP/Domain-Sperren
    - Entfernen Sie falsche Einträge
 
@@ -635,7 +635,7 @@ $cleanup_config = [
    ```
 
 3. **Caching optimieren**:
-   - Redis/Memcache für Blacklist
+   - Redis/Memcache für Blocklist
    - APCu für Badwords
 
 ### Debug-Modus
@@ -652,7 +652,7 @@ $debug_log = rex_path::addonData('upkeep', 'mail_security_debug.log');
 
 ### 1. Regelmäßige Updates
 - Badword-Listen aktualisieren
-- Blacklist-Einträge überprüfen
+- Blocklist-Einträge überprüfen
 - Threat-Patterns anpassen
 
 ### 2. Monitoring
