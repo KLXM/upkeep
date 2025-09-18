@@ -705,3 +705,90 @@ upkeep_details = Details
 upkeep_recommendations = Empfehlungen
 upkeep_no_checks_found_for_filter = Keine Prüfungen für diesen Filter gefunden.
 
+# Mail Reporting
+upkeep_mail_reporting_title = Mail Reporting
+upkeep_mail_reporting_info = Das Mail-Reporting-System sendet automatische E-Mail-Berichte über alle Upkeep-Aktivitäten. Es kann sofort senden oder Berichte sammeln und in Paketen versenden.
+upkeep_mail_reporting_enabled = Mail Reporting aktiviert
+upkeep_mail_reporting_email = E-Mail-Adresse
+upkeep_mail_reporting_email_note = Leer lassen, um die REDAXO-System-E-Mail zu verwenden
+upkeep_mail_reporting_name = Absendername
+upkeep_mail_reporting_key = Report-Schlüssel
+upkeep_mail_reporting_key_note = Zur Identifikation in E-Mails (z.B. Server-Name)
+upkeep_mail_reporting_mode = Versandmodus
+upkeep_mail_reporting_mode_immediate = Sofort versenden
+upkeep_mail_reporting_mode_bundle = Sammeln und als Paket versenden
+upkeep_mail_reporting_mode_note = Sofort: Jeder Bericht wird sofort versendet. Paket: Berichte werden gesammelt und regelmäßig als Bundle versendet.
+upkeep_mail_reporting_settings = Mail Reporting Einstellungen
+upkeep_mail_reporting_settings_updated = Mail Reporting Einstellungen wurden aktualisiert
+
+# Report Types
+upkeep_mail_reporting_types = Berichtstypen
+upkeep_mail_reporting_security_advisor = Security Advisor Berichte
+upkeep_mail_reporting_ips_threats = IPS Bedrohungsmeldungen
+upkeep_mail_reporting_maintenance = Wartungsmodus-Benachrichtigungen
+upkeep_mail_reporting_phpmailer_errors = PHPMailer Fehlerberichte
+upkeep_mail_reporting_phpmailer_errors_note = Ersetzt die Standard REDAXO Fehler-E-Mails
+upkeep_mail_reporting_status_reports = Status-Berichte
+upkeep_mail_reporting_status_reports_note = Regelmäßige Systemstatus-Übersichten
+upkeep_mail_reporting_bundle_interval = Bundle-Intervall (Sekunden)
+upkeep_mail_reporting_bundle_interval_note = Wie oft Bundle-Berichte versendet werden (300-86400 Sekunden)
+
+# Actions
+upkeep_mail_reporting_actions = Aktionen
+upkeep_mail_reporting_test = Test-E-Mail
+upkeep_mail_reporting_send_test = Test-E-Mail senden
+upkeep_mail_reporting_send_test_note = Sendet eine Test-E-Mail mit dem aktuellen Systemstatus
+upkeep_mail_reporting_test_sent = Test-E-Mail wurde erfolgreich versendet
+upkeep_mail_reporting_test_failed = Test-E-Mail konnte nicht versendet werden
+upkeep_mail_reporting_disabled = Mail Reporting ist deaktiviert
+
+upkeep_mail_reporting_bundle = Bundle-Bericht
+upkeep_mail_reporting_send_bundle = Bundle senden
+upkeep_mail_reporting_send_bundle_note = Sendet alle gesammelten Berichte des angegebenen Zeitraums
+upkeep_mail_reporting_bundle_sent = Bundle-Bericht wurde erfolgreich versendet
+upkeep_mail_reporting_bundle_failed = Bundle-Bericht konnte nicht versendet werden
+
+# Log Management
+upkeep_mail_reporting_log_management = Log-Verwaltung
+upkeep_mail_reporting_logs = Bericht-Logs
+upkeep_mail_reporting_logs_info = {0} Bericht-Dateien in {1}
+upkeep_mail_reporting_log_actions = Log-Aktionen
+upkeep_mail_reporting_delete_logs = Logs löschen
+upkeep_mail_reporting_delete_logs_confirm = Sind Sie sicher, dass Sie alle Log-Dateien löschen möchten?
+upkeep_mail_reporting_logs_deleted = Log-Dateien wurden gelöscht
+upkeep_mail_reporting_path_not_exists = Log-Verzeichnis existiert nicht: {0}
+
+# Information
+upkeep_mail_reporting_info_title = Mail Reporting Information
+upkeep_mail_reporting_info_immediate = Sofort-Modus
+upkeep_mail_reporting_info_immediate_desc = Jeder Bericht wird sofort per E-Mail versendet
+upkeep_mail_reporting_info_bundle = Bundle-Modus
+upkeep_mail_reporting_info_bundle_desc = Berichte werden gesammelt und regelmäßig als Paket versendet
+upkeep_mail_reporting_info_cronjob = Cronjob-Befehl
+
+# Common Labels
+upkeep_enabled = Aktiviert
+upkeep_disabled = Deaktiviert
+upkeep_save = Speichern
+
+# System Health
+upkeep_system_health_title = System Health
+upkeep_system_health_info = Die System Health API ermöglicht es, den Systemstatus über eine URL abzurufen. Ideal für Monitoring-Tools und externe Überwachung.
+upkeep_system_health_enabled = System Health API aktiviert
+upkeep_system_health_key = Health Key
+upkeep_system_health_key_note = Sicherheitsschlüssel für den API-Zugriff. Wird automatisch generiert.
+upkeep_system_health_generate_key = Neuen Key generieren
+upkeep_system_health_settings = System Health Einstellungen
+upkeep_system_health_settings_updated = System Health Einstellungen wurden aktualisiert
+upkeep_system_health_key_generated = Neuer Health Key wurde generiert
+upkeep_system_health_api_usage = API Verwendung
+upkeep_system_health_info_title = System Health Information
+upkeep_system_health_info_desc = Die System Health API stellt Informationen über REDAXO, Upkeep-Module, Sicherheitsstatus und Systemkonfiguration bereit.
+
+# Status Report Actions
+upkeep_mail_reporting_status_report = Status-Bericht
+upkeep_mail_reporting_send_status = Status-Bericht senden
+upkeep_mail_reporting_send_status_note = Sendet einen detaillierten Status-Bericht mit allen Upkeep-Systemdaten
+upkeep_mail_reporting_status_sent = Status-Bericht wurde erfolgreich versendet  
+upkeep_mail_reporting_status_failed = Status-Bericht konnte nicht versendet werden
+

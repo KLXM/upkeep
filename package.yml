@@ -48,6 +48,14 @@ page:
                 settings: {title: 'Settings', icon: rex-icon fa fa-cog}
                 cleanup: {title: 'Cleanup', icon: rex-icon fa fa-trash}
                 help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
+        mail_reporting:
+            title: 'translate:upkeep_mail_reporting_title'
+            icon: rex-icon fa fa-paper-plane
+            perm: upkeep[security]
+        system_health:
+            title: 'translate:upkeep_system_health_title'
+            icon: rex-icon fa fa-heartbeat
+            perm: upkeep[security]
         maintenance:
             title: 'translate:upkeep_maintenance_title'
             icon: rex-icon fa fa-wrench
@@ -85,6 +93,7 @@ console_commands:
     upkeep:mode: rex_upkeep_mode_command
     upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
     upkeep:security:scan: rex_upkeep_security_scan_command
+    upkeep:mail-reporting:send-bundle: rex_upkeep_mail_reporting_bundle_command
 
 default_config:
     frontend_active: 0
