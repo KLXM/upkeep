@@ -578,3 +578,58 @@ upkeep_ips_cleanup_manual = Manual cleanup
 upkeep_ips_cleanup_auto = Automatic cleanup
 upkeep_ips_cleanup_found = {0} records were found that can be cleaned up.
 upkeep_ips_important_notes = Important notes
+
+# Help/Documentation
+help = Help & Documentation
+upkeep_mail_security_help_title = Mail Security Documentation
+upkeep_maintenance_title = Maintenance
+upkeep_maintenance_help_title = Maintenance Documentation
+
+# Maintenance Status
+upkeep_status_active = Active
+upkeep_status_inactive = Inactive
+upkeep_configure = Configure
+upkeep_activate = Activate
+upkeep_deactivate = Deactivate
+
+# Frontend Maintenance
+upkeep_frontend_active_info = Frontend maintenance mode is active. Visitors see the maintenance page.
+upkeep_frontend_inactive_info = Frontend is normally accessible.
+upkeep_allowed_ips = allowed IP addresses
+upkeep_confirm_activate = Really activate maintenance mode?
+upkeep_confirm_deactivate = Really deactivate maintenance mode?
+
+# Backend Maintenance
+upkeep_backend_active_info = Backend maintenance mode active. Only administrators have access.
+upkeep_backend_inactive_info = Backend is accessible to all users.
+upkeep_confirm_activate_backend = Really activate backend maintenance mode? Normal users will be locked out!
+upkeep_confirm_deactivate_backend = Really deactivate backend maintenance mode?
+
+# Domain Maintenance
+upkeep_all_domains_locked = All domains locked
+upkeep_domains_locked = domains locked
+upkeep_no_domains_locked = No domains locked
+upkeep_total_domains = total domains
+upkeep_locked_domains = Locked domains
+upkeep_yrewrite_required = YRewrite addon required
+upkeep_lock_all = Lock all
+upkeep_unlock_all = Unlock all
+upkeep_confirm_lock_all_domains = Really lock all domains?
+upkeep_confirm_unlock_all_domains = Really unlock all domains?
+
+# Maintenance Notices
+upkeep_maintenance_active_notice = Maintenance mode active
+upkeep_maintenance_active_description = One or more maintenance modes are active. Make sure all planned work is completed.
+upkeep_emergency_access = Emergency access
+upkeep_emergency_access_description = In case of critical problems, all maintenance modes can be deactivated via this file.
+
+# Frontend Maintenance extended
+upkeep_frontend_activated = Frontend maintenance mode has been activated.
+upkeep_frontend_deactivated = Frontend maintenance mode has been deactivated.
+upkeep_frontend_activate_warning = Visitors to your website will see a maintenance page after activation.
+upkeep_frontend_deactivate_info = Normal website operation will be restored.
+upkeep_cancel = Cancel
+
+# Maintenance Overview
+upkeep_maintenance_overview = Overview
+upkeep_all_domains_forced_locked = Global domain lock is active (can be changed in domain management)

@@ -5,6 +5,7 @@
 
 use KLXM\Upkeep\Upkeep;
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\MailSecurityFilter;
 
 // Falls Setup aktiv ist, nichts tun
 if (rex::isSetup()) {
@@ -47,3 +48,21 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
     // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
+
+// Mail Security Filter für PHPMailer registrieren
+// Nur registrieren wenn PHPMailer-AddOn verfügbar ist
+if (rex_addon::get('phpmailer')->isAvailable()) {
+    rex_extension::register('PHPMAILER_PRE_SEND', static function (rex_extension_point $ep) {
+        try {
+            return MailSecurityFilter::filterMail($ep);
+        } catch (Exception $e) {
+            // Log der Exception für Debugging
+            if (rex_addon::get('upkeep')->getConfig('mail_security_debug', false)) {
+                rex_logger::factory()->log('error', 'Mail Security Filter Error: ' . $e->getMessage());
+            }
+            
+            // Exception weiterwerfen um E-Mail-Versand zu stoppen
+            throw $e;
+        }
+    });
+}

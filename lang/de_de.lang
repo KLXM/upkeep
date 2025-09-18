@@ -575,3 +575,76 @@ upkeep_ips_cleanup_manual = Manuelle Bereinigung
 upkeep_ips_cleanup_auto = Automatische Bereinigung
 upkeep_ips_cleanup_found = Es wurden {0} Datensätze gefunden, die bereinigt werden können.
 upkeep_ips_important_notes = Wichtige Hinweise
+
+# Mail Security
+upkeep_mail_security = Mail Security
+upkeep_mail_security_dashboard = Mail Security Dashboard
+upkeep_mail_security_badwords = Badwords
+upkeep_mail_security_blacklist = IP/Domain Blacklist
+upkeep_mail_security_settings = Mail Security Einstellungen
+upkeep_mail_security_threats = Bedrohungsprotokoll
+upkeep_mail_security_cleanup = Bereinigung
+upkeep_mail_security_quick_actions = Mail Security - Schnellaktionen
+upkeep_mail_security_quick_access = Schnellzugriff auf Mail Security Funktionen
+upkeep_mail_security_threats_blocked = Mail Bedrohungen
+upkeep_mail_security_badwords_detected = Badwords erkannt
+upkeep_mail_security_blacklist_entries = Blacklist Einträge
+upkeep_mail_security_status = Mail Security Status
+upkeep_mail_security_protection = Schutz aktiv
+upkeep_mail_security_email_protection = E-Mail Sicherheit & Spam-Schutz
+upkeep_dashboard_website_security = Website-Sicherheit & Angriffserkennung
+
+# Hilfe/Dokumentation
+help = Hilfe & Dokumentation
+upkeep_mail_security_help_title = Mail Security Dokumentation
+upkeep_maintenance_title = Wartung
+upkeep_maintenance_help_title = Wartung Dokumentation
+
+# Wartung Status
+upkeep_status_active = Aktiv
+upkeep_status_inactive = Inaktiv
+upkeep_configure = Konfigurieren
+upkeep_activate = Aktivieren
+upkeep_deactivate = Deaktivieren
+
+# Frontend Wartung
+upkeep_frontend_active_info = Frontend-Wartungsmodus ist aktiviert. Besucher sehen die Wartungsseite.
+upkeep_frontend_inactive_info = Frontend ist normal erreichbar.
+upkeep_allowed_ips = erlaubte IP-Adressen
+upkeep_confirm_activate = Wartungsmodus wirklich aktivieren?
+upkeep_confirm_deactivate = Wartungsmodus wirklich deaktivieren?
+
+# Backend Wartung
+upkeep_backend_active_info = Backend-Wartungsmodus aktiv. Nur Administratoren haben Zugang.
+upkeep_backend_inactive_info = Backend ist für alle Benutzer zugänglich.
+upkeep_confirm_activate_backend = Backend-Wartungsmodus wirklich aktivieren? Normale Benutzer werden ausgesperrt!
+upkeep_confirm_deactivate_backend = Backend-Wartungsmodus wirklich deaktivieren?
+
+# Domain Wartung
+upkeep_all_domains_locked = Alle Domains gesperrt
+upkeep_domains_locked = Domains gesperrt
+upkeep_no_domains_locked = Keine Domains gesperrt
+upkeep_total_domains = Domains insgesamt
+upkeep_locked_domains = Gesperrte Domains
+upkeep_yrewrite_required = YRewrite AddOn erforderlich
+upkeep_lock_all = Alle sperren
+upkeep_unlock_all = Alle entsperren
+upkeep_confirm_lock_all_domains = Wirklich alle Domains sperren?
+upkeep_confirm_unlock_all_domains = Wirklich alle Domains entsperren?
+
+# Wartung Hinweise
+upkeep_maintenance_active_notice = Wartungsmodus aktiv
+upkeep_maintenance_active_description = Ein oder mehrere Wartungsmodi sind aktiv. Stellen Sie sicher, dass alle geplanten Arbeiten abgeschlossen sind.
+upkeep_emergency_access = Notfallzugang
+upkeep_emergency_access_description = Bei kritischen Problemen können alle Wartungsmodi über diese Datei deaktiviert werden.
+
+# Frontend Wartung erweitert
+upkeep_frontend_activated = Frontend-Wartungsmodus wurde aktiviert.
+upkeep_frontend_deactivated = Frontend-Wartungsmodus wurde deaktiviert.
+upkeep_frontend_activate_warning = Besucher Ihrer Website sehen nach Aktivierung eine Wartungsseite.
+upkeep_frontend_deactivate_info = Der normale Website-Betrieb wird wiederhergestellt.
+upkeep_cancel = Abbrechen
+
+# Wartung Übersicht
+upkeep_maintenance_overview = Übersicht
+upkeep_all_domains_forced_locked = Globale Domain-Sperrung ist aktiv (kann in der Domain-Verwaltung geändert werden)

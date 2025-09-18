@@ -17,7 +17,83 @@
     --upkeep-text-secondary: #6c757d;
     --upkeep-border: #dee2e6;
     
-    --upkeep-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: var(--upkeep-text-secondary);
+}
+
+/* Dashboard Section Titles */
+.dashboard-section-title {
+    margin: 30px 0 15px 0;
+    padding: 15px 0 10px 0;
+    border-bottom: 2px solid var(--upkeep-border);
+    color: var(--upkeep-text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.dashboard-section-title:first-child {
+    margin-top: 0;
+}
+
+.dashboard-section-title::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--upkeep-primary);
+    transition: width 0.3s ease;
+}
+
+.dashboard-section-title:hover::before {
+    width: 120px;
+}
+
+.dashboard-section-title .rex-icon {
+    color: var(--upkeep-primary);
+    font-size: 1.2rem;
+}
+
+.dashboard-section-title small {
+    color: var(--upkeep-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 400;
+    margin-left: auto;
+}
+
+/* Add spacing between sections */
+.dashboard-cards + .row {
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard-section-title {
+        font-size: 1.2rem;
+        margin: 25px 0 12px 0;
+        padding: 12px 0 8px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .dashboard-section-title small {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+    
+    .upkeep-dashboard {
+        margin: -15px -15px 0 -15px;
+        padding: 15px;
+    }
+    
+    .dashboard-header .panel-body {
+        padding: 20px;
+    }ow: 0 2px 4px rgba(0,0,0,0.1);
     --upkeep-shadow-hover: 0 4px 8px rgba(0,0,0,0.15);
     
     --upkeep-transition: all 0.3s ease;
@@ -596,6 +672,73 @@
     .status-indicator {
         width: 8px;
         height: 8px;
+    }
+}
+
+/* Dashboard Section Titles */
+.dashboard-section-title {
+    margin: 30px 0 15px 0;
+    padding: 15px 0 10px 0;
+    border-bottom: 2px solid var(--upkeep-border);
+    color: var(--upkeep-text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.dashboard-section-title:first-child {
+    margin-top: 0;
+}
+
+.dashboard-section-title::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--upkeep-primary);
+    transition: width 0.3s ease;
+}
+
+.dashboard-section-title:hover::before {
+    width: 120px;
+}
+
+.dashboard-section-title .rex-icon {
+    color: var(--upkeep-primary);
+    font-size: 1.2rem;
+}
+
+.dashboard-section-title small {
+    color: var(--upkeep-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 400;
+    margin-left: auto;
+}
+
+/* Add spacing between sections */
+.dashboard-cards + .row {
+    margin-top: 20px;
+}
+
+/* Mobile responsive for section titles */
+@media (max-width: 768px) {
+    .dashboard-section-title {
+        font-size: 1.2rem;
+        margin: 25px 0 12px 0;
+        padding: 12px 0 8px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .dashboard-section-title small {
+        margin-left: 0;
+        margin-top: 5px;
     }
 }
 
