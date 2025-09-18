@@ -40,10 +40,14 @@ if (rex_post('add-badword', 'string') === '1') {
     $description = trim(rex_post('badword_description', 'string', ''));
     
     if (!empty($pattern)) {
-        if (MailSecurityFilter::addBadword($pattern, $severity, $category, $isRegex, $description)) {
-            $success = 'Badword erfolgreich hinzugefügt.';
-        } else {
-            $error = 'Fehler beim Hinzufügen des Badwords.';
+        try {
+            if (MailSecurityFilter::addBadword($pattern, $severity, $category, $isRegex, $description)) {
+                $success = 'Badword erfolgreich hinzugefügt.';
+            } else {
+                $error = 'Fehler beim Hinzufügen des Badwords. Prüfen Sie das System-Log für Details.';
+            }
+        } catch (Exception $e) {
+            $error = 'Exception beim Hinzufügen des Badwords: ' . rex_escape($e->getMessage());
         }
     } else {
         $error = 'Pattern darf nicht leer sein.';

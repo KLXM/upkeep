@@ -683,11 +683,11 @@ class MailSecurityFilter
     /**
      * Holt Badwords aus Datenbank
      */
-    public static function getBadwords(): array
+    public static function getBadwords(bool $forceReload = false): array
     {
         static $badwords = null;
         
-        if ($badwords === null) {
+        if ($badwords === null || $forceReload) {
             $badwords = [];
             
             try {
@@ -1011,7 +1011,8 @@ class MailSecurityFilter
             
             return true;
         } catch (Exception $e) {
-            self::debugLog("Failed to add badword: " . $e->getMessage());
+            // Log to REDAXO system log for debugging
+            rex_logger::factory()->log('error', "Mail Security addBadword failed: " . $e->getMessage());
             return false;
         }
     }
@@ -1065,11 +1066,8 @@ class MailSecurityFilter
      */
     private static function clearBadwordsCache(): void
     {
-        // Static Cache leeren
-        $reflection = new \ReflectionClass(__CLASS__);
-        $badwordsProperty = $reflection->getProperty('badwords');
-        $badwordsProperty->setAccessible(true);
-        $badwordsProperty->setValue(null, null);
+        // Cache durch erneutes Laden leeren
+        self::getBadwords(true);
     }
 
     /**
