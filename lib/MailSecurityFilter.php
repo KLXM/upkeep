@@ -274,7 +274,10 @@ class MailSecurityFilter
                 self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
                 
                 if ($recipientThreat['severity'] === 'critical') {
-                    throw new \Exception('E-Mail-Adresse oder Domain ist gesperrt.');
+                    // An IPS weiterleiten statt Exception werfen
+                    self::escalateToIPS($clientIp, $recipientThreat);
+                    // IPS übernimmt die Sperrung und Anzeige der Sperrseite
+                    return null; // Stoppt weitere Verarbeitung
                 }
             }
 
@@ -284,7 +287,9 @@ class MailSecurityFilter
                 self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat);
                 
                 if ($senderThreat['severity'] === 'high') {
-                    throw new \Exception('Absender-Domain ist nicht autorisiert.');
+                    // An IPS weiterleiten statt Exception werfen
+                    self::escalateToIPS($clientIp, $senderThreat);
+                    return null; // Stoppt weitere Verarbeitung
                 }
             }
 
@@ -296,7 +301,8 @@ class MailSecurityFilter
                 // Bei Code-Injection sofort blockieren und IP zur IPS-Bedrohung hinzufügen
                 self::escalateToIPS($clientIp, $injectionThreat);
                 
-                throw new \Exception('E-Mail-Inhalt enthält potenziell schädlichen Code.');
+                // IPS übernimmt die Sperrung und Anzeige der Sperrseite
+                return null; // Stoppt weitere Verarbeitung
             }
 
             // 5. Badword-Filter auf E-Mail-Inhalt anwenden
@@ -307,9 +313,11 @@ class MailSecurityFilter
                 if ($contentThreat['severity'] === 'critical') {
                     // Kritische Badwords auch an IPS eskalieren
                     self::escalateToIPS($clientIp, $contentThreat);
-                    throw new \Exception('E-Mail-Inhalt enthält unzulässige Begriffe.');
+                    return null; // IPS übernimmt die Sperrung
                 } elseif ($contentThreat['severity'] === 'high') {
-                    throw new \Exception('E-Mail-Inhalt wurde als verdächtig eingestuft.');
+                    // Hohe Bedrohungen auch an IPS weiterleiten
+                    self::escalateToIPS($clientIp, $contentThreat);
+                    return null; // IPS übernimmt die Sperrung
                 } else {
                     // Medium/Low: Nur loggen, weiterleiten
                     self::debugLog("Mail content flagged but allowed: " . $contentThreat['pattern']);
@@ -325,8 +333,10 @@ class MailSecurityFilter
                     // Wiederholte Spam-Versuche an IPS eskalieren
                     if (self::getSpamAttemptCount($clientIp) >= 3) {
                         self::escalateToIPS($clientIp, $spamThreat);
+                        return null; // IPS übernimmt die Sperrung
                     }
-                    throw new \Exception('E-Mail wurde als Spam klassifiziert.');
+                    // Ersten/zweiten Spam-Versuch: Nur loggen, aber nicht blockieren
+                    self::debugLog("Spam pattern detected but not yet escalated: " . $spamThreat['pattern']);
                 }
             }
 

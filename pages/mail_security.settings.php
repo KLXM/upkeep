@@ -22,7 +22,6 @@ if (rex_post('form-submit', 'string') === '1') {
         
         // Erweiterte Einstellungen
         $addon->setConfig('mail_security_block_suspicious', (bool) rex_post('block_suspicious', 'int', 0));
-        $addon->setConfig('mail_security_escalate_critical', (bool) rex_post('escalate_critical', 'int', 1));
         $addon->setConfig('mail_security_temp_block_duration', max(1, (int) rex_post('temp_block_duration', 'int', 60)));
         $addon->setConfig('mail_security_max_spam_attempts', max(1, (int) rex_post('max_spam_attempts', 'int', 3)));
         
@@ -127,7 +126,6 @@ $config = [
     'mail_rate_limit_per_hour' => $addon->getConfig('mail_rate_limit_per_hour', 50),
     'mail_rate_limit_per_day' => $addon->getConfig('mail_rate_limit_per_day', 200),
     'mail_security_block_suspicious' => $addon->getConfig('mail_security_block_suspicious', false),
-    'mail_security_escalate_critical' => $addon->getConfig('mail_security_escalate_critical', true),
     'mail_security_temp_block_duration' => $addon->getConfig('mail_security_temp_block_duration', 60),
     'mail_security_max_spam_attempts' => $addon->getConfig('mail_security_max_spam_attempts', 3),
     'mail_security_check_subject' => $addon->getConfig('mail_security_check_subject', true),
@@ -218,11 +216,6 @@ $formElements = [];
 $n = [];
 $n['label'] = '<label for="block-suspicious">Verdächtige E-Mails blockieren</label>';
 $n['field'] = '<div class="checkbox"><label><input type="checkbox" id="block-suspicious" name="block_suspicious" value="1"' . ($config['mail_security_block_suspicious'] ? ' checked="checked"' : '') . ' /> Auch E-Mails mit mittlerem Bedrohungsgrad blockieren</label></div>';
-$formElements[] = $n;
-
-$n = [];
-$n['label'] = '<label for="escalate-critical">Kritische Bedrohungen eskalieren</label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="escalate-critical" name="escalate_critical" value="1"' . ($config['mail_security_escalate_critical'] ? ' checked="checked"' : '') . ' /> Kritische Bedrohungen an IPS-System weiterleiten</label></div>';
 $formElements[] = $n;
 
 $n = [];
