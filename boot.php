@@ -71,7 +71,9 @@ if (rex_addon::get('phpmailer')->isAvailable()) {
     });
 }
 
-// Security Advisor API Route registrieren
+
+
+// Security Advisor API Route registrieren (deprecated)
 if (rex::isBackend() && rex_request::get('api') === 'security_advisor') {
     include rex_addon::get('upkeep')->getPath('api/security_advisor.php');
     exit;

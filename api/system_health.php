@@ -13,9 +13,9 @@ use KLXM\Upkeep\MailReporting;
 use KLXM\Upkeep\SecurityAdvisor;
 use KLXM\Upkeep\IntrusionPrevention;
 
-// Prevent direct access
-if (!rex::isBackend() && !rex_request('health_key', 'string')) {
-    throw new rex_exception('Access denied');
+// Direct health check via URL parameter (like Security AddOn)
+if (!rex_request('upkeep_system_health', 'string')) {
+    return; // Not a health check request
 }
 
 $addon = rex_addon::get('upkeep');

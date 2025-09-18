@@ -10,7 +10,9 @@ Comprehensive maintenance and security add-on for REDAXO CMS.
 - **🛡️ Intrusion Prevention System (IPS)**: Automatic protection against attacks
 - **📊 Security Advisor**: SSL certificates, Live-Mode checks, CSP management
 - **💾 Mail Security**: Badword filter and spam protection for PHPMailer
-- **📈 Dashboard**: Live status of all systems with quick actions
+- **� Mail Reporting**: Comprehensive email reports for all security events
+- **🏥 System Health API**: JSON/Plain text monitoring endpoints for external tools
+- **�📈 Dashboard**: Live status of all systems with quick actions
 - **⚡ API/Console**: Remote management capabilities
 
 ## Installation
@@ -62,7 +64,25 @@ All features include comprehensive documentation directly in the Backend interfa
 - SEO-friendly HTTP status codes
 - Domain mapping capabilities
 
-### 📈 Dashboard
+### � Mail Reporting
+**Location**: `Backend → Upkeep → Mail Reporting`
+- Comprehensive email reports for all Upkeep activities
+- Immediate and bundle sending modes
+- Security Advisor scan reports
+- IPS threat notifications
+- Maintenance mode changes
+- PHPMailer error replacement
+- Console command for cronjob integration
+
+### 🏥 System Health API
+**Location**: `Backend → Upkeep → System Health`
+- JSON and plain text monitoring endpoints
+- External monitoring tool integration (Nagios, Zabbix, Grafana)
+- Comprehensive system status information
+- Secure API key authentication
+- Real-time health status levels
+
+### �📈 Dashboard
 **Location**: `Backend → Upkeep` (Main page)
 - Live system status overview
 - Security threat statistics  
@@ -86,9 +106,140 @@ php bin/console upkeep:ips:cleanup
 
 # Security scans
 php bin/console upkeep:security:scan
+
+# Mail reporting bundle
+php bin/console upkeep:mail-reporting:send-bundle --interval=3600
 ```
 
 ## REST API
+
+### System Health API 🏥
+
+**Location**: `Backend → Upkeep → System Health`
+
+The System Health API provides comprehensive monitoring capabilities for external tools like Nagios, Zabbix, or custom monitoring scripts.
+
+#### Configuration
+1. **Enable API**: `Backend → Upkeep → System Health → Enable System Health API`
+2. **Generate Key**: Secure access key is automatically generated
+3. **Test Endpoints**: Use built-in test buttons to verify functionality
+
+#### API Endpoints
+
+```bash
+# Basic JSON Status
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY"
+
+# Detailed JSON Status (includes PHP extensions, database info)
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&detailed=1"
+
+# Plain Text Status (for simple monitoring)
+curl "https://example.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&format=text"
+```
+
+#### Response Format
+
+**JSON Response Structure:**
+```json
+{
+  "timestamp": 1726677123,
+  "datetime": "2025-09-18 18:40:43",
+  "server": "localhost",
+  "status": "ok",
+  "upkeep": {
+    "version": "1.9.0",
+    "maintenance": {
+      "frontend": false,
+      "backend": false
+    },
+    "security_advisor": {
+      "enabled": true,
+      "score": 85,
+      "grade": "B",
+      "critical_issues": 0,
+      "warning_issues": 2
+    },
+    "ips": {
+      "enabled": true,
+      "active": true,
+      "monitor_only": false,
+      "recent_threats_24h": 3
+    },
+    "mail_reporting": {
+      "enabled": true,
+      "mode": "bundle",
+      "log_files_count": 5
+    }
+  },
+  "redaxo": {
+    "version": "5.20.0",
+    "safe_mode": false,
+    "debug_mode": false,
+    "live_mode": true
+  },
+  "system": {
+    "php_version": "8.4.11",
+    "memory_limit": "256M",
+    "max_execution_time": "30"
+  }
+}
+```
+
+**Plain Text Response:**
+```
+Upkeep System Health Status
+===========================
+
+Status: OK
+Timestamp: 2025-09-18 18:40:43
+Server: localhost
+
+REDAXO:
+- Version: 5.20.0
+- Live Mode: Yes
+- Debug Mode: No
+
+Security Advisor:
+- Score: 85
+- Grade: B
+- Critical Issues: 0
+
+IPS:
+- Active: Yes
+- Recent Threats (24h): 3
+```
+
+#### Status Levels
+- **`ok`**: All systems operational
+- **`warning`**: Maintenance mode active or high threat activity
+- **`critical`**: Critical security issues detected
+
+#### Integration Examples
+
+**Nagios/Icinga Check:**
+```bash
+#!/bin/bash
+HEALTH_KEY="your-health-key-here"
+URL="https://your-domain.com/?rex-api-call=upkeep_system_health&health_key=$HEALTH_KEY"
+
+STATUS=$(curl -s "$URL" | jq -r '.status')
+
+case $STATUS in
+  "ok")     echo "OK - System healthy"; exit 0 ;;
+  "warning") echo "WARNING - System issues detected"; exit 1 ;;
+  "critical") echo "CRITICAL - Critical issues detected"; exit 2 ;;
+  *)        echo "UNKNOWN - Unable to determine status"; exit 3 ;;
+esac
+```
+
+**Grafana Integration:**
+```bash
+# Add as Grafana data source (JSON API)
+curl -H "Content-Type: application/json" \
+  "https://your-domain.com/?rex-api-call=upkeep_system_health&health_key=YOUR_KEY&detailed=1"
+```
+
+### Legacy Maintenance API
 
 ```bash
 # Get system status
