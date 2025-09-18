@@ -60,19 +60,19 @@ if (rex_post('remove-badword', 'int') > 0) {
     }
 }
 
-// E-Mail zur Blacklist hinzufügen
-if (rex_post('add-blacklist', 'string') === '1') {
-    $email = trim(rex_post('blacklist_email', 'string', ''));
-    $domain = trim(rex_post('blacklist_domain', 'string', ''));
-    $type = rex_post('blacklist_type', 'string', 'email');
-    $severity = rex_post('blacklist_severity', 'string', 'medium');
-    $reason = trim(rex_post('blacklist_reason', 'string', ''));
+// E-Mail zur Blocklist hinzufügen
+if (rex_post('add-blocklist', 'string') === '1') {
+    $email = trim(rex_post('blocklist_email', 'string', ''));
+    $domain = trim(rex_post('blocklist_domain', 'string', ''));
+    $type = rex_post('blocklist_type', 'string', 'email');
+    $severity = rex_post('blocklist_severity', 'string', 'medium');
+    $reason = trim(rex_post('blocklist_reason', 'string', ''));
     
     if (!empty($email) || !empty($domain)) {
-        if (MailSecurityFilter::addEmailBlacklist($email, $domain, $reason, $severity, $type)) {
-            $success = 'Eintrag erfolgreich zur Blacklist hinzugefügt.';
+        if (MailSecurityFilter::addEmailBlocklist($email, $domain, $reason, $severity, $type)) {
+            $success = 'Eintrag erfolgreich zur Blocklist hinzugefügt.';
         } else {
-            $error = 'Fehler beim Hinzufügen zur Blacklist.';
+            $error = 'Fehler beim Hinzufügen zur Blocklist.';
         }
     } else {
         $error = 'E-Mail-Adresse oder Domain muss angegeben werden.';
@@ -319,31 +319,31 @@ $fragment->setVar('title', 'Badword-Management', false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
-// E-Mail Blacklist Panel
+// E-Mail Blocklist Panel
 $content = '';
 
-// Blacklist-Eintrag hinzufügen  
+// Blocklist-Eintrag hinzufügen  
 $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" class="panel panel-default">';
-$content .= '<div class="panel-heading"><h3 class="panel-title">E-Mail/Domain zur Blacklist hinzufügen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title">E-Mail/Domain zur Blocklist hinzufügen</h3></div>';
 $content .= '<div class="panel-body">';
-$content .= '<input type="hidden" name="add-blacklist" value="1" />';
+$content .= '<input type="hidden" name="add-blocklist" value="1" />';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-sm-3">';
-$content .= '<input type="email" class="form-control" name="blacklist_email" placeholder="E-Mail-Adresse" />';
+$content .= '<input type="email" class="form-control" name="blocklist_email" placeholder="E-Mail-Adresse" />';
 $content .= '</div>';
 $content .= '<div class="col-sm-3">';
-$content .= '<input type="text" class="form-control" name="blacklist_domain" placeholder="Domain (z.B. spam.com)" />';
+$content .= '<input type="text" class="form-control" name="blocklist_domain" placeholder="Domain (z.B. spam.com)" />';
 $content .= '</div>';
 $content .= '<div class="col-sm-2">';
-$content .= '<select class="form-control" name="blacklist_type">';
+$content .= '<select class="form-control" name="blocklist_type">';
 $content .= '<option value="email">E-Mail</option>';
 $content .= '<option value="domain">Domain</option>';
 $content .= '<option value="pattern">Pattern</option>';
 $content .= '</select>';
 $content .= '</div>';
 $content .= '<div class="col-sm-2">';
-$content .= '<select class="form-control" name="blacklist_severity">';
+$content .= '<select class="form-control" name="blocklist_severity">';
 $content .= '<option value="low">Niedrig</option>';
 $content .= '<option value="medium" selected>Mittel</option>';
 $content .= '<option value="high">Hoch</option>';
@@ -357,21 +357,21 @@ $content .= '</div>';
 
 $content .= '<div class="row" style="margin-top: 10px;">';
 $content .= '<div class="col-sm-12">';
-$content .= '<input type="text" class="form-control" name="blacklist_reason" placeholder="Grund für Blacklisting (optional)" />';
+$content .= '<input type="text" class="form-control" name="blocklist_reason" placeholder="Grund für Blocklisting (optional)" />';
 $content .= '</div>';
 $content .= '</div>';
 
 $content .= '</div>';
 $content .= '</form>';
 
-// Aktuelle Blacklist anzeigen
+// Aktuelle Blocklist anzeigen
 try {
     $sql = rex_sql::factory();
-    $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_blacklist') . " WHERE status = 1 ORDER BY created_at DESC LIMIT 50");
+    $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE status = 1 ORDER BY created_at DESC LIMIT 50");
     
     if ($sql->getRows() > 0) {
         $content .= '<div class="panel panel-default">';
-        $content .= '<div class="panel-heading"><h3 class="panel-title">Aktuelle Blacklist (letzte 50 Einträge)</h3></div>';
+        $content .= '<div class="panel-heading"><h3 class="panel-title">Aktuelle Blocklist (letzte 50 Einträge)</h3></div>';
         $content .= '<div class="panel-body">';
         $content .= '<div class="table-responsive">';
         $content .= '<table class="table table-striped table-hover">';
@@ -398,7 +398,7 @@ try {
             
             $content .= '<tr>';
             $content .= '<td><code>' . rex_escape($identifier) . '</code></td>';
-            $content .= '<td><span class="label label-default">' . rex_escape($sql->getValue('blacklist_type')) . '</span></td>';
+            $content .= '<td><span class="label label-default">' . rex_escape($sql->getValue('blocklist_type')) . '</span></td>';
             $content .= '<td><span class="label label-' . $severityClass . '">' . rex_escape($sql->getValue('severity')) . '</span></td>';
             $content .= '<td>' . rex_escape($sql->getValue('reason') ?? '') . '</td>';
             $content .= '<td>' . rex_formatter::strftime(strtotime($sql->getValue('created_at')), 'date') . '</td>';
@@ -414,10 +414,10 @@ try {
         $content .= '</div>';
     }
 } catch (Exception $e) {
-    // Blacklist-Tabelle noch nicht verfügbar
+    // Blocklist-Tabelle noch nicht verfügbar
 }
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', 'E-Mail Blacklist', false);
+$fragment->setVar('title', 'E-Mail Blocklist', false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');

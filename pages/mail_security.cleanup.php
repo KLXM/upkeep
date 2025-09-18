@@ -34,10 +34,10 @@ if (rex_post('cleanup-action', 'string')) {
                 $success = "{$affectedRows} detaillierte Mail-Log-Einträge älter als {$days} Tage wurden gelöscht.";
                 break;
                 
-            case 'expired-blacklist':
-                $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blacklist') . " WHERE expires_at IS NOT NULL AND expires_at < NOW()");
+            case 'expired-blocklist':
+                $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE expires_at IS NOT NULL AND expires_at < NOW()");
                 $affectedRows = $sql->getRows();
-                $success = "{$affectedRows} abgelaufene Blacklist-Einträge wurden gelöscht.";
+                $success = "{$affectedRows} abgelaufene Blocklist-Einträge wurden gelöscht.";
                 break;
                 
             case 'all-mail-data':
@@ -78,7 +78,7 @@ if (rex_post('optimize-action', 'string') === '1') {
         $tables = [
             rex::getTable('upkeep_mail_rate_limit'),
             rex::getTable('upkeep_mail_badwords'), 
-            rex::getTable('upkeep_mail_blacklist'),
+            rex::getTable('upkeep_mail_blocklist'),
             rex::getTable('upkeep_mail_threat_log'),
             rex::getTable('upkeep_ips_threat_log')
         ];
@@ -155,10 +155,10 @@ try {
         ];
     }
     
-    // Blacklist-Statistiken
-    $sql->setQuery("SELECT COUNT(*) as total, COUNT(CASE WHEN status = 1 THEN 1 END) as active, COUNT(CASE WHEN expires_at IS NOT NULL AND expires_at < NOW() THEN 1 END) as expired FROM " . rex::getTable('upkeep_mail_blacklist'));
+    // Blocklist-Statistiken
+    $sql->setQuery("SELECT COUNT(*) as total, COUNT(CASE WHEN status = 1 THEN 1 END) as active, COUNT(CASE WHEN expires_at IS NOT NULL AND expires_at < NOW() THEN 1 END) as expired FROM " . rex::getTable('upkeep_mail_blocklist'));
     if ($sql->getRows() > 0) {
-        $stats['blacklist'] = [
+        $stats['blocklist'] = [
             'total' => (int) $sql->getValue('total'),
             'active' => (int) $sql->getValue('active'),
             'expired' => (int) $sql->getValue('expired')
@@ -214,15 +214,15 @@ if (isset($stats['badwords'])) {
     $content .= '</div>';
 }
 
-if (isset($stats['blacklist'])) {
+if (isset($stats['blocklist'])) {
     $content .= '<div class="col-md-3">';
     $content .= '<div class="panel panel-danger">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title">Blacklist</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title">Blocklist</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p><strong>' . number_format($stats['blacklist']['total']) . '</strong> gesamt</p>';
-    $content .= '<p><strong>' . number_format($stats['blacklist']['active']) . '</strong> aktiv</p>';
-    if ($stats['blacklist']['expired'] > 0) {
-        $content .= '<p><span class="text-warning"><strong>' . number_format($stats['blacklist']['expired']) . '</strong> abgelaufen</span></p>';
+    $content .= '<p><strong>' . number_format($stats['blocklist']['total']) . '</strong> gesamt</p>';
+    $content .= '<p><strong>' . number_format($stats['blocklist']['active']) . '</strong> aktiv</p>';
+    if ($stats['blocklist']['expired'] > 0) {
+        $content .= '<p><span class="text-warning"><strong>' . number_format($stats['blocklist']['expired']) . '</strong> abgelaufen</span></p>';
     }
     $content .= '</div>';
     $content .= '</div>';
@@ -283,19 +283,19 @@ $content .= '</div>';
 
 $content .= '<div class="row">';
 
-// Abgelaufene Blacklist-Einträge
-if (isset($stats['blacklist']) && $stats['blacklist']['expired'] > 0) {
+// Abgelaufene Blocklist-Einträge
+if (isset($stats['blocklist']) && $stats['blocklist']['expired'] > 0) {
     $content .= '<div class="col-md-6">';
     $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
     $content .= '<div class="panel panel-danger">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-ban"></i> Abgelaufene Blacklist-Einträge</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-ban"></i> Abgelaufene Blocklist-Einträge</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p>Entfernt automatisch alle abgelaufenen Blacklist-Einträge.</p>';
-    $content .= '<p><strong>' . $stats['blacklist']['expired'] . '</strong> abgelaufene Einträge gefunden.</p>';
+    $content .= '<p>Entfernt automatisch alle abgelaufenen Blocklist-Einträge.</p>';
+    $content .= '<p><strong>' . $stats['blocklist']['expired'] . '</strong> abgelaufene Einträge gefunden.</p>';
     $content .= '</div>';
     $content .= '<div class="panel-footer">';
-    $content .= '<input type="hidden" name="cleanup-action" value="expired-blacklist" />';
-    $content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'Abgelaufene Blacklist-Einträge wirklich löschen?\')">Abgelaufene Einträge löschen</button>';
+    $content .= '<input type="hidden" name="cleanup-action" value="expired-blocklist" />';
+    $content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'Abgelaufene Blocklist-Einträge wirklich löschen?\')">Abgelaufene Einträge löschen</button>';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '</form>';
@@ -334,7 +334,7 @@ $content .= '<div class="panel panel-danger">';
 $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-trash"></i> Vollständige Mail-Security-Bereinigung</h4></div>';
 $content .= '<div class="panel-body">';
 $content .= '<p><strong>Achtung:</strong> Löscht alle Mail-Security-Daten (Rate-Limits, Threat-Logs, detaillierte Logs) älter als die angegebenen Tage.</p>';
-$content .= '<p>Badwords und Blacklist-Einträge bleiben erhalten.</p>';
+$content .= '<p>Badwords und Blocklist-Einträge bleiben erhalten.</p>';
 $content .= '<div class="form-group">';
 $content .= '<label>Daten älter als (Tage):</label>';
 $content .= '<input type="number" class="form-control" name="cleanup-days" value="30" min="1" max="365" />';
@@ -378,7 +378,7 @@ $content .= '<h4><i class="fa fa-lightbulb-o"></i> Empfehlungen</h4>';
 $content .= '<ul>';
 $content .= '<li><strong>Rate-Limit-Daten:</strong> Können täglich bereinigt werden (7 Tage aufbewahren)</li>';
 $content .= '<li><strong>Threat-Logs:</strong> Sollten für Sicherheitsanalysen mindestens 30-90 Tage aufbewahrt werden</li>';
-$content .= '<li><strong>Blacklist-Einträge:</strong> Abgelaufene Einträge können sicher gelöscht werden</li>';
+$content .= '<li><strong>Blocklist-Einträge:</strong> Abgelaufene Einträge können sicher gelöscht werden</li>';
 $content .= '<li><strong>Optimierung:</strong> Sollte regelmäßig (wöchentlich) durchgeführt werden</li>';
 $content .= '<li><strong>Automatisierung:</strong> Richten Sie Cronjobs für regelmäßige Bereinigung ein</li>';
 $content .= '</ul>';
