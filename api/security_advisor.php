@@ -11,7 +11,8 @@ use KLXM\Upkeep\SecurityAdvisor;
 header('Content-Type: application/json');
 
 // CSRF-Schutz
-if (!rex_csrf_token::factory('upkeep-security')->isValid()) {
+$token = rex_post('_csrf_token', 'string', '');
+if (!rex_csrf_token::factory('upkeep-security')->isValid($token)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
@@ -47,6 +48,36 @@ try {
             
         case 'disable_csp':
             $result = $securityAdvisor->disableCSP();
+            echo json_encode($result);
+            break;
+            
+        case 'enable_session_security':
+            $result = $securityAdvisor->enableSessionSecurity();
+            echo json_encode($result);
+            break;
+            
+        case 'enable_https_backend':
+            $result = $securityAdvisor->enableHttpsBackend();
+            echo json_encode($result);
+            break;
+            
+        case 'enable_https_frontend':
+            $result = $securityAdvisor->enableHttpsFrontend();
+            echo json_encode($result);
+            break;
+            
+        case 'enable_https_both':
+            $result = $securityAdvisor->enableHttpsBoth();
+            echo json_encode($result);
+            break;
+            
+        case 'enable_hsts':
+            $result = $securityAdvisor->enableHSTS();
+            echo json_encode($result);
+            break;
+            
+        case 'disable_hsts':
+            $result = $securityAdvisor->disableHSTS();
             echo json_encode($result);
             break;
             

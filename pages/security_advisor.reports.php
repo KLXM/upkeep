@@ -15,10 +15,18 @@ $securityAdvisor = new SecurityAdvisor();
 $filter = rex_request::get('filter', 'string', 'all'); // all, error, warning, success
 $action = rex_request::get('action', 'string', '');
 
-if ($action === 'export' && $_POST) {
-    $results = $securityAdvisor->runAllChecks();
-    exportSecurityReport($results);
-    exit;
+// Export-Funktion (einfacher GET-Request)
+if ($action === 'export') {
+    try {
+        error_log('Upkeep Export: Starte Export...');
+        $results = $securityAdvisor->runAllChecks();
+        exportSecurityReport($results);
+        exit;
+    } catch (Exception $e) {
+        $errorMsg = 'Export-Fehler: ' . $e->getMessage();
+        echo rex_view::error($errorMsg);
+        error_log('Upkeep Export: ' . $errorMsg);
+    }
 }
 
 // Sicherheitsprüfung durchführen
@@ -51,13 +59,12 @@ $results = $securityAdvisor->runAllChecks();
         </div>
     </div>
     <div class="col-md-4 text-right">
-        <form method="post" style="display: inline-block;">
-            <input type="hidden" name="action" value="export">
-            <button type="submit" class="btn btn-default">
-                <i class="rex-icon fa fa-download"></i> 
-                <?= $addon->i18n('upkeep_export_report') ?>
-            </button>
-        </form>
+        <!-- Einfacher GET-Link für Export -->
+        <a href="<?= rex_url::backendPage('upkeep/security_advisor/reports', ['action' => 'export']) ?>" 
+           class="btn btn-default" id="export-btn">
+            <i class="rex-icon fa fa-download"></i> 
+            <?= $addon->i18n('upkeep_export_report') ?>
+        </a>
         
         <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-primary">
             <i class="rex-icon fa fa-arrow-left"></i> 
@@ -229,6 +236,98 @@ $results = $securityAdvisor->runAllChecks();
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-check text-success"></i>
                                                 <strong>Aktiv:</strong> Backend-CSP ist derzeit aktiviert und schützt das Backend.
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($checkKey === 'session_security'): ?>
+                                    <div class="session-security-actions" style="margin-top: 15px;">
+                                        <h5><?= $addon->i18n('upkeep_quick_action') ?></h5>
+                                        
+                                        <?php if ($check['status'] !== 'success'): ?>
+                                            <button type="button" 
+                                                    class="btn btn-warning btn-sm enable-session-security-btn"
+                                                    data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                <i class="rex-icon fa fa-lock"></i>
+                                                Session-Sicherheit aktivieren
+                                            </button>
+                                            <div class="help-block" style="margin-top: 5px; font-size: 11px;">
+                                                <i class="rex-icon fa fa-info-circle text-info"></i>
+                                                <strong>Info:</strong> Konfiguriert sichere Session-Parameter in der config.yml.
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="alert alert-success" style="margin-top: 15px;">
+                                                <i class="rex-icon fa fa-check"></i>
+                                                Session-Sicherheit ist bereits konfiguriert!
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($checkKey === 'hsts'): ?>
+                                    <div class="https-hsts-actions" style="margin-top: 15px;">
+                                        <h5><?= $addon->i18n('upkeep_quick_action') ?></h5>
+                                        
+                                        <?php 
+                                        $currentHttps = $check['details']['current_connection']['is_https'] ?? false;
+                                        $backendHttps = $check['details']['redaxo_config']['backend_https'] ?? false;
+                                        $frontendHttps = $check['details']['redaxo_config']['frontend_https'] ?? false;
+                                        $hstsEnabled = $check['details']['hsts_config']['enabled'] ?? false;
+                                        $httpsReadyForHsts = $check['details']['https_ready_for_hsts'] ?? false;
+                                        ?>
+                                        
+                                        <?php if (!$currentHttps): ?>
+                                            <div class="alert alert-info" style="margin-top: 15px;">
+                                                <i class="rex-icon fa fa-lock"></i>
+                                                <strong>Schritt 1:</strong> Sie sind aktuell auf HTTP. Wechseln Sie zu HTTPS für bessere Sicherheit.
+                                            </div>
+                                        <?php elseif (!$backendHttps && !$frontendHttps): ?>
+                                            <div class="alert alert-warning" style="margin-top: 15px;">
+                                                <i class="rex-icon fa fa-cog"></i>
+                                                <strong>Schritt 2:</strong> HTTPS in REDAXO-Konfiguration aktivieren:
+                                            </div>
+                                            <div class="btn-group" style="margin-top: 10px;">
+                                                <button type="button" class="btn btn-info btn-sm enable-https-backend-btn"
+                                                        data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                    <i class="rex-icon fa fa-shield"></i> Backend HTTPS
+                                                </button>
+                                                <button type="button" class="btn btn-info btn-sm enable-https-frontend-btn"
+                                                        data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                    <i class="rex-icon fa fa-globe"></i> Frontend HTTPS
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm enable-https-both-btn"
+                                                        data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                    <i class="rex-icon fa fa-lock"></i> Beide aktivieren
+                                                </button>
+                                            </div>
+                                        <?php elseif ($httpsReadyForHsts && !$hstsEnabled): ?>
+                                            <div class="alert alert-success" style="margin-top: 15px;">
+                                                <i class="rex-icon fa fa-check"></i>
+                                                <strong>HTTPS aktiv!</strong> Jetzt HSTS für zusätzliche Sicherheit aktivieren:
+                                            </div>
+                                            <button type="button" class="btn btn-info btn-sm enable-hsts-btn"
+                                                    data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                <i class="rex-icon fa fa-plus-circle"></i>
+                                                HSTS aktivieren (empfohlen)
+                                            </button>
+                                            <div class="help-block" style="margin-top: 5px; font-size: 11px;">
+                                                <i class="rex-icon fa fa-exclamation-triangle text-warning"></i>
+                                                <strong>WARNUNG:</strong> HSTS zwingt Browser dauerhaft zu HTTPS! Schwer rückgängig zu machen.
+                                            </div>
+                                        <?php elseif ($hstsEnabled): ?>
+                                            <div class="alert alert-success" style="margin-top: 10px;">
+                                                <i class="rex-icon fa fa-check-circle"></i>
+                                                <strong>Optimal konfiguriert!</strong> HTTPS und HSTS sind aktiv (<?= $check['details']['hsts_config']['max_age_years'] ?> Jahre)
+                                            </div>
+                                            <button type="button" class="btn btn-warning btn-sm disable-hsts-btn"
+                                                    data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
+                                                <i class="rex-icon fa fa-times"></i>
+                                                HSTS deaktivieren
+                                            </button>
+                                            <div class="help-block" style="margin-top: 5px; font-size: 11px;">
+                                                <i class="rex-icon fa fa-exclamation-triangle text-warning"></i>
+                                                <strong>WARNUNG:</strong> Browser können HSTS-Policy noch wochenlang cachen!
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -473,12 +572,56 @@ function renderGenericDetails($details) {
 }
 
 function exportSecurityReport($results) {
-    $filename = 'security_report_' . date('Y-m-d_H-i-s') . '.json';
-    
-    header('Content-Type: application/json');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    
-    echo json_encode($results, JSON_PRETTY_PRINT);
+    try {
+        $filename = 'upkeep_security_report_' . date('Y-m-d_H-i-s') . '.json';
+        
+        error_log('Upkeep Export: Exportiere nach ' . $filename);
+        
+        // Alle Output-Buffer leeren
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Headers für Download setzen
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        // JSON-Export mit schöner Formatierung
+        $jsonData = json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
+        if ($jsonData === false) {
+            throw new Exception('JSON-Encoding fehlgeschlagen: ' . json_last_error_msg());
+        }
+        
+        // Content-Length für bessere Browser-Kompatibilität
+        header('Content-Length: ' . strlen($jsonData));
+        
+        // Flush headers
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            flush();
+        }
+        
+        echo $jsonData;
+        
+        error_log('Upkeep Export: Export erfolgreich, ' . strlen($jsonData) . ' Bytes');
+        
+    } catch (Exception $e) {
+        error_log('Upkeep Export: Fehler - ' . $e->getMessage());
+        
+        // Buffer leeren für Fehlermeldung
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Bei Fehlern HTML-Antwort senden
+        header('Content-Type: text/html; charset=utf-8');
+        echo rex_view::error('Export-Fehler: ' . $e->getMessage());
+    }
 }
 
 ?>
@@ -705,6 +848,326 @@ $(document).ready(function() {
             }
         });
     });
+    
+    // Session Security Aktivierung
+    $('.enable-session-security-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        // Bestätigung anzeigen
+        var confirmText = 'Session-Sicherheitseinstellungen aktivieren?\n\n' +
+                         'Dies wird folgende Einstellungen in der config.yml konfigurieren:\n' +
+                         '• session.backend.cookie.httponly = true\n' +
+                         '• session.backend.cookie.secure = true (nur für HTTPS)\n' +
+                         '• session.backend.cookie.samesite = "Lax"\n\n' +
+                         'Die Einstellungen sind sofort nach dem Speichern aktiv.\n\n' +
+                         'Fortfahren?';
+        
+        if (!confirm(confirmText)) {
+            return;
+        }
+        
+        // Button deaktivieren während der Anfrage
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Aktiviere...');
+        
+        // AJAX-Anfrage
+        $.ajax({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=enable_session_security',
+            data: {
+                '_csrf_token': csrf
+            },
+            method: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Erfolg anzeigen
+                    $btn.removeClass('btn-warning').addClass('btn-success')
+                        .html('<i class="rex-icon fa fa-check"></i> Aktiviert');
+                    
+                    // Success-Nachricht anzeigen
+                    var alertHtml = '<div class="alert alert-success alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>Erfolg:</strong> ' + response.message;
+                    
+                    if (response.warning) {
+                        alertHtml += '<br><strong>Hinweis:</strong> ' + response.warning;
+                    }
+                    
+                    alertHtml += '</div>';
+                    
+                    $('.session-security-actions').before(alertHtml);
+                    
+                    // Seite nach 3 Sekunden neu laden um aktuellen Status zu zeigen
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    // Fehler anzeigen
+                    $btn.prop('disabled', false).html('<i class="rex-icon fa fa-lock"></i> Session-Sicherheit aktivieren');
+                    
+                    var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>Fehler:</strong> ' + response.message + '</div>';
+                    
+                    $('.session-security-actions').before(alertHtml);
+                }
+            },
+            error: function() {
+                // Netzwerk- oder Server-Fehler
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-lock"></i> Session-Sicherheit aktivieren');
+                
+                var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                               '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                               '<strong>Fehler:</strong> Verbindungsfehler beim Aktivieren der Session-Sicherheit.</div>';
+                
+                $('.session-security-actions').before(alertHtml);
+            }
+        });
+    });
+    
+    // HSTS Aktivierung (optionale Sicherheitsverbesserung)
+    $('.enable-hsts-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        // Freundliche Bestätigung statt kritischer Warnung
+        var confirmText = '💡 HSTS aktivieren?\n\n' +
+                         'HTTP Strict Transport Security (HSTS) ist eine optionale Sicherheitsverbesserung.\n\n' +
+                         '✅ VORTEILE:\n' +
+                         '• Zusätzlicher Schutz vor Man-in-the-Middle Attacken\n' +
+                         '• Browser werden automatisch zu HTTPS geleitet\n' +
+                         '• Verbessert die Sicherheitsbewertung\n\n' +
+                         '⚠️ WICHTIG ZU WISSEN:\n' +
+                         '• Browser cachen HSTS-Policy für längere Zeit\n' +
+                         '• HTTPS sollte dauerhaft verfügbar sein\n' +
+                         '• Bei SSL-Problemen kann Site temporär unzugänglich werden\n\n' +
+                         'HSTS jetzt aktivieren?';
+        
+        if (!confirm(confirmText)) {
+            return;
+        }
+        
+        // Button deaktivieren während der Anfrage
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Aktiviere...');
+        
+        // AJAX-Anfrage
+        $.ajax({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=enable_hsts',
+            data: {
+                '_csrf_token': csrf
+            },
+            method: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Erfolg anzeigen
+                    $btn.removeClass('btn-danger').addClass('btn-success')
+                        .html('<i class="rex-icon fa fa-check"></i> Aktiviert');
+                    
+                    // Success-Nachricht anzeigen
+                    var alertHtml = '<div class="alert alert-success alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>HSTS aktiviert:</strong> ' + response.message;
+                    
+                    if (response.warning) {
+                        alertHtml += '<br><strong>⚠️ KRITISCH:</strong> ' + response.warning;
+                    }
+                    
+                    alertHtml += '</div>';
+                    
+                    $('.hsts-actions').before(alertHtml);
+                    
+                    // Seite nach 5 Sekunden neu laden um aktuellen Status zu zeigen
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 5000);
+                } else {
+                    // Fehler anzeigen
+                    $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> HSTS aktivieren');
+                    
+                    var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>Fehler:</strong> ' + response.message + '</div>';
+                    
+                    $('.hsts-actions').before(alertHtml);
+                }
+            },
+            error: function() {
+                // Netzwerk- oder Server-Fehler
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> HSTS aktivieren');
+                
+                var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                               '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                               '<strong>Fehler:</strong> Verbindungsfehler beim Aktivieren von HSTS.</div>';
+                
+                $('.hsts-actions').before(alertHtml);
+            }
+        });
+    });
+    
+    // HSTS Deaktivierung
+    $('.disable-hsts-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        // Bestätigung mit Warnung
+        var confirmText = 'HSTS deaktivieren?\n\n' +
+                         '⚠️ WICHTIGER HINWEIS:\n' +
+                         '• Browser können die HSTS-Policy noch wochenlang cachen\n' +
+                         '• Deaktivierung ist nicht sofort wirksam\n' +
+                         '• max-age wird auf 0 gesetzt, aber Browser entscheiden selbst\n\n' +
+                         'Fortfahren?';
+        
+        if (!confirm(confirmText)) {
+            return;
+        }
+        
+        // Button deaktivieren während der Anfrage
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Deaktiviere...');
+        
+        // AJAX-Anfrage
+        $.ajax({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=disable_hsts',
+            data: {
+                '_csrf_token': csrf
+            },
+            method: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Erfolg anzeigen
+                    $btn.removeClass('btn-warning').addClass('btn-secondary')
+                        .html('<i class="rex-icon fa fa-check"></i> Deaktiviert');
+                    
+                    // Success-Nachricht anzeigen
+                    var alertHtml = '<div class="alert alert-warning alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>HSTS deaktiviert:</strong> ' + response.message;
+                    
+                    if (response.warning) {
+                        alertHtml += '<br><strong>⚠️ Hinweis:</strong> ' + response.warning;
+                    }
+                    
+                    alertHtml += '</div>';
+                    
+                    $('.hsts-actions').before(alertHtml);
+                    
+                    // Seite nach 5 Sekunden neu laden um aktuellen Status zu zeigen
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 5000);
+                } else {
+                    // Fehler anzeigen
+                    $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> HSTS deaktivieren');
+                    
+                    var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                                   '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                   '<strong>Fehler:</strong> ' + response.message + '</div>';
+                    
+                    $('.hsts-actions').before(alertHtml);
+                }
+            },
+            error: function() {
+                // Netzwerk- oder Server-Fehler
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> HSTS deaktivieren');
+                
+                var alertHtml = '<div class="alert alert-danger alert-dismissible">' +
+                               '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                               '<strong>Fehler:</strong> Verbindungsfehler beim Deaktivieren von HSTS.</div>';
+                
+                $('.hsts-actions').before(alertHtml);
+            }
+        });
+    });
+    // HTTPS Backend Aktivierung
+    $('.enable-https-backend-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        if (!confirm('HTTPS für Backend aktivieren?\n\nDies setzt use_https: true in der config.yml.\n\nSTELLEN SIE SICHER, dass SSL-Zertifikat installiert ist!')) {
+            return;
+        }
+        
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Aktiviere...');
+        
+        $.post({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=enable_https_backend',
+            data: { 
+                '_csrf_token': csrf
+            },
+            dataType: 'json'
+        }).done(function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Fehler: ' + response.message);
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> Backend HTTPS');
+            }
+        }).fail(function() {
+            alert('Fehler beim Aktivieren von Backend HTTPS');
+            $btn.prop('disabled', false).html('<i class="rex-icon fa fa-shield"></i> Backend HTTPS');
+        });
+    });
+
+    // HTTPS Frontend Aktivierung
+    $('.enable-https-frontend-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        if (!confirm('HTTPS für Frontend aktivieren?\n\nDies setzt use_https: "frontend" in der config.yml.\n\nSTELLEN SIE SICHER, dass SSL-Zertifikat installiert ist!')) {
+            return;
+        }
+        
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Aktiviere...');
+        
+        $.post({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=enable_https_frontend',
+            data: { 
+                '_csrf_token': csrf
+            },
+            dataType: 'json'
+        }).done(function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Fehler: ' + response.message);
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-globe"></i> Frontend HTTPS');
+            }
+        }).fail(function() {
+            alert('Fehler beim Aktivieren von Frontend HTTPS');
+            $btn.prop('disabled', false).html('<i class="rex-icon fa fa-globe"></i> Frontend HTTPS');
+        });
+    });
+
+    // HTTPS Beide Aktivierung
+    $('.enable-https-both-btn').on('click', function() {
+        var $btn = $(this);
+        var csrf = $btn.data('csrf');
+        
+        if (!confirm('HTTPS für Backend UND Frontend aktivieren?\n\nDies setzt use_https: true in der config.yml.\n\nSTELLEN SIE SICHER, dass SSL-Zertifikat installiert ist!')) {
+            return;
+        }
+        
+        $btn.prop('disabled', true).html('<i class="rex-icon fa fa-spinner fa-spin"></i> Aktiviere...');
+        
+        $.post({
+            url: window.location.pathname + '?page=upkeep&api=security_advisor&action=enable_https_both',
+            data: { 
+                '_csrf_token': csrf
+            },
+            dataType: 'json'
+        }).done(function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Fehler: ' + response.message);
+                $btn.prop('disabled', false).html('<i class="rex-icon fa fa-lock"></i> Beide aktivieren');
+            }
+        }).fail(function() {
+            alert('Fehler beim Aktivieren von HTTPS');
+            $btn.prop('disabled', false).html('<i class="rex-icon fa fa-lock"></i> Beide aktivieren');
+        });
+    });
 });
 </script>
 
@@ -725,5 +1188,50 @@ $(document).ready(function() {
     padding: 8px 12px;
     border-radius: 4px;
     margin-top: 10px;
+}
+
+.session-security-actions {
+    border-top: 1px solid #ddd;
+    padding-top: 15px;
+}
+
+.session-security-actions .btn {
+    width: 100%;
+}
+
+.session-security-actions .help-block {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.hsts-actions {
+    border-top: 1px solid #ddd;
+    padding-top: 15px;
+}
+
+.hsts-actions .btn {
+    width: 100%;
+}
+
+.hsts-actions .help-block {
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.hsts-actions .btn-danger + .help-block {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.hsts-actions .btn-warning + .help-block {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
 }
 </style>

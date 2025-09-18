@@ -38,15 +38,16 @@ class SecurityAdvisor
         ];
 
         $this->checkRedaxoLiveMode();
-        $this->checkSslCertificates();
         $this->checkServerHeaders();
         $this->checkPhpConfiguration();
+        $this->checkSystemVersions();
         $this->checkDirectoryPermissions();
         $this->checkDatabaseSecurity();
         $this->checkContentSecurityPolicy();
         $this->checkPasswordPolicies();
         $this->checkSessionSecurity();
         $this->checkFilePermissions();
+        $this->checkHSTS();
 
         // Gesamtbewertung berechnen
         $this->calculateSecurityScore();
@@ -84,6 +85,21 @@ class SecurityAdvisor
     }
 
     /**
+     * Erstellt automatisches Backup der config.yml vor Änderungen
+     */
+    private function backupConfig(): string
+    {
+        $configPath = \rex_path::coreData('config.yml');
+        $backupPath = \rex_path::coreData('config.yml.backup.' . date('Y-m-d_H-i-s'));
+        
+        if (copy($configPath, $backupPath)) {
+            return $backupPath;
+        }
+        
+        throw new Exception('Backup der config.yml konnte nicht erstellt werden');
+    }
+
+    /**
      * Aktiviert den REDAXO Live-Mode durch Anpassung der config.yml
      * Basiert auf der Security AddOn Implementierung
      * WARNUNG: Deaktivierung nur über manuelle Bearbeitung der config.yml möglich!
@@ -97,6 +113,9 @@ class SecurityAdvisor
         ];
 
         try {
+            // Automatisches Backup erstellen
+            $backupPath = $this->backupConfig();
+            
             // Verwende die REDAXO Standard-Methode wie das Security AddOn
             $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
             
@@ -114,6 +133,7 @@ class SecurityAdvisor
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
                 $result['message'] = 'Live-Mode erfolgreich aktiviert. Debug-Modus deaktiviert und live_mode: true gesetzt.';
+                $result['backup'] = 'Backup erstellt: ' . basename($backupPath);
                 
                 // Cache leeren damit Änderungen sofort wirksam werden
                 rex_delete_cache();
@@ -204,51 +224,6 @@ class SecurityAdvisor
         }
         
         return implode('; ', $cspString);
-    }
-
-    /**
-     * Prüft SSL-Zertifikate aller Domains
-     */
-    private function checkSslCertificates(): void
-    {
-        $results = [];
-        $overallStatus = 'success';
-        $totalScore = 0;
-
-        if (rex_addon::get('yrewrite')->isAvailable()) {
-            $domains = rex_yrewrite::getDomains();
-            
-            foreach ($domains as $domain) {
-                $domainName = $domain->getName();
-                $sslCheck = $this->checkDomainSsl($domainName);
-                $results[$domainName] = $sslCheck;
-                
-                if ($sslCheck['status'] !== 'success') {
-                    $overallStatus = $sslCheck['status'];
-                }
-                
-                $totalScore += $sslCheck['score'];
-            }
-            
-            $averageScore = count($domains) > 0 ? round($totalScore / count($domains)) : 0;
-        } else {
-            // Fallback: Aktuelle Domain prüfen
-            $currentDomain = rex::getServer();
-            $sslCheck = $this->checkDomainSsl(parse_url($currentDomain, PHP_URL_HOST));
-            $results[parse_url($currentDomain, PHP_URL_HOST)] = $sslCheck;
-            $overallStatus = $sslCheck['status'];
-            $averageScore = $sslCheck['score'];
-        }
-
-        $this->results['checks']['ssl_certificates'] = [
-            'name' => 'SSL-Zertifikate',
-            'status' => $overallStatus,
-            'severity' => 'high',
-            'score' => $averageScore,
-            'details' => $results,
-            'recommendations' => $this->getSslRecommendations($results),
-            'description' => 'Alle Domains sollten gültige SSL-Zertifikate verwenden.'
-        ];
     }
 
     /**
@@ -723,9 +698,30 @@ class SecurityAdvisor
 
     private function isHttps(): bool
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-               (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ||
-               (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        // Standard HTTPS-Checks
+        if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+            return true;
+        }
+        
+        // Port-basierte Erkennung (auch für localhost:8443)
+        $port = $_SERVER['SERVER_PORT'] ?? 80;
+        if ($port == 443 || $port == 8443) {
+            return true;
+        }
+        
+        // REDAXO rex::getServer() Methode als Fallback
+        $serverUrl = \rex::getServer();
+        if (strpos($serverUrl, 'https://') === 0) {
+            return true;
+        }
+        
+        // REQUEST_SCHEME prüfen (moderne Server)
+        if (!empty($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] === 'https') {
+            return true;
+        }
+        
+        return false;
     }
 
     private function countAdminUsers(): int
@@ -782,18 +778,7 @@ class SecurityAdvisor
         return $recommendations;
     }
 
-    private function getSslRecommendations(array $results): array
-    {
-        $recommendations = [];
-        foreach ($results as $domain => $result) {
-            if (!$result['valid']) {
-                $recommendations[] = "SSL-Zertifikat für {$domain} installieren";
-            } elseif ($result['days_remaining'] < 30) {
-                $recommendations[] = "SSL-Zertifikat für {$domain} verlängern";
-            }
-        }
-        return $recommendations;
-    }
+
 
     private function getHeaderRecommendations(array $issues): array
     {
@@ -854,6 +839,364 @@ class SecurityAdvisor
     }
 
     /**
+     * Prüft HTTPS-Konfiguration und HSTS
+     */
+    private function checkHSTS(): void
+    {
+        $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+        
+        // 1. Aktuelle Verbindung prüfen
+        $currentlyHttps = $this->isHttps();
+        
+        // 2. REDAXO HTTPS-Konfiguration prüfen
+        $httpsBackend = ($config['use_https'] ?? false) === true;
+        $httpsFrontend = ($config['use_https'] ?? false) === 'frontend' || ($config['use_https'] ?? false) === true;
+        
+        // 3. HSTS-Konfiguration
+        $hstsEnabled = $config['use_hsts'] ?? false;
+        $hstsMaxAge = $config['hsts_max_age'] ?? 0;
+        
+        $recommendations = [];
+        $issues = [];
+        
+        // Bewertung nur basierend auf HTTPS (HSTS ist optional/informativ)
+        if (!$currentlyHttps) {
+            $score = 0;
+            $status = 'error';
+            $issues[] = 'Keine HTTPS-Verbindung';
+            $recommendations[] = 'SSL-Zertifikat installieren und HTTPS aktivieren';
+        } elseif ($currentlyHttps && !$httpsBackend && !$httpsFrontend) {
+            $score = 5;
+            $status = 'warning';
+            $issues[] = 'HTTPS in REDAXO config.yml nicht aktiviert';
+            $recommendations[] = 'HTTPS in der REDAXO-Konfiguration aktivieren';
+        } elseif ($currentlyHttps && ($httpsBackend || $httpsFrontend)) {
+            $score = 10;
+            $status = 'success';
+            if (!$hstsEnabled) {
+                $recommendations[] = 'HSTS für zusätzliche Sicherheit aktivieren (optional)';
+            } elseif ($hstsMaxAge < 31536000) {
+                $recommendations[] = 'HSTS max-age auf 1 Jahr erhöhen (empfohlen)';
+            } else {
+                $recommendations[] = 'HTTPS vollständig konfiguriert, HSTS optimal eingestellt';
+            }
+        } else {
+            $score = 0;
+            $status = 'error';
+            $issues[] = 'HTTPS-Konfiguration unvollständig';
+        }
+
+        $this->results['checks']['hsts'] = [
+            'name' => 'HTTPS & HSTS',
+            'status' => $status,
+            'severity' => 'high',
+            'score' => $score,
+            'details' => [
+                'current_connection' => [
+                    'is_https' => $currentlyHttps,
+                    'protocol' => $currentlyHttps ? 'HTTPS' : 'HTTP',
+                    'port' => $_SERVER['SERVER_PORT'] ?? 'unbekannt'
+                ],
+                'redaxo_config' => [
+                    'use_https' => $config['use_https'] ?? false,
+                    'backend_https' => $httpsBackend,
+                    'frontend_https' => $httpsFrontend
+                ],
+                'hsts_config' => [
+                    'enabled' => $hstsEnabled,
+                    'max_age' => $hstsMaxAge,
+                    'max_age_years' => $hstsMaxAge > 0 ? round($hstsMaxAge / 31536000, 1) : 0
+                ],
+                'issues' => $issues,
+                'https_ready_for_hsts' => $currentlyHttps && ($httpsBackend || $httpsFrontend)
+            ],
+            'recommendations' => $this->getHttpsHstsRecommendations($currentlyHttps, $httpsBackend, $httpsFrontend, $hstsEnabled, $hstsMaxAge),
+            'description' => 'HTTPS verschlüsselt die Kommunikation und ist für moderne Webanwendungen erforderlich. HSTS wird informativ angezeigt (optional).'
+        ];
+    }
+
+    /**
+     * Aktiviert HTTPS für Backend in der config.yml
+     */
+    public function enableHttpsBackend(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // HTTPS für Backend aktivieren
+            $config['use_https'] = true;
+
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'HTTPS für Backend aktiviert. Cache wird geleert...';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+                
+                // Cache leeren
+                rex_delete_cache();
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Aktiviert HTTPS für Frontend in der config.yml
+     */
+    public function enableHttpsFrontend(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // HTTPS für Frontend aktivieren
+            $config['use_https'] = 'frontend';
+
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'HTTPS für Frontend aktiviert. Cache wird geleert...';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+                
+                // Cache leeren
+                rex_delete_cache();
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Aktiviert HTTPS für Backend und Frontend
+     */
+    public function enableHttpsBoth(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // HTTPS für beide aktivieren
+            $config['use_https'] = true;
+
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'HTTPS für Backend und Frontend aktiviert. Cache wird geleert...';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+                
+                // Cache leeren
+                rex_delete_cache();
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Aktiviert HTTP Strict Transport Security (HSTS)
+     */
+    public function enableHSTS(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'HSTS zwingt Browser dauerhaft zu HTTPS. Deaktivierung kann schwierig sein!'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // HSTS-Einstellungen setzen
+            $config['use_hsts'] = true;
+            $config['hsts_max_age'] = 31536000; // 1 Jahr (Standard)
+
+            // Config.yml speichern
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'HSTS wurde aktiviert (max-age=31536000 / 1 Jahr). Browser werden ab sofort gezwungen, nur HTTPS zu verwenden.';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler beim Aktivieren von HSTS: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Deaktiviert HTTP Strict Transport Security (HSTS)
+     * WARNUNG: Browser können HSTS-Policy noch lange Zeit cachen!
+     */
+    public function disableHSTS(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'WARNUNG: Browser können die HSTS-Policy noch wochenlang cachen, auch nach der Deaktivierung!'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // HSTS deaktivieren
+            $config['use_hsts'] = false;
+            // max_age auf 0 setzen um Browser mitzuteilen, dass HSTS deaktiviert wurde
+            $config['hsts_max_age'] = 0;
+
+            // Config.yml speichern
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'HSTS wurde deaktiviert (max-age=0). ACHTUNG: Browser können die alte Policy noch wochenlang cachen!';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler beim Deaktivieren von HSTS: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Aktiviert Session-Sicherheitseinstellungen durch Anpassung der config.yml
+     * Konfiguriert sichere Session-Parameter für das REDAXO Backend
+     */
+    public function enableSessionSecurity(): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'warning' => 'Backend-Session-Einstellungen werden in der REDAXO config.yml konfiguriert und sind sofort aktiv.'
+        ];
+
+        try {
+            // Backup erstellen
+            $backupPath = $this->backupConfig();
+            
+            $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
+
+            // Sicherstellen dass session.backend existiert
+            if (!isset($config['session'])) {
+                $config['session'] = [];
+            }
+            if (!isset($config['session']['backend'])) {
+                $config['session']['backend'] = [];
+            }
+            if (!isset($config['session']['backend']['cookie'])) {
+                $config['session']['backend']['cookie'] = [];
+            }
+
+            // Backend-Cookie-Sicherheitseinstellungen setzen
+            $config['session']['backend']['cookie']['httponly'] = true;
+            $config['session']['backend']['cookie']['secure'] = $this->isHttps();
+            $config['session']['backend']['cookie']['samesite'] = 'Lax';
+
+            // Config.yml speichern
+            if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
+                $result['success'] = true;
+                $result['message'] = 'Backend-Session-Sicherheitseinstellungen wurden erfolgreich aktiviert.';
+                $result['backup'] = 'Backup: ' . basename($backupPath);
+                
+                if ($this->isHttps()) {
+                    $result['message'] .= ' (secure=true für HTTPS)';
+                } else {
+                    $result['message'] .= ' (secure=false für HTTP)';
+                }
+            } else {
+                $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
+            }
+        } catch (Exception $e) {
+            $result['message'] = 'Fehler beim Aktivieren der Session-Sicherheit: ' . $e->getMessage();
+        }
+
+        return $result;
+    }
+
+    private function getHttpsHstsRecommendations($currentlyHttps, $httpsBackend, $httpsFrontend, $hstsEnabled, $hstsMaxAge): array
+    {
+        $recommendations = [];
+        
+        // Schritt 1: HTTPS-Verbindung
+        if (!$currentlyHttps) {
+            $recommendations[] = '🔒 Schritt 1: Auf HTTPS wechseln (SSL-Zertifikat installieren)';
+            $recommendations[] = '📄 SSL/TLS-Zertifikat vom Hosting-Provider oder Let\'s Encrypt';
+            $recommendations[] = '⚠️ HTTPS ist Voraussetzung für moderne Webanwendungen';
+        }
+        
+        // Schritt 2: REDAXO HTTPS-Konfiguration
+        if ($currentlyHttps && !$httpsBackend && !$httpsFrontend) {
+            $recommendations[] = '⚙️ Schritt 2: HTTPS in REDAXO aktivieren';
+            $recommendations[] = 'Backend: use_https: true in config.yml setzen';
+            $recommendations[] = 'Frontend: use_https: "frontend" für Frontend-HTTPS';
+            $recommendations[] = '🔄 Cache leeren nach Konfigurationsänderung';
+        }
+        
+        // Schritt 3: HSTS (nur wenn HTTPS läuft)
+        if ($currentlyHttps && ($httpsBackend || $httpsFrontend)) {
+            if (!$hstsEnabled) {
+                $recommendations[] = '🛡️ Schritt 3: HSTS aktivieren (optional aber empfohlen)';
+                $recommendations[] = '💡 HSTS zwingt Browser dauerhaft zu HTTPS';
+                $recommendations[] = '⚠️ WARNUNG: HSTS ist schwer rückgängig zu machen!';
+                $recommendations[] = 'Aktivierung: use_hsts: true + hsts_max_age: 31536000';
+            } elseif ($hstsMaxAge < 31536000) {
+                $recommendations[] = '⏰ HSTS max-age auf 1 Jahr erhöhen (31536000 Sekunden)';
+                $recommendations[] = 'Längere Cache-Zeit = besserer Schutz';
+            } else {
+                $recommendations[] = '✅ HTTPS und HSTS sind optimal konfiguriert!';
+            }
+        }
+        
+        // Allgemeine Hinweise
+        $recommendations[] = '📚 HTTPS verschlüsselt Daten, HSTS verhindert Downgrades';
+        $recommendations[] = '🔧 Bei Problemen: SSL-Konfiguration vom Hosting-Provider prüfen';
+        
+        return $recommendations;
+    }
+
+    /**
      * Gibt Dashboard-Statistiken zurück
      */
     public function getDashboardStats(): array
@@ -867,6 +1210,71 @@ class SecurityAdvisor
             'warning_issues' => $results['summary']['warning_issues'],
             'last_check' => $results['timestamp'],
             'overall_status' => $results['summary']['status']
+        ];
+    }
+
+    /**
+     * Prüft System-Versionen (PHP, MySQL/MariaDB) mit REDAXO Setup-Checks
+     */
+    private function checkSystemVersions(): void
+    {
+        $allIssues = [];
+        $status = 'success';
+        $totalScore = 10;
+        
+        // PHP-Sicherheitsprüfungen aus REDAXO Setup
+        $phpSecurityIssues = \rex_setup::checkPhpSecurity();
+        if (!empty($phpSecurityIssues)) {
+            $allIssues = array_merge($allIssues, $phpSecurityIssues);
+            $status = 'error';
+            $totalScore = 0;
+        }
+        
+        // PHP-Umgebungsprüfungen (Extensions, etc.)
+        $envErrors = \rex_setup::checkEnvironment();
+        if (!empty($envErrors)) {
+            $allIssues = array_merge($allIssues, $envErrors);
+            $status = 'error';
+            $totalScore = 0;
+        }
+        
+        // Datenbank-Sicherheitsprüfungen
+        try {
+            $dbSecurityIssues = \rex_setup::checkDbSecurity();
+            if (!empty($dbSecurityIssues)) {
+                $allIssues = array_merge($allIssues, $dbSecurityIssues);
+                if ($status !== 'error') {
+                    $status = 'warning';
+                    $totalScore = 5;
+                }
+            }
+        } catch (Exception $e) {
+            $allIssues[] = 'Datenbank-Versionsprüfung fehlgeschlagen: ' . $e->getMessage();
+            $status = 'error';
+            $totalScore = 0;
+        }
+
+        if (empty($allIssues)) {
+            $allIssues[] = 'Alle System-Versionen sind aktuell und werden unterstützt';
+        }
+
+        $this->results['checks']['system_versions'] = [
+            'name' => 'System-Versionen (PHP/DB)',
+            'status' => $status,
+            'severity' => 'high',
+            'score' => $totalScore,
+            'details' => [
+                'php_version' => PHP_VERSION,
+                'php_min_version' => \rex_setup::MIN_PHP_VERSION,
+                'php_extensions' => \rex_setup::MIN_PHP_EXTENSIONS,
+                'mysql_min_version' => \rex_setup::MIN_MYSQL_VERSION,
+                'mariadb_min_version' => \rex_setup::MIN_MARIADB_VERSION,
+                'php_security_issues' => $phpSecurityIssues,
+                'environment_errors' => $envErrors,
+                'db_security_issues' => isset($dbSecurityIssues) ? $dbSecurityIssues : []
+            ],
+            'recommendations' => $allIssues,
+            'description' => 'System-Versionen sollten aktuell und sicher sein. Nutzt REDAXOs integrierte EOL-Prüfungen.'
         ];
     }
 }

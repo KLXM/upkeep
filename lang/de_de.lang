@@ -792,3 +792,15 @@ upkeep_mail_reporting_send_status_note = Sendet einen detaillierten Status-Beric
 upkeep_mail_reporting_status_sent = Status-Bericht wurde erfolgreich versendet  
 upkeep_mail_reporting_status_failed = Status-Bericht konnte nicht versendet werden
 
+# Reporting
+upkeep_reporting_title = Reporting
+upkeep_reporting_description = Zentrale Übersicht über alle Reporting-Funktionen des Upkeep AddOns.
+upkeep_reporting_overview = Reporting-Übersicht
+upkeep_system_health_card_description = Überwacht die Systemintegrität und stellt Gesundheitsdaten über eine API zur Verfügung.
+upkeep_mail_reporting_card_description = Automatisches Reporting von Systemereignissen und Fehlern per E-Mail.
+upkeep_configure = Konfigurieren
+upkeep_enabled = Aktiviert
+upkeep_disabled = Deaktiviert
+upkeep_system_health_api_status = API-Status
+upkeep_mail_reporting_status = Status
+upkeep_mail_reporting_mode_label = Modus

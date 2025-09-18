@@ -169,7 +169,9 @@ chmod 644 *.php
 
 ### 7. Session-Sicherheit
 
-**Empfohlene PHP-Einstellungen:**
+**Problem:** Session-Cookies sind nicht sicher konfiguriert.
+
+#### Empfohlene PHP-Einstellungen:
 ```ini
 # php.ini
 session.cookie_httponly = 1
@@ -178,6 +180,46 @@ session.use_strict_mode = 1
 session.cookie_samesite = "Strict"
 session.gc_maxlifetime = 1440  # 24 Minuten
 ```
+
+#### Hosting-spezifische Lösungen:
+
+**📁 .htaccess Alternative (wenn php.ini nicht verfügbar):**
+```apache
+# .htaccess
+php_value session.cookie_httponly 1
+php_value session.cookie_secure 1
+php_value session.use_strict_mode 1
+```
+
+**🖥️ cPanel:**
+1. **Software** → **Select PHP Version**
+2. **Extensions** → PHP-Konfiguration
+3. Aktivieren: `session.cookie_httponly` 
+4. Aktivieren: `session.cookie_secure`
+5. Aktivieren: `session.use_strict_mode`
+
+**🔧 Plesk:**
+1. **Websites & Domains** → **PHP-Einstellungen**
+2. Häkchen setzen bei `session.cookie_httponly`
+3. `session.cookie_secure` aktivieren
+4. `session.use_strict_mode` aktivieren
+
+**🏠 Shared Hosting:**
+```php
+# Als Fallback in redaxo/src/core/boot.php nach den ersten Zeilen:
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_secure', '1');
+ini_set('session.use_strict_mode', '1');
+```
+
+**🎯 Strato/1&1/Ionos:**
+- Über das Control Panel → PHP-Konfiguration
+- Oder Support-Ticket für Session-Parameter
+
+**⚡ Was diese Einstellungen bewirken:**
+- `cookie_httponly`: Verhindert JavaScript-Zugriff auf Session-Cookies (XSS-Schutz)
+- `cookie_secure`: Cookies nur über HTTPS übertragen (MITM-Schutz)
+- `use_strict_mode`: Verhindert Session-Fixation-Angriffe
 
 ### 8. Content Security Policy (CSP)
 

@@ -48,14 +48,14 @@ page:
                 settings: {title: 'Settings', icon: rex-icon fa fa-cog}
                 cleanup: {title: 'Cleanup', icon: rex-icon fa fa-trash}
                 help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
-        mail_reporting:
-            title: 'translate:upkeep_mail_reporting_title'
-            icon: rex-icon fa fa-paper-plane
+        reporting:
+            title: 'translate:upkeep_reporting_title'
+            icon: rex-icon fa fa-bar-chart
             perm: upkeep[security]
-        system_health:
-            title: 'translate:upkeep_system_health_title'
-            icon: rex-icon fa fa-heartbeat
-            perm: upkeep[security]
+            subpages:
+                overview: {title: 'translate:upkeep_reporting_overview', icon: rex-icon fa fa-dashboard}
+                system_health: {title: 'translate:upkeep_system_health_title', icon: rex-icon fa fa-heartbeat}
+                mail_reporting: {title: 'translate:upkeep_mail_reporting_title', icon: rex-icon fa fa-paper-plane}
         maintenance:
             title: 'translate:upkeep_maintenance_title'
             icon: rex-icon fa fa-wrench
