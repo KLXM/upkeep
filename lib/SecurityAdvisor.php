@@ -136,7 +136,7 @@ class SecurityAdvisor
             return $backupPath;
         }
         
-        throw new Exception('Backup der config.yml konnte nicht erstellt werden');
+        throw new Exception($this->addon->i18n('upkeep_security_backup_error'));
     }
 
     /**
@@ -149,7 +149,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'WARNUNG: Der Live-Mode kann nur durch manuelle Bearbeitung der config.yml wieder deaktiviert werden!'
+            'warning' => $this->addon->i18n('upkeep_security_livemode_warning')
         ];
 
         try {
@@ -172,16 +172,16 @@ class SecurityAdvisor
             // Konfiguration speichern mit REDAXO-Methode
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'Live-Mode erfolgreich aktiviert. Debug-Modus deaktiviert und live_mode: true gesetzt.';
-                $result['backup'] = 'Backup erstellt: ' . basename($backupPath);
+                $result['message'] = $this->addon->i18n('upkeep_security_livemode_success');
+                $result['backup'] = $this->addon->i18n('upkeep_security_livemode_backup', basename($backupPath));
                 
                 // Cache leeren damit Änderungen sofort wirksam werden
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Speichern der config.yml';
+                $result['message'] = $this->addon->i18n('upkeep_security_config_save_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;
@@ -196,7 +196,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'Backend-CSP schützt nur das REDAXO Backend, nicht das Frontend!'
+            'warning' => $this->addon->i18n('upkeep_security_csp_warning')
         ];
 
         try {
@@ -206,9 +206,9 @@ class SecurityAdvisor
             $addon->setConfig('csp_enabled', true);
             
             $result['success'] = true;
-            $result['message'] = 'Backend Content Security Policy wurde aktiviert. Das REDAXO Backend ist jetzt besser geschützt.';
+            $result['message'] = $this->addon->i18n('upkeep_security_csp_enabled');
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;
@@ -232,9 +232,9 @@ class SecurityAdvisor
             $addon->setConfig('csp_enabled', false);
             
             $result['success'] = true;
-            $result['message'] = 'Backend Content Security Policy wurde deaktiviert.';
+            $result['message'] = $this->addon->i18n('upkeep_security_csp_disabled');
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;
@@ -1652,7 +1652,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_security_https_warning')
         ];
 
         try {
@@ -1666,16 +1666,16 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Backend aktiviert. Cache wird geleert...';
-                $result['backup'] = 'Backup: ' . basename($backupPath);
+                $result['message'] = $this->addon->i18n('upkeep_security_https_backend_enabled');
+                $result['backup'] = $this->addon->i18n('upkeep_security_livemode_backup', basename($backupPath));
                 
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_security_config_write_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;
@@ -1689,7 +1689,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_security_https_warning')
         ];
 
         try {
@@ -1703,8 +1703,8 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Frontend aktiviert. Cache wird geleert...';
-                $result['backup'] = 'Backup: ' . basename($backupPath);
+                $result['message'] = $this->addon->i18n('upkeep_security_https_frontend_enabled');
+                $result['backup'] = $this->addon->i18n('upkeep_security_livemode_backup', basename($backupPath));
                 
                 // Cache leeren
                 rex_delete_cache();
