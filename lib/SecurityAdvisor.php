@@ -873,12 +873,47 @@ class SecurityAdvisor
 
     private function getPhpConfigRecommendations(array $issues): array
     {
-        return [
-            'Gefährliche Funktionen in php.ini deaktivieren',
-            'display_errors=Off in Produktionsumgebung',
-            'expose_php=Off setzen',
-            'allow_url_fopen und allow_url_include deaktivieren'
-        ];
+        $recommendations = [];
+        
+        // Spezifische Empfehlungen basierend auf tatsächlichen Problemen
+        foreach ($issues as $issue) {
+            if (strpos($issue, 'Gefährliche Funktion aktiviert') !== false) {
+                if (!in_array('Gefährliche Funktionen in php.ini deaktivieren (disable_functions)', $recommendations)) {
+                    $recommendations[] = 'Gefährliche Funktionen in php.ini deaktivieren (disable_functions)';
+                }
+            }
+            elseif (strpos($issue, 'Fehlermeldungen werden angezeigt') !== false) {
+                $recommendations[] = 'display_errors=Off in php.ini setzen';
+            }
+            elseif (strpos($issue, 'PHP-Version wird preisgegeben') !== false) {
+                $recommendations[] = 'expose_php=Off in php.ini setzen';
+            }
+            elseif (strpos($issue, 'Remote URL-Includes sind erlaubt (SSRF-Risiko)') !== false) {
+                $recommendations[] = 'allow_url_fopen=Off in php.ini setzen';
+            }
+            elseif (strpos($issue, 'Remote URL-Includes sind erlaubt (RCE-Risiko)') !== false) {
+                $recommendations[] = 'allow_url_include=Off in php.ini setzen';
+            }
+            elseif (strpos($issue, 'Memory Limit sehr hoch') !== false) {
+                $recommendations[] = 'Memory Limit auf vernünftigen Wert reduzieren (z.B. 256M)';
+            }
+            elseif (strpos($issue, 'Upload max filesize sehr hoch') !== false) {
+                $recommendations[] = 'Upload-Limits reduzieren falls nicht benötigt';
+            }
+            elseif (strpos($issue, 'Post max size sehr hoch') !== false) {
+                $recommendations[] = 'POST-Limits reduzieren falls nicht benötigt';
+            }
+            elseif (strpos($issue, 'unbegrenzt') !== false) {
+                $recommendations[] = 'Unbegrenzte Limits sofort begrenzen (kritisches Sicherheitsrisiko)';
+            }
+        }
+        
+        // Fallback falls keine spezifischen Empfehlungen gefunden
+        if (empty($recommendations)) {
+            $recommendations[] = 'PHP-Konfiguration ist bereits sicher konfiguriert';
+        }
+        
+        return $recommendations;
     }
 
     private function getPermissionRecommendations(): array
@@ -1420,17 +1455,32 @@ class SecurityAdvisor
             }
         }
         
-        // Unbekannter Webserver
+        // Unbekannter Webserver - das ist SICHER (keine Version preisgegeben)
         else {
-            $warnings[] = "Webserver-Version konnte nicht ermittelt werden";
-            $serverInfo['eol_status'] = 'unbekannt';
-            $score = 8;
-            $status = 'warning';
+            // Prüfen ob überhaupt ein Server-Header vorhanden ist
+            if ($serverSoftware === 'unbekannt' || empty($serverSoftware)) {
+                // Gar kein Server-Header - perfekt für Sicherheit
+                $serverInfo['eol_status'] = 'sicher_versteckt';
+                $score = 10;
+                $status = 'success';
+            } else {
+                // Server-Header vorhanden aber ohne Versionsnummer - das ist gut
+                $serverInfo['eol_status'] = 'version_versteckt';
+                $score = 9;
+                $status = 'success';
+            }
         }
         
-        // Version wird preisgegeben?
+        // Version wird preisgegeben? Nur warnen wenn tatsächlich eine Version sichtbar ist
+        $hasVersionInfo = false;
         if (!empty($serverSoftware) && $serverSoftware !== 'unbekannt') {
-            $warnings[] = "Server-Header gibt Version preis (Information Disclosure)";
+            // Prüfen ob der Header Versionsnummern enthält (z.B. Apache/2.4.41 oder nginx/1.18.0)
+            if (preg_match('/\/[0-9]/', $serverSoftware)) {
+                $hasVersionInfo = true;
+                $warnings[] = "Server-Header gibt Version preis: {$serverSoftware} (Information Disclosure)";
+                $score -= 1;
+            }
+            // Nur "Apache" oder "nginx" ohne Version ist sicher - keine Warnung
         }
         
         $allIssues = array_merge($issues, $warnings);
@@ -1445,7 +1495,7 @@ class SecurityAdvisor
             'score' => $score,
             'details' => $serverInfo + [
                 'server_header' => $serverSoftware,
-                'version_disclosed' => !empty($serverSoftware) && $serverSoftware !== 'unbekannt',
+                'version_disclosed' => $hasVersionInfo,
                 'critical_issues' => $issues,
                 'warnings' => $warnings
             ],
