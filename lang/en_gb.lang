@@ -1172,6 +1172,59 @@ upkeep_cleanup_recommendation_automation = Set up automatic cleanup via cronjob 
 upkeep_cleanup_automation = Automation
 upkeep_cleanup_optimization = Database Optimization
 
+# Security Advisor Translations
+upkeep_check_live_mode = Live Mode Check
+upkeep_check_ssl_certificates = SSL Certificate Check
+upkeep_check_server_headers = Server Header Check
+upkeep_check_database_security = Database Security
+upkeep_ssl_valid = valid
+upkeep_ssl_invalid = invalid
+upkeep_ssl_expires = Expires
+upkeep_ssl_days_remaining = days remaining
+upkeep_ssl_issuer = Issuer
+upkeep_current_headers = Current Headers
+upkeep_header_issues = Header Issues
+upkeep_export_error = Export Error
+
+# Additional Security Advisor Checks
+upkeep_check_php_configuration = PHP Configuration
+upkeep_check_system_versions = System Versions
+upkeep_check_webserver_version = Webserver Version
+upkeep_check_production_mode = Production Mode
+upkeep_check_directory_permissions = Directory Permissions
+upkeep_check_email_security = Email Security
+upkeep_check_redaxo_version = REDAXO Version
+upkeep_check_maintenance_status = Maintenance Status
+upkeep_check_content_security_policy = Content Security Policy
+upkeep_check_password_policies = Password Policies
+upkeep_check_session_security = Session Security
+upkeep_check_file_permissions = File Permissions
+upkeep_check_https_hsts = HTTPS & HSTS
+
+# Additional Security Advisor Descriptions and Messages
+upkeep_live_mode_description = Checks if live mode is correctly activated and debug modes are disabled
+upkeep_php_config_description = Checks PHP configuration for security vulnerabilities and optimal settings
+upkeep_system_versions_description = Checks system versions (PHP, database) for currency and security
+upkeep_webserver_version_description = Checks webserver version and its security settings
+upkeep_server_header_discloses_version = Server version is being disclosed
+upkeep_production_mode_description = Checks if the system is correctly configured for production use
+upkeep_live_mode_not_active = Live mode is not active
+upkeep_redaxo_version_description = Checks REDAXO version for currency and security updates
+upkeep_maintenance_not_required = Maintenance is not required - system is running optimally
+upkeep_csp_info_label = CSP Information
+upkeep_csp_backend_only_warning = CSP applies only to backend and protects against XSS attacks
+upkeep_session_security_description = Checks session security settings
+upkeep_session_security_already_configured = Session security is already optimally configured
+upkeep_https_hsts_description = Checks HTTPS configuration and HSTS security headers
+upkeep_hsts_step3_activate = Activate HSTS
+upkeep_hsts_browser_force = Browsers will automatically redirect to HTTPS
+upkeep_hsts_irreversible_warning = HSTS activation is irreversible - browsers cache the policy
+upkeep_hsts_config_example = Example configuration in .htaccess or Apache configuration
+upkeep_https_hsts_general_info = HTTPS protects data transmission, HSTS prevents downgrade attacks
+upkeep_https_ssl_provider_help = Use trusted SSL certificates from Let's Encrypt or commercial providers
+upkeep_https_step3_hsts_ready = HSTS is ready for activation
+upkeep_hsts_warning_activation = HSTS activation cannot be undone!
+
 # Mail Security Dashboard Translations
 upkeep_mail_security_rate_limiting = Rate Limiting
 upkeep_mail_security_emails_today = Emails Today
