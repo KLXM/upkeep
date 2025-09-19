@@ -14,8 +14,8 @@ page:
     icon: 'rex-icon fa fa-wrench'
     subpages:
         dashboard_admin:
-            title: 'Upkeep Dashboard'
-            icon: rex-icon fa fa-dashboard
+            title: ''
+            icon: rex-icon fa fa-user
             perm: admin
         dashboard:
             title: 'Upkeep Dashboard'

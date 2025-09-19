@@ -250,8 +250,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-cog"></i> 
-                        Administratoreinstellungen
-                        <small class="text-muted">Wartungsfreigaben verwalten</small>
+                        <?= $addon->i18n('upkeep_admin_dashboard_title') ?>
+                        <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_subtitle') ?></small>
                     </h3>
                 </div>
                 <div class="panel-body">
@@ -259,23 +259,23 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                         <div class="col-md-4 col-sm-6">
                             <a href="<?= rex_url::backendPage('upkeep/admin_settings') ?>" class="btn btn-block btn-warning">
                                 <i class="rex-icon fa-shield"></i>
-                                Admin-Freigaben
+                                <?= $addon->i18n('upkeep_admin_dashboard_admin_releases') ?>
                             </a>
-                            <small class="text-muted">Wartungswarnungen für Redakteure verwalten</small>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_admin_releases_desc') ?></small>
                         </div>
                         <div class="col-md-4 col-sm-6">
                             <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-block btn-info">
                                 <i class="rex-icon fa-search"></i>
-                                Security Advisor
+                                <?= $addon->i18n('upkeep_admin_dashboard_security_advisor') ?>
                             </a>
-                            <small class="text-muted">Detaillierte Systemanalyse</small>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_security_advisor_desc') ?></small>
                         </div>
                         <div class="col-md-4 col-sm-6">
                             <a href="<?= rex_url::backendPage('upkeep/ips/settings') ?>" class="btn btn-block btn-default">
                                 <i class="rex-icon fa-cog"></i>
-                                IPS Einstellungen
+                                <?= $addon->i18n('upkeep_admin_dashboard_ips_settings') ?>
                             </a>
-                            <small class="text-muted">Intrusion Prevention konfigurieren</small>
+                            <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_ips_settings_desc') ?></small>
                         </div>
                     </div>
                 </div>
@@ -291,7 +291,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         <i class="rex-icon fa-tachometer"></i> 
-                        System Status & Schnellzugriff
+                        <?= $addon->i18n('upkeep_admin_dashboard_system_status_quickaccess') ?>
                     </h3>
                 </div>
                 <div class="panel-body">

@@ -188,9 +188,9 @@ if (!empty($adminReleases)) {
     $daysUntilMaintenance = ceil(($nextMaintenanceDate - time()) / (24 * 60 * 60));
     
     if ($daysUntilMaintenance > 0) {
-        $nextMaintenanceInfo = 'Nächste Systemprüfung empfohlen: <strong>' . date('d.m.Y', $nextMaintenanceDate) . '</strong> (in ' . $daysUntilMaintenance . ' Tagen)';
+        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_next_system_check_recommended') . ': <strong>' . date('d.m.Y', $nextMaintenanceDate) . '</strong> (' . $addon->i18n('upkeep_dashboard_in_days', $daysUntilMaintenance) . ')';
     } else {
-        $nextMaintenanceInfo = 'Systemprüfung <strong>überfällig</strong> - Bitte kontaktieren Sie Ihren technischen Maintainer';
+        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_system_check_overdue');
     }
 } else {
     // Keine Admin-Freigaben aktiv - Standard-Empfehlung
@@ -198,7 +198,7 @@ if (!empty($adminReleases)) {
     $daysSinceLastInfo = floor((time() - $lastMaintenanceCheck) / (24 * 60 * 60));
     
     if ($daysSinceLastInfo >= 30) {
-        $nextMaintenanceInfo = 'Regelmäßige Systemprüfung empfohlen - Kontaktieren Sie Ihren technischen Maintainer';
+        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_regular_system_check_recommended');
         // Aktualisiere Timestamp damit Info nicht täglich erscheint
         $addon->setConfig('last_maintenance_info', time());
     }
@@ -207,7 +207,7 @@ if (!empty($adminReleases)) {
 // Zeige Wartungsempfehlung an
 if (!empty($nextMaintenanceInfo)) {
     echo '<div class="alert alert-info" role="alert">';
-    echo '<h4><i class="fa fa-calendar"></i> Wartungsempfehlung</h4>';
+    echo '<h4><i class="fa fa-calendar"></i> ' . $addon->i18n('upkeep_dashboard_maintenance_recommendation') . '</h4>';
     echo '<p>' . $nextMaintenanceInfo . '</p>';
 
     echo '</div>';
@@ -251,7 +251,7 @@ $content .= '<div class="row">';
 $content .= '<div class="col-xs-3"><i class="fa ' . $healthIcon . ' fa-5x"></i></div>';
 $content .= '<div class="col-xs-9 text-right">';
 $content .= '<div class="huge">' . $systemHealth['score'] . '%</div>';
-$content .= '<div>System Health</div>';
+$content .= '<div>' . $addon->i18n('upkeep_dashboard_system_health') . '</div>';
 $content .= '</div></div></div>';
 $content .= '<div class="panel-footer"><span class="pull-left">' . $systemHealth['message'] . '</span>';
 $content .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
@@ -266,7 +266,7 @@ if ($dbReleased && $databaseStatus['status'] !== 'healthy') {
     $dbClass = 'info';
     $dbIcon = 'fa-database';
     $dbDisplayStatus = 'GEPRÜFT ✓';
-    $dbMessage = 'Geprüft und freigegeben';
+    $dbMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
 } else {
     $dbClass = match($databaseStatus['status']) {
         'healthy' => 'success',
@@ -298,7 +298,7 @@ $content .= '<div class="row">';
 $content .= '<div class="col-xs-3"><i class="fa ' . $dbIcon . ' fa-5x"></i></div>';
 $content .= '<div class="col-xs-9 text-right">';
 $content .= '<div class="huge">' . $dbDisplayStatus . '</div>';
-$content .= '<div>Datenbank</div>';
+$content .= '<div>' . $addon->i18n('upkeep_dashboard_database') . '</div>';
 $content .= '</div></div></div>';
 $content .= '<div class="panel-footer"><span class="pull-left">' . $dbMessage . '</span>';
 $content .= '<span class="pull-right"><i class="fa fa-database"></i></span><div class="clearfix"></div></div>';
@@ -309,7 +309,7 @@ $filePermissions = $advisor->checkFilePermissions();
 $permClass = $filePermissions['status'] === 'secure' ? 'success' : 'warning';
 $permIcon = $filePermissions['status'] === 'secure' ? 'fa-lock' : 'fa-unlock';
 
-$permMessage = $filePermissions['status'] === 'secure' ? 'Dateisicherheit konfiguriert' : 'Dateisicherheit überprüfen';
+$permMessage = $filePermissions['status'] === 'secure' ? $addon->i18n('upkeep_file_security_configured') : $addon->i18n('upkeep_file_security_needs_review');
 
 $content .= '<div class="col-lg-3 col-md-6">';
 $content .= '<div class="panel panel-' . $permClass . '">';
@@ -318,7 +318,7 @@ $content .= '<div class="row">';
 $content .= '<div class="col-xs-3"><i class="fa ' . $permIcon . ' fa-5x"></i></div>';
 $content .= '<div class="col-xs-9 text-right">';
 $content .= '<div class="huge">' . ($filePermissions['status'] === 'secure' ? 'OK' : 'PRÜFEN') . '</div>';
-$content .= '<div>Dateisicherheit</div>';
+$content .= '<div>' . $addon->i18n('upkeep_dashboard_file_security') . '</div>';
 $content .= '</div></div></div>';
 $content .= '<div class="panel-footer"><span class="pull-left">' . $permMessage . '</span>';
 $content .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
@@ -337,7 +337,7 @@ if ($phpConfig['status'] === 'optimal') {
 } elseif ($phpReleased || $serverStatusReleased) {
     // Admin hat Freigabe erteilt - Grün
     $phpClass = 'success';
-    $serverMessage = 'Geprüft und freigegeben';
+    $serverMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
 } else {
     // Probleme vorhanden - Rot oder Orange je nach Schwere
     $serverMessage = match($phpConfig['status']) {
@@ -360,7 +360,7 @@ $content .= '<div class="row">';
 $content .= '<div class="col-xs-3"><i class="fa fa-server fa-5x"></i></div>';
 $content .= '<div class="col-xs-9 text-right">';
 $content .= '<div class="huge">' . ($phpConfig['status'] === 'optimal' ? 'OK' : ($phpReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
-$content .= '<div>Server Setup</div>';
+$content .= '<div>' . $addon->i18n('upkeep_dashboard_server_setup') . '</div>';
 $content .= '</div></div></div>';
 $content .= '<div class="panel-footer"><span class="pull-left">' . $serverMessage . '</span>';
 $content .= '<span class="pull-right"><i class="fa fa-server"></i></span><div class="clearfix"></div></div>';
@@ -369,7 +369,7 @@ $content .= '</div></div>';
 $content .= '</div>'; // Ende row
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', '<i class="fa fa-tachometer"></i> System Status <small>Core System Checks</small>', false);
+$fragment->setVar('title', '<i class="fa fa-tachometer"></i> ' . $addon->i18n('upkeep_dashboard_system_status') . ' <small>' . $addon->i18n('upkeep_dashboard_core_system_checks') . '</small>', false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
@@ -381,7 +381,7 @@ $mailSecurityStatus = $advisor->getMailSecurityStatus();
 $mailClass = $mailSecurityStatus['active'] ? 'success' : 'info';
 $mailIcon = $mailSecurityStatus['active'] ? 'fa-envelope-o' : 'fa-envelope';
 
-$mailMessage = $mailSecurityStatus['active'] ? 'E-Mail Schutz aktiv' : 'E-Mail Schutz konfigurieren';
+$mailMessage = $mailSecurityStatus['active'] ? $addon->i18n('upkeep_dashboard_email_protection_active') : $addon->i18n('upkeep_dashboard_email_protection_configure');
 
 $securityContent .= '<div class="col-lg-3 col-md-6">';
 $securityContent .= '<div class="panel panel-' . $mailClass . '">';
@@ -390,7 +390,7 @@ $securityContent .= '<div class="row">';
 $securityContent .= '<div class="col-xs-3"><i class="fa ' . $mailIcon . ' fa-5x"></i></div>';
 $securityContent .= '<div class="col-xs-9 text-right">';
 $securityContent .= '<div class="huge">' . ($mailSecurityStatus['active'] ? 'AKTIV' : 'SETUP') . '</div>';
-$securityContent .= '<div>E-Mail Schutz</div>';
+$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_mail_protection') . '</div>';
 $securityContent .= '</div></div></div>';
 $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $mailMessage . '</span>';
 $securityContent .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
@@ -408,11 +408,11 @@ $phpmailerClass = match($phpmailerStatus['status']) {
 
 // Benutzerfreundliche Meldung ohne technische Details
 $emailMessage = match($phpmailerStatus['status']) {
-    'configured' => 'E-Mail System konfiguriert',
-    'partial' => 'E-Mail Einstellungen überprüfen',
-    'missing' => 'E-Mail Einstellungen überprüfen',
-    'warning' => 'E-Mail Einstellungen überprüfen',
-    default => 'E-Mail Status unbekannt'
+    'configured' => $addon->i18n('upkeep_email_configuration_ok'),
+    'partial' => $addon->i18n('upkeep_dashboard_email_settings_check'),
+    'missing' => $addon->i18n('upkeep_dashboard_email_settings_check'),
+    'warning' => $addon->i18n('upkeep_dashboard_email_settings_check'),
+    default => $addon->i18n('upkeep_dashboard_email_status_unknown')
 };
 
 $securityContent .= '<div class="col-lg-3 col-md-6">';
@@ -442,7 +442,7 @@ if ($securityHeaders['status'] === 'secure') {
     // Admin hat Freigabe erteilt - Grün
     $headersClass = 'success';
     $headersIcon = 'fa-shield';
-    $securityMessage = 'Geprüft und freigegeben';
+    $securityMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
 } else {
     // Probleme vorhanden - Orange/Rot
     $headersClass = 'warning';
@@ -457,7 +457,7 @@ $securityContent .= '<div class="row">';
 $securityContent .= '<div class="col-xs-3"><i class="fa ' . $headersIcon . ' fa-5x"></i></div>';
 $securityContent .= '<div class="col-xs-9 text-right">';
 $securityContent .= '<div class="huge">' . ($securityHeaders['status'] === 'secure' ? 'OK' : ($securityReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
-$securityContent .= '<div>Sicherheit</div>';
+$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_security') . '</div>';
 $securityContent .= '</div></div></div>';
 $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $securityMessage . '</span>';
 $securityContent .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
@@ -474,7 +474,7 @@ $securityContent .= '<div class="row">';
 $securityContent .= '<div class="col-xs-3"><i class="fa fa-puzzle-piece fa-5x"></i></div>';
 $securityContent .= '<div class="col-xs-9 text-right">';
 $securityContent .= '<div class="huge">' . count($addonSecurity['addons']) . '</div>';
-$securityContent .= '<div>Addons</div>';
+$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_addons') . '</div>';
 $securityContent .= '</div></div></div>';
 $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $addonSecurity['message'] . '</span>';
 $securityContent .= '<span class="pull-right"><i class="fa fa-puzzle-piece"></i></span><div class="clearfix"></div></div>';
@@ -483,7 +483,7 @@ $securityContent .= '</div></div>';
 $securityContent .= '</div>'; // Ende row
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', '<i class="fa fa-shield"></i> Security Checks <small>Security Assessment & Monitoring</small>', false);
+$fragment->setVar('title', '<i class="fa fa-shield"></i> ' . $addon->i18n('upkeep_dashboard_security_checks') . ' <small>' . $addon->i18n('upkeep_dashboard_security_assessment_monitoring') . '</small>', false);
 $fragment->setVar('body', $securityContent, false);
 echo $fragment->parse('core/page/section.php');
 
@@ -529,8 +529,8 @@ if ($hasUnreleasedIssues) {
     $actionsContent .= '<hr>';
     $actionsContent .= '<div class="alert alert-info">';
     $actionsContent .= '<i class="fa fa-info-circle"></i> ';
-    $actionsContent .= '<strong>Wartung erforderlich:</strong> ';
-    $actionsContent .= 'Bitte informieren Sie Ihren technischen Maintainer oder die verantwortliche Agentur über erforderliche Systemwartungen.';
+    $actionsContent .= '<strong>' . $addon->i18n('upkeep_dashboard_maintenance_required') . ':</strong> ';
+    $actionsContent .= $addon->i18n('upkeep_dashboard_contact_technical_maintainer');
     $actionsContent .= '</div>';
 }
 
@@ -540,6 +540,6 @@ $actionsContent .= '</div>';
 $actionsContent .= '</div>'; // Ende row
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', '<i class="fa fa-tachometer"></i> System Übersicht', false);
+$fragment->setVar('title', '<i class="fa fa-tachometer"></i> ' . $addon->i18n('upkeep_dashboard_system_overview'), false);
 $fragment->setVar('body', $actionsContent, false);
 echo $fragment->parse('core/page/section.php');
