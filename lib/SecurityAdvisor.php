@@ -886,44 +886,85 @@ class SecurityAdvisor
 
     private function getPhpConfigRecommendations(array $issues): array
     {
-        $recommendations = [];
+        $recommendationFlags = [
+            'eval_detected' => false,
+            'system_functions_detected' => false,
+            'display_errors_detected' => false,
+            'expose_php_detected' => false,
+            'allow_url_fopen_detected' => false,
+            'allow_url_include_detected' => false,
+            'memory_limit_high' => false,
+            'upload_limit_high' => false,
+            'post_limit_high' => false,
+            'unlimited_detected' => false
+        ];
         
-        // Spezifische Empfehlungen basierend auf tatsächlichen Problemen
+        // Flags setzen basierend auf Issues
         foreach ($issues as $issue) {
             if (strpos($issue, 'Kritisch unsichere Funktion aktiviert: eval') !== false) {
-                if (!in_array('eval() Funktion in php.ini deaktivieren (disable_functions=eval)', $recommendations)) {
-                    $recommendations[] = 'eval() Funktion in php.ini deaktivieren (disable_functions=eval)';
-                }
+                $recommendationFlags['eval_detected'] = true;
             }
             elseif (strpos($issue, 'Potentiell unsichere Funktion aktiviert') !== false) {
-                if (!in_array('System-Funktionen nur deaktivieren wenn nicht für REDAXO/AddOns benötigt', $recommendations)) {
-                    $recommendations[] = 'System-Funktionen nur deaktivieren wenn nicht für REDAXO/AddOns benötigt (exec, system für ffmpeg/imagemagick)';
-                }
+                $recommendationFlags['system_functions_detected'] = true;
             }
             elseif (strpos($issue, 'Fehlermeldungen werden angezeigt') !== false) {
-                $recommendations[] = 'display_errors=Off in php.ini setzen';
+                $recommendationFlags['display_errors_detected'] = true;
             }
             elseif (strpos($issue, 'PHP-Version wird preisgegeben') !== false) {
-                $recommendations[] = 'expose_php=Off in php.ini setzen';
+                $recommendationFlags['expose_php_detected'] = true;
             }
             elseif (strpos($issue, 'Remote URL-Includes sind erlaubt (SSRF-Risiko)') !== false) {
-                $recommendations[] = 'allow_url_fopen=Off in php.ini setzen';
+                $recommendationFlags['allow_url_fopen_detected'] = true;
             }
             elseif (strpos($issue, 'Remote URL-Includes sind erlaubt (RCE-Risiko)') !== false) {
-                $recommendations[] = 'allow_url_include=Off in php.ini setzen';
+                $recommendationFlags['allow_url_include_detected'] = true;
             }
             elseif (strpos($issue, 'Memory Limit sehr hoch') !== false) {
-                $recommendations[] = 'Memory Limit auf vernünftigen Wert reduzieren (z.B. 256M)';
+                $recommendationFlags['memory_limit_high'] = true;
             }
             elseif (strpos($issue, 'Upload max filesize sehr hoch') !== false) {
-                $recommendations[] = 'Upload-Limits reduzieren falls nicht benötigt';
+                $recommendationFlags['upload_limit_high'] = true;
             }
             elseif (strpos($issue, 'Post max size sehr hoch') !== false) {
-                $recommendations[] = 'POST-Limits reduzieren falls nicht benötigt';
+                $recommendationFlags['post_limit_high'] = true;
             }
             elseif (strpos($issue, 'unbegrenzt') !== false) {
-                $recommendations[] = 'Unbegrenzte Limits sofort begrenzen (kritisches Sicherheitsrisiko)';
+                $recommendationFlags['unlimited_detected'] = true;
             }
+        }
+        
+        // Deduplizierte Empfehlungen generieren
+        $recommendations = [];
+        
+        if ($recommendationFlags['eval_detected']) {
+            $recommendations[] = 'eval() Funktion in php.ini deaktivieren (disable_functions=eval)';
+        }
+        if ($recommendationFlags['system_functions_detected']) {
+            $recommendations[] = 'System-Funktionen nur deaktivieren wenn nicht für REDAXO/AddOns benötigt (exec, system für ffmpeg/imagemagick)';
+        }
+        if ($recommendationFlags['display_errors_detected']) {
+            $recommendations[] = 'display_errors=Off in php.ini setzen';
+        }
+        if ($recommendationFlags['expose_php_detected']) {
+            $recommendations[] = 'expose_php=Off in php.ini setzen';
+        }
+        if ($recommendationFlags['allow_url_fopen_detected']) {
+            $recommendations[] = 'allow_url_fopen=Off in php.ini setzen';
+        }
+        if ($recommendationFlags['allow_url_include_detected']) {
+            $recommendations[] = 'allow_url_include=Off in php.ini setzen';
+        }
+        if ($recommendationFlags['memory_limit_high']) {
+            $recommendations[] = 'Memory Limit auf vernünftigen Wert reduzieren (z.B. 256M)';
+        }
+        if ($recommendationFlags['upload_limit_high']) {
+            $recommendations[] = 'Upload-Limits reduzieren falls nicht benötigt';
+        }
+        if ($recommendationFlags['post_limit_high']) {
+            $recommendations[] = 'POST-Limits reduzieren falls nicht benötigt';
+        }
+        if ($recommendationFlags['unlimited_detected']) {
+            $recommendations[] = 'Unbegrenzte Limits sofort begrenzen (kritisches Sicherheitsrisiko)';
         }
         
         // Fallback falls keine spezifischen Empfehlungen gefunden
