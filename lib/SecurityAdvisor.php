@@ -360,14 +360,27 @@ class SecurityAdvisor
         $warnings = [];
         $score = 10;
 
-        // 1. Gefährliche Funktionen
-        $dangerousFunctions = ['eval', 'exec', 'system', 'shell_exec', 'passthru', 'popen', 'proc_open'];
+        // 1. Potentiell gefährliche Funktionen (aber oft benötigt für REDAXO/AddOns)
+        $potentiallyDangerousFunctions = [
+            'eval' => 'kritisch', // eval ist wirklich gefährlich
+            'exec' => 'warnung',   // oft benötigt für ffmpeg, imagemagick
+            'system' => 'warnung', // oft benötigt für Tools
+            'shell_exec' => 'warnung', // oft benötigt für Kommandos
+            'passthru' => 'warnung',   // oft benötigt für Output-Streaming
+            'popen' => 'warnung',      // oft benötigt für Prozess-Kommunikation
+            'proc_open' => 'warnung'   // oft benötigt für komplexe Prozesse
+        ];
         $disabled = array_map('trim', explode(',', ini_get('disable_functions')));
         
-        foreach ($dangerousFunctions as $func) {
+        foreach ($potentiallyDangerousFunctions as $func => $severity) {
             if (!in_array($func, $disabled) && function_exists($func)) {
-                $issues[] = "Gefährliche Funktion aktiviert: {$func}";
-                $score -= 1;
+                if ($severity === 'kritisch') {
+                    $issues[] = "Kritisch unsichere Funktion aktiviert: {$func} (sollte deaktiviert werden)";
+                    $score -= 2;
+                } else {
+                    $warnings[] = "Potentiell unsichere Funktion aktiviert: {$func} (nur deaktivieren wenn nicht benötigt)";
+                    $score -= 0.5;
+                }
             }
         }
 
@@ -877,9 +890,14 @@ class SecurityAdvisor
         
         // Spezifische Empfehlungen basierend auf tatsächlichen Problemen
         foreach ($issues as $issue) {
-            if (strpos($issue, 'Gefährliche Funktion aktiviert') !== false) {
-                if (!in_array('Gefährliche Funktionen in php.ini deaktivieren (disable_functions)', $recommendations)) {
-                    $recommendations[] = 'Gefährliche Funktionen in php.ini deaktivieren (disable_functions)';
+            if (strpos($issue, 'Kritisch unsichere Funktion aktiviert: eval') !== false) {
+                if (!in_array('eval() Funktion in php.ini deaktivieren (disable_functions=eval)', $recommendations)) {
+                    $recommendations[] = 'eval() Funktion in php.ini deaktivieren (disable_functions=eval)';
+                }
+            }
+            elseif (strpos($issue, 'Potentiell unsichere Funktion aktiviert') !== false) {
+                if (!in_array('System-Funktionen nur deaktivieren wenn nicht für REDAXO/AddOns benötigt', $recommendations)) {
+                    $recommendations[] = 'System-Funktionen nur deaktivieren wenn nicht für REDAXO/AddOns benötigt (exec, system für ffmpeg/imagemagick)';
                 }
             }
             elseif (strpos($issue, 'Fehlermeldungen werden angezeigt') !== false) {
