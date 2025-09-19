@@ -304,22 +304,22 @@ class SecurityAdvisor
     private function checkServerHeaders(): void
     {
         $headers = $this->getCurrentHeaders();
-        $issues = [];
+        $criticalIssues = [];
+        $recommendations = [];
         $score = 10;
 
-        // Server-Version verstecken
+        // KRITISCHE Probleme: Information Disclosure
         if (isset($headers['Server']) && preg_match('/\d+\.\d+/', $headers['Server'])) {
-            $issues[] = 'Server-Version wird preisgegeben';
-            $score -= 2;
+            $criticalIssues[] = 'Server-Version wird preisgegeben: ' . $headers['Server'];
+            $score -= 3; // Stärkere Bewertung für echte Sicherheitslecks
         }
 
-        // PHP-Version verstecken
         if (isset($headers['X-Powered-By'])) {
-            $issues[] = 'X-Powered-By Header enthüllt PHP-Version';
-            $score -= 2;
+            $criticalIssues[] = 'X-Powered-By Header enthüllt PHP-Version: ' . $headers['X-Powered-By'];
+            $score -= 3; // Stärkere Bewertung für echte Sicherheitslecks
         }
 
-        // Sicherheits-Header prüfen
+        // EMPFEHLUNGEN: Fehlende Security-Header (weniger kritisch)
         $securityHeaders = [
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => ['DENY', 'SAMEORIGIN'],
@@ -330,12 +330,21 @@ class SecurityAdvisor
 
         foreach ($securityHeaders as $header => $expectedValue) {
             if (!isset($headers[$header])) {
-                $issues[] = "Fehlender Sicherheits-Header: {$header}";
-                $score -= 1;
+                $recommendations[] = "Fehlender Sicherheits-Header: {$header}";
+                $score -= 0.3; // Viel weniger Punktabzug für fehlende Header
             }
         }
 
-        $status = empty($issues) ? 'success' : ($score > 5 ? 'warning' : 'error');
+        // Status-Logik: Nur kritische Probleme machen es rot
+        if (!empty($criticalIssues)) {
+            $status = $score > 5 ? 'warning' : 'error';
+        } elseif (!empty($recommendations)) {
+            $status = 'warning'; // Fehlende Header = immer nur Warnung
+        } else {
+            $status = 'success';
+        }
+
+        $allIssues = array_merge($criticalIssues, $recommendations);
 
         $this->results['checks']['server_headers'] = [
             'name' => 'Server Headers',
@@ -344,9 +353,11 @@ class SecurityAdvisor
             'score' => max(0, $score),
             'details' => [
                 'headers' => $headers,
-                'issues' => $issues
+                'critical_issues' => $criticalIssues,
+                'recommendations' => $recommendations,
+                'issues' => $allIssues // Für Backward-Kompatibilität
             ],
-            'recommendations' => $this->getHeaderRecommendations($issues),
+            'recommendations' => $this->getHeaderRecommendations($allIssues),
             'description' => 'Server sollte keine sensiblen Informationen preisgeben und Sicherheits-Header setzen.'
         ];
     }
