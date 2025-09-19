@@ -896,3 +896,38 @@ upkeep_email_configuration_ok = E-mail configuration optimal
 upkeep_email_needs_configuration = E-mail configuration required
 upkeep_security_headers_active = Security settings active
 upkeep_security_headers_missing = Security settings missing
+
+# SecurityAdvisor System Messages
+upkeep_system_optimal = System running optimally
+upkeep_high_memory_usage = High memory usage: {0}%
+upkeep_low_disk_space = Low disk space available
+upkeep_outdated_php_version = Outdated PHP version: {0}
+
+# SecurityAdvisor Database Messages
+upkeep_database_active = Database connection active
+upkeep_database_version_unsupported = Database version no longer supported - Update required
+upkeep_database_version_deprecated = Database version deprecated - Update recommended
+upkeep_database_connection_failed = Database connection failed - Contact technical support
+
+# SecurityAdvisor REDAXO Version Messages
+upkeep_redaxo_version_up_to_date = REDAXO version is current
+upkeep_installer_unavailable = Installer addon not available - Version check limited
+upkeep_installer_activate = Activate installer addon for automatic update checking
+upkeep_redaxo_org_offline = Connection to redaxo.org not possible - Version check offline
+upkeep_check_updates_manually = Check manually for updates under System → Core Update
+upkeep_development_version = Development version in use: {0}
+upkeep_development_not_production = Development versions are not suitable for production servers
+upkeep_switch_stable_version = Switch to stable REDAXO version
+upkeep_critical_update = Critical REDAXO update available: {0} → {1}
+upkeep_major_security_updates = Major updates contain important security updates
+upkeep_immediate_update = Immediate update to latest version recommended
+upkeep_severely_outdated = REDAXO severely outdated: {0} → {1} ({2} subversions behind)
+upkeep_version_too_old = Version is too old and should be updated urgently
+upkeep_immediate_required = Immediate update required
+upkeep_update_available = REDAXO update available: {0} → {1} ({2} subversion{3} behind)
+upkeep_updates_contain_fixes = Updates contain security fixes and bug fixes
+upkeep_update_timely = Perform update in a timely manner
+upkeep_patch_available = REDAXO update available: {0} → {1}
+upkeep_security_fixes = Update recommended for current security fixes
+upkeep_version_current = REDAXO {0} is current
+upkeep_version_check_error = Error during version check: {0}

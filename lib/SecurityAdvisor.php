@@ -836,8 +836,8 @@ class SecurityAdvisor
         try {
             // Prüfe ob Installer-AddOn verfügbar ist
             if (!rex_addon::get('install')->isAvailable()) {
-                $warnings[] = 'Installer-AddOn nicht verfügbar - Versionsprüfung eingeschränkt';
-                $recommendations[] = 'Installer-AddOn aktivieren für automatische Update-Prüfung';
+                $warnings[] = $this->addon->i18n('upkeep_installer_unavailable');
+                $recommendations[] = $this->addon->i18n('upkeep_installer_activate');
                 $score = 8;
                 $status = 'warning';
             } else {
@@ -862,8 +862,8 @@ class SecurityAdvisor
                         }
                     }
                 } catch (\Exception $e) {
-                    $warnings[] = 'Verbindung zu redaxo.org nicht möglich - Versionsprüfung offline';
-                    $warnings[] = 'Prüfen Sie manuell auf Updates unter System → Core-Update';
+                    $warnings[] = $this->addon->i18n('upkeep_redaxo_org_offline');
+                    $warnings[] = $this->addon->i18n('upkeep_check_updates_manually');
                     $score = 7;
                     $status = 'warning';
                 }
@@ -873,9 +873,9 @@ class SecurityAdvisor
             $isUnstable = \rex_version::isUnstable($currentVersion);
             
             if ($isUnstable) {
-                $warnings[] = "Entwicklungsversion in Verwendung: {$currentVersion}";
-                $warnings[] = 'Entwicklungsversionen sind nicht für Produktionsserver geeignet';
-                $recommendations[] = 'Auf stabile REDAXO-Version wechseln';
+                $warnings[] = $this->addon->i18n('upkeep_development_version', $currentVersion);
+                $warnings[] = $this->addon->i18n('upkeep_development_not_production');
+                $recommendations[] = $this->addon->i18n('upkeep_switch_stable_version');
                 $score = 6;
                 $status = 'warning';
             }
@@ -886,38 +886,38 @@ class SecurityAdvisor
                 
                 if ($versionDiff['major'] > 0) {
                     // Major Update verfügbar - kritisch
-                    $issues[] = "Kritisches REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
-                    $issues[] = 'Major-Updates enthalten wichtige Sicherheitsupdates';
-                    $recommendations[] = 'Sofortiges Update auf neueste Version empfohlen';
+                    $issues[] = $this->addon->i18n('upkeep_critical_update', $currentVersion, $latestVersion);
+                    $issues[] = $this->addon->i18n('upkeep_major_security_updates');
+                    $recommendations[] = $this->addon->i18n('upkeep_immediate_update');
                     $score = 3;
                     $status = 'error';
                 } elseif ($subversionDistance >= 3) {
                     // 3+ Subversionen zurück - kritisch (rot)
-                    $issues[] = "REDAXO stark veraltet: {$currentVersion} → {$latestVersion} ({$subversionDistance} Subversionen zurück)";
-                    $issues[] = 'Version ist zu alt und sollte dringend aktualisiert werden';
-                    $recommendations[] = 'Sofortiges Update erforderlich';
+                    $issues[] = $this->addon->i18n('upkeep_severely_outdated', $currentVersion, $latestVersion, $subversionDistance);
+                    $issues[] = $this->addon->i18n('upkeep_version_too_old');
+                    $recommendations[] = $this->addon->i18n('upkeep_immediate_required');
                     $score = 4;
                     $status = 'error';
                 } elseif ($subversionDistance >= 1) {
                     // 1-2 Subversionen zurück - Warnung (gelb)
-                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion} ({$subversionDistance} Subversion" . ($subversionDistance > 1 ? 'en' : '') . " zurück)";
-                    $warnings[] = 'Updates enthalten Sicherheitsfixes und Bugfixes';
-                    $recommendations[] = 'Update zeitnah durchführen';
+                    $warnings[] = $this->addon->i18n('upkeep_update_available', $currentVersion, $latestVersion, $subversionDistance, ($subversionDistance > 1 ? 'en' : ''));
+                    $warnings[] = $this->addon->i18n('upkeep_updates_contain_fixes');
+                    $recommendations[] = $this->addon->i18n('upkeep_update_timely');
                     $score = 6;
                     $status = 'warning';
                 } elseif ($versionDiff['patch'] > 0) {
                     // Nur Patch Update - Info
-                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
-                    $recommendations[] = 'Update empfohlen für aktuelle Sicherheitsfixes';
+                    $warnings[] = $this->addon->i18n('upkeep_patch_available', $currentVersion, $latestVersion);
+                    $recommendations[] = $this->addon->i18n('upkeep_security_fixes');
                     $score = 8;
                     $status = 'warning';
                 }
             } elseif ($latestVersion && !$updateAvailable) {
-                $recommendations[] = "REDAXO {$currentVersion} ist aktuell";
+                $recommendations[] = $this->addon->i18n('upkeep_version_current', $currentVersion);
             }
             
         } catch (\Exception $e) {
-            $warnings[] = 'Fehler bei der Versionsprüfung: ' . $e->getMessage();
+            $warnings[] = $this->addon->i18n('upkeep_version_check_error', $e->getMessage());
             $score = 5;
             $status = 'warning';
         }
@@ -932,7 +932,7 @@ class SecurityAdvisor
         
         $allIssues = array_merge($issues, $warnings, $recommendations);
         if (empty($allIssues)) {
-            $allIssues[] = 'REDAXO-Version ist aktuell';
+            $allIssues[] = $this->addon->i18n('upkeep_redaxo_version_up_to_date');
         }
 
         // Dashboard-kompatible Rückgabe
@@ -2277,7 +2277,7 @@ class SecurityAdvisor
             $memoryPercent = ($memoryUsage / $memoryLimit) * 100;
             if ($memoryPercent > 80) {
                 $score -= 20;
-                $issues[] = "Hoher Speicherverbrauch: {$memoryPercent}%";
+                $issues[] = $this->addon->i18n('upkeep_high_memory_usage', round($memoryPercent, 1));
             }
         }
         
@@ -2285,17 +2285,17 @@ class SecurityAdvisor
         $diskFree = disk_free_space(rex_path::base());
         if ($diskFree !== false && $diskFree < 1024 * 1024 * 100) { // < 100MB
             $score -= 30;
-            $issues[] = "Wenig freier Speicherplatz verfügbar";
+            $issues[] = $this->addon->i18n('upkeep_low_disk_space');
         }
         
         // PHP Version Check
         if (version_compare(PHP_VERSION, '8.0', '<')) {
             $score -= 25;
-            $issues[] = "Veraltete PHP Version: " . PHP_VERSION;
+            $issues[] = $this->addon->i18n('upkeep_outdated_php_version', PHP_VERSION);
         }
         
         $status = $score > 80 ? 'healthy' : ($score > 60 ? 'warning' : 'critical');
-        $message = empty($issues) ? 'System läuft optimal' : implode(', ', $issues);
+        $message = empty($issues) ? $this->addon->i18n('upkeep_system_optimal') : implode(', ', $issues);
         
         return [
             'status' => $status,
@@ -2321,7 +2321,7 @@ class SecurityAdvisor
             
             // Datenbankversionsprüfung
             $status = 'healthy';
-            $message = 'Datenbankverbindung aktiv';
+            $message = $this->addon->i18n('upkeep_database_active');
             
             // Extrahiere Hauptversion (MySQL/MariaDB)
             if (preg_match('/^(\d+\.\d+)/', $dbVersion, $matches)) {
@@ -2335,10 +2335,10 @@ class SecurityAdvisor
                     
                     if (in_array($majorVersion, $unsupportedMysql)) {
                         $status = 'critical';
-                        $message = 'Datenbank-Version nicht mehr unterstützt - Update erforderlich';
+                        $message = $this->addon->i18n('upkeep_database_version_unsupported');
                     } elseif (in_array($majorVersion, $deprecatedMysql)) {
                         $status = 'warning';
-                        $message = 'Datenbank-Version veraltet - Update empfohlen';
+                        $message = $this->addon->i18n('upkeep_database_version_deprecated');
                     }
                 } else {
                     // MariaDB-Versionsprüfung
@@ -2347,10 +2347,10 @@ class SecurityAdvisor
                     
                     if (in_array($majorVersion, $unsupportedMariaDB)) {
                         $status = 'critical';
-                        $message = 'Datenbank-Version nicht mehr unterstützt - Update erforderlich';
+                        $message = $this->addon->i18n('upkeep_database_version_unsupported');
                     } elseif (in_array($majorVersion, $deprecatedMariaDB)) {
                         $status = 'warning';
-                        $message = 'Datenbank-Version veraltet - Update empfohlen';
+                        $message = $this->addon->i18n('upkeep_database_version_deprecated');
                     }
                 }
             }
@@ -2364,7 +2364,7 @@ class SecurityAdvisor
         } catch (Exception $e) {
             return [
                 'status' => 'error',
-                'message' => 'Datenbankverbindung fehlgeschlagen - Technischen Support kontaktieren',
+                'message' => $this->addon->i18n('upkeep_database_connection_failed'),
                 'version' => null,
                 'articles' => 0
             ];
