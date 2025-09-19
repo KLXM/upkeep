@@ -1,9 +1,6 @@
 <?php
 
-use KLXM\Upkeep\MailSecurityFilter;
-
-$error = '';
-$success = '';
+$addon = rex_addon::get('upkeep');
 
 // Cleanup-Aktionen
 if (rex_post('cleanup-action', 'string')) {
@@ -19,25 +16,25 @@ if (rex_post('cleanup-action', 'string')) {
             case 'rate-limit':
                 $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_rate_limit') . " WHERE created_at < ?", [$cutoffDate]);
                 $affectedRows = $sql->getRows();
-                $success = "{$affectedRows} Rate-Limit-Einträge älter als {$days} Tage wurden gelöscht.";
+                $success = $affectedRows . ' ' . $addon->i18n('upkeep_cleanup_rate_limit_deleted', $days);
                 break;
                 
             case 'threat-log':
                 $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_ips_threat_log') . " WHERE threat_type LIKE 'mail_%' AND created_at < ?", [$cutoffDate]);
                 $affectedRows = $sql->getRows();
-                $success = "{$affectedRows} Mail-Threat-Log-Einträge älter als {$days} Tage wurden gelöscht.";
+                $success = $affectedRows . ' ' . $addon->i18n('upkeep_cleanup_threat_log_deleted', $days);
                 break;
                 
             case 'detailed-log':
                 $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_threat_log') . " WHERE created_at < ?", [$cutoffDate]);
                 $affectedRows = $sql->getRows();
-                $success = "{$affectedRows} detaillierte Mail-Log-Einträge älter als {$days} Tage wurden gelöscht.";
+                $success = $affectedRows . ' ' . $addon->i18n('upkeep_cleanup_detailed_log_deleted', $days);
                 break;
                 
             case 'expired-blocklist':
                 $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE expires_at IS NOT NULL AND expires_at < NOW()");
                 $affectedRows = $sql->getRows();
-                $success = "{$affectedRows} abgelaufene Blocklist-Einträge wurden gelöscht.";
+                $success = $affectedRows . ' ' . $addon->i18n('upkeep_cleanup_expired_blocklist_deleted');
                 break;
                 
             case 'all-mail-data':
@@ -57,15 +54,15 @@ if (rex_post('cleanup-action', 'string')) {
                     // Tabelle existiert möglicherweise nicht
                 }
                 
-                $success = "{$totalDeleted} Mail-Security-Einträge älter als {$days} Tage wurden gelöscht.";
+                $success = $totalDeleted . ' ' . $addon->i18n('upkeep_cleanup_all_mail_data_deleted', $days);
                 break;
                 
             default:
-                $error = 'Unbekannte Cleanup-Aktion.';
+                $error = $addon->i18n('upkeep_cleanup_unknown_action');
         }
         
     } catch (Exception $e) {
-        $error = 'Fehler beim Cleanup: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_cleanup_error') . ' ' . $e->getMessage();
     }
 }
 
@@ -92,10 +89,10 @@ if (rex_post('optimize-action', 'string') === '1') {
             }
         }
         
-        $success = "{$tablesOptimized} Tabellen wurden optimiert.";
+        $success = $tablesOptimized . ' ' . $addon->i18n('upkeep_cleanup_tables_optimized');
         
     } catch (Exception $e) {
-        $error = 'Fehler bei der Optimierung: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_cleanup_optimization_error') . ' ' . $e->getMessage();
     }
 }
 
@@ -175,12 +172,12 @@ $content = '<div class="row">';
 if (isset($stats['rate_limit'])) {
     $content .= '<div class="col-md-3">';
     $content .= '<div class="panel panel-info">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title">Rate-Limit-Daten</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title">' . $addon->i18n('upkeep_cleanup_rate_limit_data') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p><strong>' . number_format($stats['rate_limit']['count']) . '</strong> Einträge</p>';
+    $content .= '<p><strong>' . number_format($stats['rate_limit']['count']) . '</strong> ' . $addon->i18n('upkeep_entries') . '</p>';
     if ($stats['rate_limit']['oldest']) {
-        $content .= '<p><small>Ältester: ' . rex_formatter::strftime(strtotime($stats['rate_limit']['oldest']), 'date') . '</small></p>';
-        $content .= '<p><small>Neuester: ' . rex_formatter::strftime(strtotime($stats['rate_limit']['newest']), 'date') . '</small></p>';
+        $content .= '<p><small>' . $addon->i18n('upkeep_oldest') . ' ' . rex_formatter::strftime(strtotime($stats['rate_limit']['oldest']), 'date') . '</small></p>';
+        $content .= '<p><small>' . $addon->i18n('upkeep_newest') . ' ' . rex_formatter::strftime(strtotime($stats['rate_limit']['newest']), 'date') . '</small></p>';
     }
     $content .= '</div>';
     $content .= '</div>';
@@ -190,12 +187,12 @@ if (isset($stats['rate_limit'])) {
 if (isset($stats['threat_log'])) {
     $content .= '<div class="col-md-3">';
     $content .= '<div class="panel panel-warning">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title">Threat-Logs</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title">' . $addon->i18n('upkeep_cleanup_threat_logs') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p><strong>' . number_format($stats['threat_log']['count']) . '</strong> Mail-Threats</p>';
+    $content .= '<p><strong>' . number_format($stats['threat_log']['count']) . '</strong> ' . $addon->i18n('upkeep_cleanup_mail_threats') . '</p>';
     if ($stats['threat_log']['oldest']) {
-        $content .= '<p><small>Ältester: ' . rex_formatter::strftime(strtotime($stats['threat_log']['oldest']), 'date') . '</small></p>';
-        $content .= '<p><small>Neuester: ' . rex_formatter::strftime(strtotime($stats['threat_log']['newest']), 'date') . '</small></p>';
+        $content .= '<p><small>' . $addon->i18n('upkeep_oldest') . ' ' . rex_formatter::strftime(strtotime($stats['threat_log']['oldest']), 'date') . '</small></p>';
+        $content .= '<p><small>' . $addon->i18n('upkeep_newest') . ' ' . rex_formatter::strftime(strtotime($stats['threat_log']['newest']), 'date') . '</small></p>';
     }
     $content .= '</div>';
     $content .= '</div>';
@@ -205,10 +202,10 @@ if (isset($stats['threat_log'])) {
 if (isset($stats['badwords'])) {
     $content .= '<div class="col-md-3">';
     $content .= '<div class="panel panel-success">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title">Badwords</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title">' . $addon->i18n('upkeep_badwords') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p><strong>' . number_format($stats['badwords']['total']) . '</strong> gesamt</p>';
-    $content .= '<p><strong>' . number_format($stats['badwords']['active']) . '</strong> aktiv</p>';
+    $content .= '<p><strong>' . number_format($stats['badwords']['total']) . '</strong> ' . $addon->i18n('upkeep_total') . '</p>';
+    $content .= '<p><strong>' . number_format($stats['badwords']['active']) . '</strong> ' . $addon->i18n('upkeep_status_active') . '</p>';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '</div>';
@@ -217,12 +214,12 @@ if (isset($stats['badwords'])) {
 if (isset($stats['blocklist'])) {
     $content .= '<div class="col-md-3">';
     $content .= '<div class="panel panel-danger">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title">Blocklist</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title">' . $addon->i18n('upkeep_cleanup_blocklist') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p><strong>' . number_format($stats['blocklist']['total']) . '</strong> gesamt</p>';
-    $content .= '<p><strong>' . number_format($stats['blocklist']['active']) . '</strong> aktiv</p>';
+    $content .= '<p><strong>' . number_format($stats['blocklist']['total']) . '</strong> ' . $addon->i18n('upkeep_total') . '</p>';
+    $content .= '<p><strong>' . number_format($stats['blocklist']['active']) . '</strong> ' . $addon->i18n('upkeep_status_active') . '</p>';
     if ($stats['blocklist']['expired'] > 0) {
-        $content .= '<p><span class="text-warning"><strong>' . number_format($stats['blocklist']['expired']) . '</strong> abgelaufen</span></p>';
+        $content .= '<p><span class="text-warning"><strong>' . number_format($stats['blocklist']['expired']) . '</strong> ' . $addon->i18n('upkeep_status_expired') . '</span></p>';
     }
     $content .= '</div>';
     $content .= '</div>';
@@ -232,7 +229,7 @@ if (isset($stats['blocklist'])) {
 $content .= '</div>';
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', 'Datenbank-Statistiken', false);
+$fragment->setVar('title', $addon->i18n('upkeep_cleanup_database_statistics'), false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
@@ -243,17 +240,17 @@ $content = '<div class="row">';
 $content .= '<div class="col-md-6">';
 $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
 $content .= '<div class="panel panel-info">';
-$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-clock-o"></i> Rate-Limit-Daten bereinigen</h4></div>';
+$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-clock-o"></i> ' . $addon->i18n('upkeep_cleanup_rate_limit_cleanup') . '</h4></div>';
 $content .= '<div class="panel-body">';
-$content .= '<p>Entfernt alte Rate-Limit-Einträge zur Optimierung der Datenbank.</p>';
+$content .= '<p>' . $addon->i18n('upkeep_cleanup_rate_limit_description') . '</p>';
 $content .= '<div class="form-group">';
-$content .= '<label>Daten älter als (Tage):</label>';
+$content .= '<label>' . $addon->i18n('upkeep_cleanup_data_older_than_days') . '</label>';
 $content .= '<input type="number" class="form-control" name="cleanup-days" value="7" min="1" max="365" />';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '<div class="panel-footer">';
 $content .= '<input type="hidden" name="cleanup-action" value="rate-limit" />';
-$content .= '<button type="submit" class="btn btn-info" onclick="return confirm(\'Rate-Limit-Daten wirklich löschen?\')">Rate-Limit-Daten bereinigen</button>';
+$content .= '<button type="submit" class="btn btn-info" onclick="return confirm(\'' . $addon->i18n('upkeep_cleanup_confirm_rate_limit') . '\')">' . $addon->i18n('upkeep_cleanup_rate_limit_cleanup') . '</button>';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '</form>';
@@ -263,17 +260,17 @@ $content .= '</div>';
 $content .= '<div class="col-md-6">';
 $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
 $content .= '<div class="panel panel-warning">';
-$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-exclamation-triangle"></i> Threat-Logs bereinigen</h4></div>';
+$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_cleanup_threat_log_cleanup') . '</h4></div>';
 $content .= '<div class="panel-body">';
-$content .= '<p>Entfernt alte Mail-Threat-Log-Einträge. <strong>Vorsicht:</strong> Daten gehen verloren!</p>';
+$content .= '<p>' . $addon->i18n('upkeep_cleanup_threat_log_description') . '</p>';
 $content .= '<div class="form-group">';
-$content .= '<label>Daten älter als (Tage):</label>';
+$content .= '<label>' . $addon->i18n('upkeep_cleanup_data_older_than_days') . '</label>';
 $content .= '<input type="number" class="form-control" name="cleanup-days" value="30" min="1" max="365" />';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '<div class="panel-footer">';
 $content .= '<input type="hidden" name="cleanup-action" value="threat-log" />';
-$content .= '<button type="submit" class="btn btn-warning" onclick="return confirm(\'Threat-Log-Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden!\')">Threat-Logs bereinigen</button>';
+$content .= '<button type="submit" class="btn btn-warning" onclick="return confirm(\'' . $addon->i18n('upkeep_cleanup_confirm_threat_log') . '\')">' . $addon->i18n('upkeep_cleanup_threat_log_cleanup') . '</button>';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '</form>';
@@ -288,14 +285,14 @@ if (isset($stats['blocklist']) && $stats['blocklist']['expired'] > 0) {
     $content .= '<div class="col-md-6">';
     $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
     $content .= '<div class="panel panel-danger">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-ban"></i> Abgelaufene Blocklist-Einträge</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-ban"></i> ' . $addon->i18n('upkeep_cleanup_expired_blocklist_entries') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p>Entfernt automatisch alle abgelaufenen Blocklist-Einträge.</p>';
-    $content .= '<p><strong>' . $stats['blocklist']['expired'] . '</strong> abgelaufene Einträge gefunden.</p>';
+    $content .= '<p>' . $addon->i18n('upkeep_cleanup_expired_blocklist_description') . '</p>';
+    $content .= '<p><strong>' . $stats['blocklist']['expired'] . '</strong> ' . $addon->i18n('upkeep_cleanup_expired_entries_found') . '</p>';
     $content .= '</div>';
     $content .= '<div class="panel-footer">';
     $content .= '<input type="hidden" name="cleanup-action" value="expired-blocklist" />';
-    $content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'Abgelaufene Blocklist-Einträge wirklich löschen?\')">Abgelaufene Einträge löschen</button>';
+    $content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_cleanup_confirm_expired_blocklist') . '\')">' . $addon->i18n('upkeep_cleanup_delete_expired_entries') . '</button>';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '</form>';
@@ -307,17 +304,17 @@ if (isset($stats['detailed_log']) && $stats['detailed_log']['count'] > 0) {
     $content .= '<div class="col-md-6">';
     $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
     $content .= '<div class="panel panel-default">';
-    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-list"></i> Detaillierte Mail-Logs</h4></div>';
+    $content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-list"></i> ' . $addon->i18n('upkeep_cleanup_detailed_mail_logs') . '</h4></div>';
     $content .= '<div class="panel-body">';
-    $content .= '<p>Bereinigt detaillierte Mail-Threat-Logs (separate Tabelle).</p>';
+    $content .= '<p>' . $addon->i18n('upkeep_cleanup_detailed_logs_description') . '</p>';
     $content .= '<div class="form-group">';
-    $content .= '<label>Daten älter als (Tage):</label>';
+    $content .= '<label>' . $addon->i18n('upkeep_cleanup_data_older_than_days') . '</label>';
     $content .= '<input type="number" class="form-control" name="cleanup-days" value="30" min="1" max="365" />';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '<div class="panel-footer">';
     $content .= '<input type="hidden" name="cleanup-action" value="detailed-log" />';
-    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'Detaillierte Log-Daten wirklich löschen?\')">Detaillierte Logs bereinigen</button>';
+    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'' . $addon->i18n('upkeep_cleanup_confirm_detailed_logs') . '\')">' . $addon->i18n('upkeep_cleanup_detailed_logs_cleanup') . '</button>';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '</form>';
@@ -331,18 +328,18 @@ $content .= '<div class="row">';
 $content .= '<div class="col-md-8">';
 $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
 $content .= '<div class="panel panel-danger">';
-$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-trash"></i> Vollständige Mail-Security-Bereinigung</h4></div>';
+$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-trash"></i> ' . $addon->i18n('upkeep_cleanup_full_cleanup') . '</h4></div>';
 $content .= '<div class="panel-body">';
-$content .= '<p><strong>Achtung:</strong> Löscht alle Mail-Security-Daten (Rate-Limits, Threat-Logs, detaillierte Logs) älter als die angegebenen Tage.</p>';
-$content .= '<p>Badwords und Blocklist-Einträge bleiben erhalten.</p>';
+$content .= '<p>' . $addon->i18n('upkeep_cleanup_full_cleanup_warning') . '</p>';
+$content .= '<p>' . $addon->i18n('upkeep_cleanup_full_cleanup_note') . '</p>';
 $content .= '<div class="form-group">';
-$content .= '<label>Daten älter als (Tage):</label>';
+$content .= '<label>' . $addon->i18n('upkeep_cleanup_data_older_than_days') . '</label>';
 $content .= '<input type="number" class="form-control" name="cleanup-days" value="30" min="1" max="365" />';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '<div class="panel-footer">';
 $content .= '<input type="hidden" name="cleanup-action" value="all-mail-data" />';
-$content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'ALLE Mail-Security-Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden!\')">Vollständige Bereinigung</button>';
+$content .= '<button type="submit" class="btn btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_cleanup_confirm_full_cleanup') . '\')">' . $addon->i18n('upkeep_cleanup_full_cleanup') . '</button>';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '</form>';
@@ -352,14 +349,14 @@ $content .= '</div>';
 $content .= '<div class="col-md-4">';
 $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post">';
 $content .= '<div class="panel panel-success">';
-$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-cogs"></i> Datenbank optimieren</h4></div>';
+$content .= '<div class="panel-heading"><h4 class="panel-title"><i class="fa fa-cogs"></i> ' . $addon->i18n('upkeep_cleanup_optimize_database') . '</h4></div>';
 $content .= '<div class="panel-body">';
-$content .= '<p>Optimiert alle Mail-Security-Tabellen für bessere Performance.</p>';
-$content .= '<p><small>Kann bei großen Datenmengen einige Zeit dauern.</small></p>';
+$content .= '<p>' . $addon->i18n('upkeep_cleanup_optimize_description') . '</p>';
+$content .= '<p><small>' . $addon->i18n('upkeep_cleanup_optimize_note') . '</small></p>';
 $content .= '</div>';
 $content .= '<div class="panel-footer">';
 $content .= '<input type="hidden" name="optimize-action" value="1" />';
-$content .= '<button type="submit" class="btn btn-success">Tabellen optimieren</button>';
+$content .= '<button type="submit" class="btn btn-success">' . $addon->i18n('upkeep_cleanup_optimize_tables') . '</button>';
 $content .= '</div>';
 $content .= '</div>';
 $content .= '</form>';
@@ -368,19 +365,19 @@ $content .= '</div>';
 $content .= '</div>';
 
 $fragment = new rex_fragment();
-$fragment->setVar('title', 'Cleanup-Optionen', false);
+$fragment->setVar('title', $addon->i18n('upkeep_cleanup_options'), false);
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');
 
 // Empfehlungen
 $content = '<div class="alert alert-info">';
-$content .= '<h4><i class="fa fa-lightbulb-o"></i> Empfehlungen</h4>';
+$content .= '<h4><i class="fa fa-lightbulb-o"></i> ' . $addon->i18n('upkeep_cleanup_recommendations') . '</h4>';
 $content .= '<ul>';
-$content .= '<li><strong>Rate-Limit-Daten:</strong> Können täglich bereinigt werden (7 Tage aufbewahren)</li>';
-$content .= '<li><strong>Threat-Logs:</strong> Sollten für Sicherheitsanalysen mindestens 30-90 Tage aufbewahrt werden</li>';
-$content .= '<li><strong>Blocklist-Einträge:</strong> Abgelaufene Einträge können sicher gelöscht werden</li>';
-$content .= '<li><strong>Optimierung:</strong> Sollte regelmäßig (wöchentlich) durchgeführt werden</li>';
-$content .= '<li><strong>Automatisierung:</strong> Richten Sie Cronjobs für regelmäßige Bereinigung ein</li>';
+$content .= '<li><strong>' . $addon->i18n('upkeep_cleanup_rate_limit_data') . ':</strong> ' . $addon->i18n('upkeep_cleanup_recommendation_rate_limit') . '</li>';
+$content .= '<li><strong>' . $addon->i18n('upkeep_cleanup_threat_logs') . ':</strong> ' . $addon->i18n('upkeep_cleanup_recommendation_threat_logs') . '</li>';
+$content .= '<li><strong>' . $addon->i18n('upkeep_cleanup_blocklist') . ':</strong> ' . $addon->i18n('upkeep_cleanup_recommendation_blocklist') . '</li>';
+$content .= '<li><strong>' . $addon->i18n('upkeep_cleanup_optimization') . ':</strong> ' . $addon->i18n('upkeep_cleanup_recommendation_optimization') . '</li>';
+$content .= '<li><strong>' . $addon->i18n('upkeep_cleanup_automation') . ':</strong> ' . $addon->i18n('upkeep_cleanup_recommendation_automation') . '</li>';
 $content .= '</ul>';
 $content .= '</div>';
 

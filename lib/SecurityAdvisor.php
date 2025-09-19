@@ -108,7 +108,7 @@ class SecurityAdvisor
         $isProperLive = $isDebugOff && $liveMode && !$setup;
 
         $this->results['checks']['live_mode'] = [
-            'name' => 'REDAXO Live Mode',
+            'name' => $this->addon->i18n('upkeep_check_live_mode'),
             'status' => $isProperLive ? 'success' : 'error',
             'severity' => 'high',
             'score' => $isProperLive ? 10 : 0,
@@ -120,7 +120,7 @@ class SecurityAdvisor
                 'proper_live_mode' => $isProperLive
             ],
             'recommendations' => $this->getLiveModeRecommendations($isDebugOff, $liveMode, $setup),
-            'description' => 'REDAXO sollte im Live-Modus ohne Debug-Ausgaben laufen.'
+            'description' => $this->addon->i18n('upkeep_live_mode_description')
         ];
     }
 
@@ -149,7 +149,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'WARNUNG: Der Live-Mode kann nur durch manuelle Bearbeitung der config.yml wieder deaktiviert werden!'
+            'warning' => $this->addon->i18n('upkeep_live_mode_warning')
         ];
 
         try {
@@ -172,7 +172,7 @@ class SecurityAdvisor
             // Konfiguration speichern mit REDAXO-Methode
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'Live-Mode erfolgreich aktiviert. Debug-Modus deaktiviert und live_mode: true gesetzt.';
+                $result['message'] = $this->addon->i18n('upkeep_live_mode_success');
                 $result['backup'] = 'Backup erstellt: ' . basename($backupPath);
                 
                 // Cache leeren damit Änderungen sofort wirksam werden
@@ -196,7 +196,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'Backend-CSP schützt nur das REDAXO Backend, nicht das Frontend!'
+            'warning' => $this->addon->i18n('upkeep_csp_warning')
         ];
 
         try {
@@ -206,7 +206,7 @@ class SecurityAdvisor
             $addon->setConfig('csp_enabled', true);
             
             $result['success'] = true;
-            $result['message'] = 'Backend Content Security Policy wurde aktiviert. Das REDAXO Backend ist jetzt besser geschützt.';
+            $result['message'] = $this->addon->i18n('upkeep_csp_success');
         } catch (Exception $e) {
             $result['message'] = 'Fehler: ' . $e->getMessage();
         }
@@ -232,7 +232,7 @@ class SecurityAdvisor
             $addon->setConfig('csp_enabled', false);
             
             $result['success'] = true;
-            $result['message'] = 'Backend Content Security Policy wurde deaktiviert.';
+            $result['message'] = $this->addon->i18n('upkeep_csp_disable_success');
         } catch (Exception $e) {
             $result['message'] = 'Fehler: ' . $e->getMessage();
         }
@@ -319,15 +319,15 @@ class SecurityAdvisor
                     } else {
                         $result['status'] = 'error';
                         $result['score'] = 0;
-                        $result['errors'][] = 'Zertifikat läuft in weniger als 7 Tagen ab';
+                        $result['errors'][] = $this->addon->i18n('upkeep_php_config_ssl_expired');
                     }
                 } else {
-                    $result['errors'][] = 'Kein SSL-Zertifikat gefunden';
+                    $result['errors'][] = $this->addon->i18n('upkeep_php_config_no_ssl_cert');
                 }
                 
                 fclose($stream);
             } else {
-                $result['errors'][] = "SSL-Verbindung fehlgeschlagen: {$errstr}";
+                $result['errors'][] = $this->addon->i18n('upkeep_php_config_ssl_connection_failed', $errstr);
             }
         } catch (Exception $e) {
             $result['errors'][] = $e->getMessage();
@@ -348,12 +348,12 @@ class SecurityAdvisor
 
         // KRITISCHE Probleme: Information Disclosure
         if (isset($headers['Server']) && preg_match('/\d+\.\d+/', $headers['Server'])) {
-            $criticalIssues[] = 'Server-Version wird preisgegeben: ' . $headers['Server'];
+            $criticalIssues[] = $this->addon->i18n('upkeep_server_header_version_disclosed', $headers['Server']);
             $score -= 3; // Stärkere Bewertung für echte Sicherheitslecks
         }
 
         if (isset($headers['X-Powered-By'])) {
-            $criticalIssues[] = 'X-Powered-By Header enthüllt PHP-Version: ' . $headers['X-Powered-By'];
+            $criticalIssues[] = $this->addon->i18n('upkeep_server_header_x_powered_by', $headers['X-Powered-By']);
             $score -= 3; // Stärkere Bewertung für echte Sicherheitslecks
         }
 
@@ -368,7 +368,7 @@ class SecurityAdvisor
 
         foreach ($securityHeaders as $header => $expectedValue) {
             if (!isset($headers[$header])) {
-                $recommendations[] = "Fehlender Sicherheits-Header: {$header}";
+                $recommendations[] = $this->addon->i18n('upkeep_server_header_missing_security', $header);
                 $score -= 0.3; // Viel weniger Punktabzug für fehlende Header
             }
         }
@@ -385,7 +385,7 @@ class SecurityAdvisor
         $allIssues = array_merge($criticalIssues, $recommendations);
 
         $this->results['checks']['server_headers'] = [
-            'name' => 'Server Headers',
+            'name' => $this->addon->i18n('upkeep_check_server_headers'),
             'status' => $status,
             'severity' => 'medium',
             'score' => max(0, $score),
@@ -396,7 +396,7 @@ class SecurityAdvisor
                 'issues' => $allIssues // Für Backward-Kompatibilität
             ],
             'recommendations' => $this->getHeaderRecommendations($allIssues),
-            'description' => 'Server sollte keine sensiblen Informationen preisgeben und Sicherheits-Header setzen.'
+            'description' => $this->addon->i18n('upkeep_server_header_description')
         ];
     }
 
@@ -424,10 +424,10 @@ class SecurityAdvisor
         foreach ($potentiallyDangerousFunctions as $func => $severity) {
             if (!in_array($func, $disabled) && function_exists($func)) {
                 if ($severity === 'kritisch') {
-                    $issues[] = "Kritisch unsichere Funktion aktiviert: {$func} (sollte deaktiviert werden)";
+                    $issues[] = $this->addon->i18n('upkeep_php_config_eval_enabled');
                     $score -= 2;
                 } else {
-                    $warnings[] = "Potentiell unsichere Funktion aktiviert: {$func} (nur deaktivieren wenn nicht benötigt)";
+                    $warnings[] = $this->addon->i18n('upkeep_php_config_dangerous_function', $func);
                     $score -= 0.5;
                 }
             }
@@ -435,11 +435,11 @@ class SecurityAdvisor
 
         // 2. PHP-Grundeinstellungen - korrekte Boolean-Prüfung
         $settings = [
-            'display_errors' => ['Off', 'Fehlermeldungen werden angezeigt (Informationsleckage)'],
-            'expose_php' => ['Off', 'PHP-Version wird preisgegeben (Information Disclosure)'],
-            'allow_url_fopen' => ['Off', 'Remote URL-Includes sind erlaubt (SSRF-Risiko)'],
-            'allow_url_include' => ['Off', 'Remote URL-Includes sind erlaubt (RCE-Risiko)'],
-            'register_globals' => ['Off', 'Register Globals aktiviert (veraltet/unsicher)']
+            'display_errors' => ['Off', $this->addon->i18n('upkeep_php_config_display_errors')],
+            'expose_php' => ['Off', $this->addon->i18n('upkeep_php_config_expose_php')],
+            'allow_url_fopen' => ['Off', $this->addon->i18n('upkeep_php_config_allow_url_fopen')],
+            'allow_url_include' => ['Off', $this->addon->i18n('upkeep_php_config_allow_url_include')],
+            'register_globals' => ['Off', $this->addon->i18n('upkeep_php_config_register_globals')]
         ];
 
         foreach ($settings as $setting => $config) {
@@ -472,9 +472,9 @@ class SecurityAdvisor
         $memoryLimit = ini_get('memory_limit');
         $memoryBytes = $this->convertToBytes($memoryLimit);
         if ($memoryBytes > 512 * 1024 * 1024) { // > 512MB
-            $warnings[] = "Memory Limit sehr hoch ({$memoryLimit}) - DoS-Risiko";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_memory_limit_high', $memoryLimit);
         } elseif ($memoryBytes === -1) {
-            $issues[] = "Memory Limit unbegrenzt (-1) - schwerwiegendes DoS-Risiko";
+            $issues[] = $this->addon->i18n('upkeep_php_config_unlimited_memory');
             $score -= 2;
         }
 
@@ -485,23 +485,23 @@ class SecurityAdvisor
         $postMaxSizeBytes = $this->convertToBytes($postMaxSize);
         
         if ($maxFileSizeBytes > 50 * 1024 * 1024) { // > 50MB
-            $warnings[] = "Upload max filesize sehr hoch ({$maxFileSize})";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_upload_max_high', $maxFileSize);
         }
         if ($postMaxSizeBytes > 100 * 1024 * 1024) { // > 100MB
-            $warnings[] = "Post max size sehr hoch ({$postMaxSize})";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_post_max_high', $postMaxSize);
         }
 
         // 5. Open Basedir (Chroot-ähnliche Beschränkung)
         $openBasedir = ini_get('open_basedir');
         if (empty($openBasedir)) {
-            $warnings[] = "Open Basedir nicht gesetzt - PHP kann auf ganze Festplatte zugreifen";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_open_basedir_unset');
         }
 
         // 6. Error Reporting in Produktion
         $errorReporting = ini_get('error_reporting');
         $logErrors = ini_get('log_errors');
         if ($errorReporting != 0 && ini_get('display_errors') == 'On') {
-            $issues[] = "Error Reporting aktiv in Produktion (Informationsleckage)";
+            $issues[] = $this->addon->i18n('upkeep_php_config_error_reporting_production');
             $score -= 1;
         }
         
@@ -514,16 +514,16 @@ class SecurityAdvisor
         $deprecatedVersions = ['8.0', '8.1'];
         
         if (in_array($phpMajorMinor, $unsupportedVersions)) {
-            $issues[] = "PHP-Version nicht mehr unterstützt - Sicherheitsrisiko";
-            $issues[] = "Dringende Aktualisierung der PHP-Version erforderlich";
+            $issues[] = $this->addon->i18n('upkeep_php_config_php_version_unsupported');
+            $issues[] = $this->addon->i18n('upkeep_php_config_php_update_required');
             $score -= 3;
         } elseif (in_array($phpMajorMinor, $deprecatedVersions)) {
-            $warnings[] = "PHP-Version veraltet - Update empfohlen";
-            $warnings[] = "Aktualisierung auf neuere PHP-Version wird empfohlen";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_php_version_deprecated');
+            $warnings[] = $this->addon->i18n('upkeep_php_config_php_update_required');
             $score -= 1;
         }
         if (!$logErrors) {
-            $warnings[] = "Error Logging deaktiviert - Fehler werden nicht protokolliert";
+            $warnings[] = $this->addon->i18n('upkeep_php_config_error_logging_disabled');
         }
 
         // Status bestimmen
@@ -539,11 +539,11 @@ class SecurityAdvisor
         // Dashboard-kompatible Rückgabe
         $dashboardStatus = $status === 'error' ? 'critical' : ($status === 'warning' ? 'warning' : 'optimal');
         $dashboardMessage = !empty($issues) ? implode(', ', array_slice($issues, 0, 2)) : 
-                           (!empty($warnings) ? implode(', ', array_slice($warnings, 0, 2)) : 'PHP optimal konfiguriert');
+                           (!empty($warnings) ? implode(', ', array_slice($warnings, 0, 2)) : $this->addon->i18n('upkeep_php_config_php_optimal'));
         
         // Speichere auch im internen Format
         $this->results['checks']['php_configuration'] = [
-            'name' => 'PHP & System-Sicherheit',
+            'name' => $this->addon->i18n('upkeep_check_php_configuration'),
             'status' => $status,
             'severity' => 'high',
             'score' => max(0, $score),
@@ -560,7 +560,7 @@ class SecurityAdvisor
                 'warnings' => $warnings
             ],
             'recommendations' => $this->getPhpConfigRecommendations($allIssues),
-            'description' => 'PHP sollte sicher konfiguriert sein mit angemessenen Limits und ohne gefährliche Funktionen.'
+            'description' => $this->addon->i18n('upkeep_php_config_description')
         ];
         
         // Dashboard-Format zurückgeben
@@ -593,12 +593,7 @@ class SecurityAdvisor
             if (is_dir($dir)) {
                 $currentPerms = fileperms($dir) & 0777;
                 if ($currentPerms > $expectedPerms) {
-                    $issues[] = sprintf(
-                        'Verzeichnis %s hat zu offene Berechtigungen: %o (empfohlen: %o)',
-                        basename($dir),
-                        $currentPerms,
-                        $expectedPerms
-                    );
+                    $issues[] = $this->addon->i18n('upkeep_file_permissions_too_open', basename($dir), sprintf('%o', $currentPerms), sprintf('%o', $expectedPerms));
                     $score -= 2;
                 }
             }
@@ -607,7 +602,7 @@ class SecurityAdvisor
         $status = empty($issues) ? 'success' : ($score > 6 ? 'warning' : 'error');
 
         $this->results['checks']['directory_permissions'] = [
-            'name' => 'Verzeichnisberechtigungen',
+            'name' => $this->addon->i18n('upkeep_check_directory_permissions'),
             'status' => $status,
             'severity' => 'medium',
             'score' => max(0, $score),
@@ -616,7 +611,7 @@ class SecurityAdvisor
                 'issues' => $issues
             ],
             'recommendations' => $this->getPermissionRecommendations(),
-            'description' => 'Verzeichnisse sollten minimale notwendige Berechtigungen haben.'
+            'description' => $this->addon->i18n('upkeep_file_permissions_description')
         ];
     }
 
@@ -633,28 +628,28 @@ class SecurityAdvisor
         // Schwache Passwörter prüfen
         $password = $dbConfig[1]['password'] ?? '';
         if (strlen($password) < 8) {
-            $issues[] = 'Datenbank-Passwort ist zu kurz (< 8 Zeichen)';
+            $issues[] = $this->addon->i18n('upkeep_db_password_too_short');
             $score -= 3;
         }
 
         // Standardbenutzer prüfen
         $username = $dbConfig[1]['login'] ?? '';
         if (in_array($username, ['root', 'admin', 'redaxo'])) {
-            $issues[] = 'Standardbenutzername für Datenbank verwendet';
+            $issues[] = $this->addon->i18n('upkeep_db_standard_username');
             $score -= 2;
         }
 
         // Externe Verbindungen
         $host = $dbConfig[1]['host'] ?? '';
         if ($host !== 'localhost' && $host !== '127.0.0.1') {
-            $issues[] = 'Datenbank läuft nicht auf localhost - zusätzliche Netzwerksicherheit erforderlich';
+            $issues[] = $this->addon->i18n('upkeep_db_external_connection');
             $score -= 1;
         }
 
         $status = empty($issues) ? 'success' : ($score > 6 ? 'warning' : 'error');
 
         $this->results['checks']['database_security'] = [
-            'name' => 'Datenbank-Sicherheit',
+            'name' => $this->addon->i18n('upkeep_check_database_security'),
             'status' => $status,
             'severity' => 'high',
             'score' => max(0, $score),
@@ -664,7 +659,7 @@ class SecurityAdvisor
                 'issues' => $issues
             ],
             'recommendations' => $this->getDatabaseRecommendations($issues),
-            'description' => 'Datenbank-Zugangsdaten sollten sicher konfiguriert sein.'
+            'description' => $this->addon->i18n('upkeep_db_description')
         ];
     }
 
@@ -682,7 +677,7 @@ class SecurityAdvisor
         // PHPMailer-AddOn prüfen
         $phpmailerAddon = rex_addon::get('phpmailer');
         if (!$phpmailerAddon->isAvailable()) {
-            $warnings[] = 'PHPMailer-AddOn nicht verfügbar - E-Mail-Funktionalität eingeschränkt';
+            $warnings[] = $this->addon->i18n('upkeep_email_phpmailer_unavailable');
             $score -= 1;
         } else {
             // PHPMailer-Konfiguration analysieren (korrekte Config-Keys)
@@ -697,9 +692,9 @@ class SecurityAdvisor
             switch ($mailerMethod) {
                 case 'mail':
                     // mail() Funktion ist unsicher
-                    $issues[] = 'PHPMailer verwendet unsichere mail() Funktion';
-                    $issues[] = 'mail() Funktion ist anfällig für Header-Injection-Angriffe';
-                    $recommendations[] = 'Auf SMTP-Versand umstellen für bessere Sicherheit und Zustellbarkeit';
+                    $issues[] = $this->addon->i18n('upkeep_email_unsafe_mail_function');
+                    $issues[] = $this->addon->i18n('upkeep_email_header_injection_risk');
+                    $recommendations[] = $this->addon->i18n('upkeep_email_smtp_recommended');
                     $score -= 4;
                     break;
                     
@@ -719,8 +714,8 @@ class SecurityAdvisor
                     } elseif ($securityMode) {
                         // AutoTLS aktiviert - versucht automatisch TLS
                         if ($smtpPort == 587 || $smtpPort == 465) {
-                            $warnings[] = "AutoTLS aktiviert auf Port {$smtpPort} - manuelle TLS/SSL-Konfiguration empfohlen";
-                            $warnings[] = "AutoTLS kann auf unverschlüsselt zurückfallen wenn TLS fehlschlägt";
+                            $warnings[] = $this->addon->i18n('upkeep_email_auto_tls_warning', $smtpPort);
+                            $warnings[] = $this->addon->i18n('upkeep_email_auto_tls_unsecure');
                             $score = 7;
                         } else {
                             $warnings[] = "AutoTLS auf Port {$smtpPort} - Verschlüsselung ungewiss";
@@ -744,42 +739,42 @@ class SecurityAdvisor
                         
                     } else {
                         // SMTP ohne Verschlüsselung - kritisch
-                        $issues[] = "SMTP ohne Verschlüsselung konfiguriert (Port: {$smtpPort})";
-                        $issues[] = 'E-Mail-Passwörter und -Inhalte werden unverschlüsselt übertragen';
+                        $issues[] = $this->addon->i18n('upkeep_email_smtp_encryption_missing', $smtpPort);
+                        $issues[] = $this->addon->i18n('upkeep_email_passwords_unencrypted');
                         $score = 2;
                         $status = 'error';
                     }
                     
                     if (!$smtpAuth) {
-                        $warnings[] = 'SMTP-Authentifizierung nicht aktiviert';
+                        $warnings[] = $this->addon->i18n('upkeep_email_smtp_auth_missing');
                         $score -= 1;
                     }
                     break;
                     
                 case 'microsoft365':
-                    $recommendations[] = 'Microsoft 365 Graph API - modernste E-Mail-Übertragung mit OAuth2';
-                    $recommendations[] = 'Höchste Sicherheit durch verschlüsselte API-Verbindung';
+                    $recommendations[] = $this->addon->i18n('upkeep_email_microsoft365_optimal');
+                    $recommendations[] = $this->addon->i18n('upkeep_email_microsoft365_secure');
                     $score = 10;
                     $status = 'success';
                     break;
                     
                 case 'sendmail':
-                    $warnings[] = 'Sendmail verwendet - SMTP mit TLS empfohlen für bessere Sicherheit';
-                    $warnings[] = 'Keine Übertragungsverschlüsselung bei Sendmail';
+                    $warnings[] = $this->addon->i18n('upkeep_email_sendmail_warning');
+                    $warnings[] = $this->addon->i18n('upkeep_email_sendmail_no_encryption');
                     $score = 6;
                     $status = 'warning';
                     break;
                     
                 case 'mail':
-                    $warnings[] = 'PHP mail() Funktion verwendet - unsicher und unzuverlässig';
-                    $warnings[] = 'Keine Verschlüsselung, keine Authentifizierung';
-                    $warnings[] = 'E-Mails landen oft im Spam';
+                    $warnings[] = $this->addon->i18n('upkeep_email_php_mail_unsafe');
+                    $warnings[] = $this->addon->i18n('upkeep_email_php_mail_no_security');
+                    $warnings[] = $this->addon->i18n('upkeep_email_spam_risk');
                     $score = 4;
                     $status = 'warning';
                     break;
                     
                 default:
-                    $issues[] = "Unbekannte Mailer-Methode: {$mailerMethod}";
+                    $issues[] = $this->addon->i18n('upkeep_email_unknown_method', $mailerMethod);
                     $score = 3;
                     $status = 'error';
                     break;
@@ -797,11 +792,11 @@ class SecurityAdvisor
         
         $allIssues = array_merge($issues, $warnings, $recommendations);
         if (empty($allIssues)) {
-            $allIssues[] = 'E-Mail-Übertragung ist sicher konfiguriert';
+            $allIssues[] = $this->addon->i18n('upkeep_email_secure_configured');
         }
 
         $this->results['checks']['email_security'] = [
-            'name' => 'E-Mail-Sicherheit',
+            'name' => $this->addon->i18n('upkeep_check_email_security'),
             'status' => $status,
             'severity' => 'medium',
             'score' => max(0, $score),
@@ -813,7 +808,7 @@ class SecurityAdvisor
                 'positive_points' => $recommendations
             ],
             'recommendations' => $this->getEmailSecurityRecommendations($mailerMethod ?? 'unknown'),
-            'description' => 'E-Mail-Übertragung sollte verschlüsselt erfolgen (SMTP mit TLS/SSL).'
+            'description' => $this->addon->i18n('upkeep_email_description')
         ];
     }
 
@@ -932,7 +927,7 @@ class SecurityAdvisor
         
         $allIssues = array_merge($issues, $warnings, $recommendations);
         if (empty($allIssues)) {
-            $allIssues[] = $this->addon->i18n('upkeep_redaxo_version_up_to_date');
+            $allIssues[] = $this->addon->i18n('upkeep_redaxo_version_current_final', $currentVersion);
         }
 
         // Dashboard-kompatible Rückgabe
@@ -947,11 +942,11 @@ class SecurityAdvisor
         $dashboardTitle = $dashboardStatus === 'critical' ? 'REDAXO Update kritisch' : 
                          ($dashboardStatus === 'outdated' ? 'REDAXO Update verfügbar' : 'REDAXO aktuell');
         
-        $dashboardMessage = !empty($issues) ? $issues[0] : (!empty($warnings) ? $warnings[0] : 'REDAXO Version ist aktuell');
+        $dashboardMessage = !empty($issues) ? $issues[0] : (!empty($warnings) ? $warnings[0] : $this->addon->i18n('upkeep_redaxo_version_current'));
         
         // Speichere auch im internen Format
         $this->results['checks']['redaxo_version'] = [
-            'name' => 'REDAXO-Version',
+            'name' => $this->addon->i18n('upkeep_check_redaxo_version'),
             'status' => $status,
             'severity' => $updateAvailable ? 'high' : 'medium',
             'score' => max(0, $score),
@@ -962,7 +957,7 @@ class SecurityAdvisor
                 'positive_points' => $recommendations
             ],
             'recommendations' => $this->getRedaxoVersionRecommendations($updateAvailable, $isUnstable, $latestVersion),
-            'description' => 'REDAXO sollte immer auf dem neuesten Stand gehalten werden für optimale Sicherheit.'
+            'description' => $this->addon->i18n('upkeep_redaxo_version_description')
         ];
         
         // Dashboard-Format zurückgeben
@@ -1045,7 +1040,7 @@ class SecurityAdvisor
         }
 
         $this->results['checks']['content_security_policy'] = [
-            'name' => 'Content Security Policy (Backend)',
+            'name' => $this->addon->i18n('upkeep_check_content_security_policy'),
             'status' => $status,
             'severity' => 'medium',
             'score' => $score,
@@ -1073,7 +1068,7 @@ class SecurityAdvisor
         ];
 
         $this->results['checks']['password_policies'] = [
-            'name' => 'Passwort-Richtlinien',
+            'name' => $this->addon->i18n('upkeep_check_password_policies'),
             'status' => 'info',
             'severity' => 'medium',
             'score' => $score,
@@ -1113,7 +1108,7 @@ class SecurityAdvisor
         $status = empty($issues) ? 'success' : ($score > 6 ? 'warning' : 'error');
 
         $this->results['checks']['session_security'] = [
-            'name' => 'Session-Sicherheit',
+            'name' => $this->addon->i18n('upkeep_check_session_security'),
             'status' => $status,
             'severity' => 'medium',
             'score' => max(0, $score),
@@ -1124,7 +1119,7 @@ class SecurityAdvisor
                 'issues' => $issues
             ],
             'recommendations' => $this->getSessionRecommendations($issues),
-            'description' => 'Session-Einstellungen sollten sicher konfiguriert sein.'
+            'description' => $this->addon->i18n('upkeep_session_security_description')
         ];
     }
 
@@ -1145,12 +1140,7 @@ class SecurityAdvisor
             if (file_exists($file)) {
                 $currentPerms = fileperms($file) & 0777;
                 if ($currentPerms > $expectedPerms) {
-                    $issues[] = sprintf(
-                        'Datei %s hat zu offene Berechtigungen: %o (empfohlen: %o)',
-                        basename($file),
-                        $currentPerms,
-                        $expectedPerms
-                    );
+                    $issues[] = $this->addon->i18n('upkeep_file_permissions_critical_too_open', basename($file), sprintf('%o', $currentPerms), sprintf('%o', $expectedPerms));
                     $score -= 3;
                 }
             }
@@ -1164,7 +1154,7 @@ class SecurityAdvisor
         
         // Speichere auch im internen Format
         $this->results['checks']['file_permissions'] = [
-            'name' => 'Dateiberechtigungen',
+            'name' => $this->addon->i18n('upkeep_check_file_permissions'),
             'status' => $status,
             'severity' => 'high',
             'score' => max(0, $score),
@@ -1173,7 +1163,7 @@ class SecurityAdvisor
                 'issues' => $issues
             ],
             'recommendations' => $this->getFilePermissionRecommendations(),
-            'description' => 'Kritische Dateien sollten restriktive Berechtigungen haben.'
+            'description' => $this->addon->i18n('upkeep_file_permissions_critical_description')
         ];
         
         // Dashboard-Format zurückgeben
@@ -1523,7 +1513,7 @@ class SecurityAdvisor
         
         // Fallback falls keine spezifischen Empfehlungen gefunden
         if (empty($recommendations)) {
-            $recommendations[] = 'PHP-Konfiguration ist bereits sicher konfiguriert';
+        $recommendations[] = $this->addon->i18n('upkeep_php_config_already_secure');
         }
         
         return $recommendations;
@@ -1616,7 +1606,7 @@ class SecurityAdvisor
         }
 
         $this->results['checks']['hsts'] = [
-            'name' => 'HTTPS & HSTS',
+            'name' => $this->addon->i18n('upkeep_check_https_hsts'),
             'status' => $status,
             'severity' => 'high',
             'score' => $score,
@@ -1640,19 +1630,16 @@ class SecurityAdvisor
                 'https_ready_for_hsts' => $currentlyHttps && ($httpsBackend || $httpsFrontend)
             ],
             'recommendations' => $this->getHttpsHstsRecommendations($currentlyHttps, $httpsBackend, $httpsFrontend, $hstsEnabled, $hstsMaxAge),
-            'description' => 'HTTPS verschlüsselt die Kommunikation und ist für moderne Webanwendungen erforderlich. HSTS wird informativ angezeigt (optional).'
+            'description' => $this->addon->i18n('upkeep_https_hsts_description')
         ];
     }
 
-    /**
-     * Aktiviert HTTPS für Backend in der config.yml
-     */
     public function enableHttpsBackend(): array
     {
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_https_ssl_required')
         ];
 
         try {
@@ -1666,13 +1653,13 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Backend aktiviert. Cache wird geleert...';
+                $result['message'] = $this->addon->i18n('upkeep_https_backend_enabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
                 
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_https_config_error');
             }
         } catch (Exception $e) {
             $result['message'] = 'Fehler: ' . $e->getMessage();
@@ -1689,7 +1676,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_https_ssl_required')
         ];
 
         try {
@@ -1703,16 +1690,16 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Frontend aktiviert. Cache wird geleert...';
+                $result['message'] = $this->addon->i18n('upkeep_https_frontend_enabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
                 
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_https_config_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_https_activation_error', $e->getMessage());
         }
 
         return $result;
@@ -1726,7 +1713,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_https_ssl_required')
         ];
 
         try {
@@ -1740,30 +1727,27 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Backend und Frontend aktiviert. Cache wird geleert...';
+                $result['message'] = $this->addon->i18n('upkeep_https_both_enabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
                 
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_https_config_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_https_activation_error', $e->getMessage());
         }
 
         return $result;
     }
 
-    /**
-     * Aktiviert HTTP Strict Transport Security (HSTS)
-     */
     public function enableHSTS(): array
     {
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HSTS zwingt Browser dauerhaft zu HTTPS. Deaktivierung kann schwierig sein!'
+            'warning' => $this->addon->i18n('upkeep_hsts_warning')
         ];
 
         try {
@@ -1779,13 +1763,13 @@ class SecurityAdvisor
             // Config.yml speichern
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HSTS wurde aktiviert (max-age=31536000 / 1 Jahr). Browser werden ab sofort gezwungen, nur HTTPS zu verwenden.';
+                $result['message'] = $this->addon->i18n('upkeep_hsts_enabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
+                $result['message'] = $this->addon->i18n('upkeep_hsts_config_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler beim Aktivieren von HSTS: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_hsts_activation_error', $e->getMessage());
         }
 
         return $result;
@@ -1800,7 +1784,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'WARNUNG: Browser können die HSTS-Policy noch wochenlang cachen, auch nach der Deaktivierung!'
+            'warning' => $this->addon->i18n('upkeep_hsts_disable_warning')
         ];
 
         try {
@@ -1817,13 +1801,13 @@ class SecurityAdvisor
             // Config.yml speichern
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HSTS wurde deaktiviert (max-age=0). ACHTUNG: Browser können die alte Policy noch wochenlang cachen!';
+                $result['message'] = $this->addon->i18n('upkeep_hsts_disabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
+                $result['message'] = $this->addon->i18n('upkeep_hsts_config_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler beim Deaktivieren von HSTS: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_hsts_deactivation_error', $e->getMessage());
         }
 
         return $result;
@@ -1838,7 +1822,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'Backend-Session-Einstellungen werden in der REDAXO config.yml konfiguriert und sind sofort aktiv.'
+            'warning' => $this->addon->i18n('upkeep_session_security_config_warning'),
         ];
 
         try {
@@ -1866,19 +1850,19 @@ class SecurityAdvisor
             // Config.yml speichern
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'Backend-Session-Sicherheitseinstellungen wurden erfolgreich aktiviert.';
+                $result['message'] = $this->addon->i18n('upkeep_session_security_enabled');
                 $result['backup'] = 'Backup: ' . basename($backupPath);
                 
                 if ($this->isHttps()) {
-                    $result['message'] .= ' (secure=true für HTTPS)';
+                    $result['message'] .= $this->addon->i18n('upkeep_session_security_secure_true');
                 } else {
-                    $result['message'] .= ' (secure=false für HTTP)';
+                    $result['message'] .= $this->addon->i18n('upkeep_session_security_secure_false');
                 }
             } else {
                 $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler beim Aktivieren der Session-Sicherheit: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_session_security_activation_error', $e->getMessage());
         }
 
         return $result;
@@ -1890,37 +1874,37 @@ class SecurityAdvisor
         
         // Schritt 1: HTTPS-Verbindung
         if (!$currentlyHttps) {
-            $recommendations[] = '🔒 Schritt 1: Auf HTTPS wechseln (SSL-Zertifikat installieren)';
-            $recommendations[] = '📄 SSL/TLS-Zertifikat vom Hosting-Provider oder Let\'s Encrypt';
-            $recommendations[] = '⚠️ HTTPS ist Voraussetzung für moderne Webanwendungen';
+            $recommendations[] = $this->addon->i18n('upkeep_https_step1_activate');
+            $recommendations[] = $this->addon->i18n('upkeep_https_ssl_certificate');
+            $recommendations[] = $this->addon->i18n('upkeep_https_modern_requirement');
         }
         
         // Schritt 2: REDAXO HTTPS-Konfiguration
         if ($currentlyHttps && !$httpsBackend && !$httpsFrontend) {
-            $recommendations[] = '⚙️ Schritt 2: HTTPS in REDAXO aktivieren';
-            $recommendations[] = 'Backend: use_https: true in config.yml setzen';
-            $recommendations[] = 'Frontend: use_https: "frontend" für Frontend-HTTPS';
-            $recommendations[] = '🔄 Cache leeren nach Konfigurationsänderung';
+            $recommendations[] = $this->addon->i18n('upkeep_https_step2_redaxo_config');
+            $recommendations[] = $this->addon->i18n('upkeep_https_backend_config');
+            $recommendations[] = $this->addon->i18n('upkeep_https_frontend_config');
+            $recommendations[] = $this->addon->i18n('upkeep_https_cache_clear');
         }
         
         // Schritt 3: HSTS (nur wenn HTTPS läuft)
         if ($currentlyHttps && ($httpsBackend || $httpsFrontend)) {
             if (!$hstsEnabled) {
-                $recommendations[] = '🛡️ Schritt 3: HSTS aktivieren (optional aber empfohlen)';
-                $recommendations[] = '💡 HSTS zwingt Browser dauerhaft zu HTTPS';
-                $recommendations[] = '⚠️ WARNUNG: HSTS ist schwer rückgängig zu machen!';
-                $recommendations[] = 'Aktivierung: use_hsts: true + hsts_max_age: 31536000';
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_step3_activate');
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_browser_force');
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_irreversible_warning');
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_config_example');
             } elseif ($hstsMaxAge < 31536000) {
-                $recommendations[] = '⏰ HSTS max-age auf 1 Jahr erhöhen (31536000 Sekunden)';
-                $recommendations[] = 'Längere Cache-Zeit = besserer Schutz';
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_increase_max_age');
+                $recommendations[] = $this->addon->i18n('upkeep_hsts_longer_cache_better');
             } else {
-                $recommendations[] = '✅ HTTPS und HSTS sind optimal konfiguriert!';
+                $recommendations[] = $this->addon->i18n('upkeep_https_hsts_optimal');
             }
         }
         
         // Allgemeine Hinweise
-        $recommendations[] = '📚 HTTPS verschlüsselt Daten, HSTS verhindert Downgrades';
-        $recommendations[] = '🔧 Bei Problemen: SSL-Konfiguration vom Hosting-Provider prüfen';
+        $recommendations[] = $this->addon->i18n('upkeep_https_hsts_general_info');
+        $recommendations[] = $this->addon->i18n('upkeep_https_ssl_provider_help');
         
         return $recommendations;
     }
@@ -1978,17 +1962,17 @@ class SecurityAdvisor
                 }
             }
         } catch (Exception $e) {
-            $allIssues[] = 'Datenbank-Versionsprüfung fehlgeschlagen: ' . $e->getMessage();
+            $allIssues[] = $this->addon->i18n('upkeep_database_version_check_failed', $e->getMessage());
             $status = 'error';
             $totalScore = 0;
         }
 
         if (empty($allIssues)) {
-            $allIssues[] = 'Alle System-Versionen sind aktuell und werden unterstützt';
+            $allIssues[] = $this->addon->i18n('upkeep_system_versions_current_supported');
         }
 
         $this->results['checks']['system_versions'] = [
-            'name' => 'System-Versionen (PHP/DB)',
+            'name' => $this->addon->i18n('upkeep_check_system_versions'),
             'status' => $status,
             'severity' => 'high',
             'score' => $totalScore,
@@ -2003,7 +1987,7 @@ class SecurityAdvisor
                 'db_security_issues' => isset($dbSecurityIssues) ? $dbSecurityIssues : []
             ],
             'recommendations' => $allIssues,
-            'description' => 'System-Versionen sollten aktuell und sicher sein. Nutzt REDAXOs integrierte EOL-Prüfungen.'
+            'description' => $this->addon->i18n('upkeep_system_versions_description')
         ];
     }
 
@@ -2039,12 +2023,12 @@ class SecurityAdvisor
             
             $majorMinor = preg_replace('/^(\d+\.\d+)\..*/', '$1', $serverInfo['version']);
             if (version_compare($serverInfo['version'], '2.4.0', '<')) {
-                $issues[] = "Apache {$serverInfo['version']} ist End-of-Life";
+                $issues[] = $this->addon->i18n('upkeep_apache_eol', $serverInfo['version']);
                 $serverInfo['eol_status'] = 'EOL';
                 $score = 0;
                 $status = 'error';
             } elseif (version_compare($serverInfo['version'], '2.4.10', '<')) {
-                $warnings[] = "Apache {$serverInfo['version']} ist sehr alt, Update empfohlen";
+                $warnings[] = $this->addon->i18n('upkeep_apache_very_old_update_recommended', $serverInfo['version']);
                 $serverInfo['eol_status'] = 'alt';
                 $score = 5;
                 $status = 'warning';
@@ -2059,7 +2043,7 @@ class SecurityAdvisor
             $serverInfo['version'] = $matches[1];
             
             if (version_compare($serverInfo['version'], '1.20.0', '<')) {
-                $warnings[] = "Nginx {$serverInfo['version']} ist alt, Update empfohlen";
+                $warnings[] = $this->addon->i18n('upkeep_nginx_old_update_recommended', $serverInfo['version']);
                 $serverInfo['eol_status'] = 'alt';
                 $score = 7;
                 $status = 'warning';
@@ -2090,7 +2074,7 @@ class SecurityAdvisor
             // Prüfen ob der Header Versionsnummern enthält (z.B. Apache/2.4.41 oder nginx/1.18.0)
             if (preg_match('/\/[0-9]/', $serverSoftware)) {
                 $hasVersionInfo = true;
-                $warnings[] = "Server-Header gibt Version preis: {$serverSoftware} (Information Disclosure)";
+                $warnings[] = $this->addon->i18n('upkeep_server_header_discloses_version', $serverSoftware);
                 $score -= 1;
             }
             // Nur "Apache" oder "nginx" ohne Version ist sicher - keine Warnung
@@ -2098,11 +2082,11 @@ class SecurityAdvisor
         
         $allIssues = array_merge($issues, $warnings);
         if (empty($allIssues)) {
-            $allIssues[] = 'Webserver-Konfiguration erscheint sicher';
+            $allIssues[] = $this->addon->i18n('upkeep_webserver_config_secure');
         }
 
         $this->results['checks']['webserver_version'] = [
-            'name' => 'Webserver-Version',
+            'name' => $this->addon->i18n('upkeep_check_webserver_version'),
             'status' => $status,
             'severity' => 'medium',
             'score' => $score,
@@ -2113,7 +2097,7 @@ class SecurityAdvisor
                 'warnings' => $warnings
             ],
             'recommendations' => $allIssues,
-            'description' => 'Webserver sollte aktuell sein und keine Versionsinformationen preisgeben.'
+            'description' => $this->addon->i18n('upkeep_webserver_version_description')
         ];
     }
 
@@ -2130,7 +2114,7 @@ class SecurityAdvisor
         // 1. Setup-Modus noch aktiv?
         $setupEnabled = \rex_setup::isEnabled();
         if ($setupEnabled) {
-            $issues[] = "REDAXO Setup-Modus ist noch aktiv - schwerwiegendes Sicherheitsrisiko!";
+            $issues[] = $this->addon->i18n('upkeep_setup_mode_active_security_risk');
             $score -= 5;
             $status = 'error';
         }
@@ -2138,7 +2122,7 @@ class SecurityAdvisor
         // 2. Debug-Modus in Produktion
         $debugMode = \rex::isDebugMode();
         if ($debugMode) {
-            $issues[] = "Debug-Modus in Produktion aktiv - Informationsleckage möglich";
+            $issues[] = $this->addon->i18n('upkeep_debug_mode_production_info_leak');
             $score -= 3;
             if ($status !== 'error') {
                 $status = 'error';
@@ -2154,12 +2138,12 @@ class SecurityAdvisor
                 $passwordHash = $sql->getValue('password');
                 // Prüfen ob Standard-Passwort (admin) verwendet wird
                 if (password_verify('admin', $passwordHash)) {
-                    $issues[] = "Standard-Login admin/admin wird verwendet - kritisches Sicherheitsrisiko!";
+                    $issues[] = $this->addon->i18n('upkeep_default_admin_password_used');
                     $score -= 5;
                     $status = 'error';
                 } else {
                     // Admin-Account existiert, aber mit anderem Passwort
-                    $warnings[] = "Standard-Login 'admin' existiert - sollte umbenannt werden";
+                    $warnings[] = $this->addon->i18n('upkeep_default_admin_exists_rename');
                     $score -= 1;
                 }
             }
@@ -2174,7 +2158,7 @@ class SecurityAdvisor
             $emptyPasswords = $sql->getValue('count');
             
             if ($emptyPasswords > 0) {
-                $issues[] = "{$emptyPasswords} Benutzer ohne Passwort gefunden";
+                $issues[] = $this->addon->i18n('upkeep_users_without_password', $emptyPasswords);
                 $score -= 3;
                 if ($status !== 'error') {
                     $status = 'error';
@@ -2186,7 +2170,7 @@ class SecurityAdvisor
         
         // 5. Live-Modus prüfen
         if (!\rex::isLiveMode()) {
-            $warnings[] = "REDAXO nicht im Live-Modus - Performance und Sicherheit können beeinträchtigt sein";
+            $warnings[] = $this->addon->i18n('upkeep_live_mode_not_active');
             $score -= 1;
             if ($status === 'success') {
                 $status = 'warning';
@@ -2197,7 +2181,7 @@ class SecurityAdvisor
         $config = \rex_file::getConfig(\rex_path::coreData('config.yml'));
         $passwordPolicy = $config['password_policy'] ?? [];
         if (empty($passwordPolicy['length']) || $passwordPolicy['length'] < 8) {
-            $warnings[] = "Keine Passwort-Policy konfiguriert - schwache Passwörter möglich";
+            $warnings[] = $this->addon->i18n('upkeep_no_password_policy_configured');
             $score -= 1;
         }
 
@@ -2210,11 +2194,11 @@ class SecurityAdvisor
         
         $allIssues = array_merge($issues, $warnings);
         if (empty($allIssues)) {
-            $allIssues[] = 'REDAXO-Produktions-Konfiguration ist sicher';
+            $allIssues[] = $this->addon->i18n('upkeep_production_config_secure');
         }
 
         $this->results['checks']['production_mode'] = [
-            'name' => 'REDAXO-Produktionsmodus',
+            'name' => $this->addon->i18n('upkeep_check_production_mode'),
             'status' => $status,
             'severity' => 'high',
             'score' => max(0, $score),
@@ -2229,7 +2213,7 @@ class SecurityAdvisor
                 'warnings' => $warnings
             ],
             'recommendations' => $allIssues,
-            'description' => 'REDAXO sollte sicher für den Produktionsbetrieb konfiguriert sein.'
+            'description' => $this->addon->i18n('upkeep_production_mode_description')
         ];
     }
 
@@ -2380,7 +2364,7 @@ class SecurityAdvisor
         
         return [
             'active' => $active,
-            'message' => $active ? 'Mail Security aktiv' : 'Mail Security inaktiv'
+            'message' => $active ? $this->addon->i18n('upkeep_mail_security_active') : $this->addon->i18n('upkeep_mail_security_inactive')
         ];
     }
 
@@ -2394,7 +2378,7 @@ class SecurityAdvisor
             if (!$phpmailerAddon->isAvailable()) {
                 return [
                     'status' => 'missing',
-                    'message' => 'PHPMailer AddOn nicht verfügbar'
+                    'message' => $this->addon->i18n('upkeep_phpmailer_addon_unavailable')
                 ];
             }
             
@@ -2405,7 +2389,7 @@ class SecurityAdvisor
             if ($mailerMethod === 'mail') {
                 return [
                     'status' => 'warning',
-                    'message' => 'PHPMailer verwendet unsichere mail() Funktion - SMTP empfohlen'
+                    'message' => $this->addon->i18n('upkeep_phpmailer_unsafe_mail_function')
                 ];
             }
             
@@ -2416,18 +2400,18 @@ class SecurityAdvisor
                 
                 if (count($configuredKeys) === count($requiredKeys)) {
                     $status = 'configured';
-                    $message = 'PHPMailer SMTP vollständig konfiguriert';
+                    $message = $this->addon->i18n('upkeep_phpmailer_smtp_fully_configured');
                 } elseif (count($configuredKeys) > 0) {
                     $status = 'partial';
-                    $message = 'PHPMailer SMTP teilweise konfiguriert';
+                    $message = $this->addon->i18n('upkeep_phpmailer_smtp_partially_configured');
                 } else {
                     $status = 'missing';
-                    $message = 'PHPMailer SMTP nicht konfiguriert';
+                    $message = $this->addon->i18n('upkeep_phpmailer_smtp_not_configured');
                 }
             } else {
                 // Andere Methoden (sendmail, etc.)
                 $status = 'configured';
-                $message = 'PHPMailer konfiguriert (' . $mailerMethod . ')';
+                $message = $this->addon->i18n('upkeep_phpmailer_configured', $mailerMethod);
             }
             
             return [
@@ -2438,7 +2422,7 @@ class SecurityAdvisor
         } catch (Exception $e) {
             return [
                 'status' => 'error',
-                'message' => 'PHPMailer-Prüfung fehlgeschlagen: ' . $e->getMessage()
+                'message' => $this->addon->i18n('upkeep_phpmailer_check_failed', $e->getMessage())
             ];
         }
     }
@@ -2457,7 +2441,7 @@ class SecurityAdvisor
         
         $secureHeaders = array_filter($headers);
         $status = count($secureHeaders) > 2 ? 'secure' : 'warning';
-        $message = count($secureHeaders) > 2 ? 'Security Headers gesetzt' : 'Security Headers fehlen';
+        $message = count($secureHeaders) > 2 ? $this->addon->i18n('upkeep_security_headers_set') : $this->addon->i18n('upkeep_security_headers_missing');
         
         return [
             'status' => $status,
@@ -2478,7 +2462,7 @@ class SecurityAdvisor
         
         return [
             'status' => 'secure',
-            'message' => count($secureAddons) . ' Addons installiert',
+            'message' => $this->addon->i18n('upkeep_addons_installed', count($secureAddons)),
             'addons' => array_keys($secureAddons)
         ];
     }

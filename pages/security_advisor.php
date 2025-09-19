@@ -134,7 +134,7 @@ $statusIcon = match($stats['overall_status']) {
 </div>
 
 <?php if ($stats['last_check']): ?>
-<!-- Quick Overview der wichtigsten Checks -->
+<!-- Quick Overview of the most important checks -->
 <div class="row">
     <div class="col-md-12">
         <div class="panel panel-default">
@@ -148,10 +148,10 @@ $statusIcon = match($stats['overall_status']) {
                 <?php
                 $results = $securityAdvisor->runAllChecks();
                 $quickChecks = [
-                    'live_mode' => 'REDAXO Live Mode',
-                    'ssl_certificates' => 'SSL-Zertifikate', 
-                    'server_headers' => 'Server Headers',
-                    'database_security' => 'Datenbank-Sicherheit'
+                    'live_mode' => $addon->i18n('upkeep_check_live_mode'),
+                    'ssl_certificates' => $addon->i18n('upkeep_check_ssl_certificates'),
+                    'server_headers' => $addon->i18n('upkeep_check_server_headers'),
+                    'database_security' => $addon->i18n('upkeep_check_database_security')
                 ];
                 ?>
                 
@@ -178,7 +178,7 @@ $statusIcon = match($stats['overall_status']) {
     </div>
 </div>
 
-<!-- Top Empfehlungen -->
+<!-- Top Recommendations -->
 <div class="row">
     <div class="col-md-12">
         <div class="panel panel-default">
@@ -203,7 +203,7 @@ $statusIcon = match($stats['overall_status']) {
                     }
                 }
                 
-                // Top 5 Empfehlungen nach Severity sortieren
+                // Sort top 5 recommendations by severity
                 usort($allRecommendations, function($a, $b) {
                     $weights = ['high' => 3, 'medium' => 2, 'low' => 1];
                     return ($weights[$b['severity']] ?? 0) <=> ($weights[$a['severity']] ?? 0);

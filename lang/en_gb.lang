@@ -931,3 +931,240 @@ upkeep_patch_available = REDAXO update available: {0} → {1}
 upkeep_security_fixes = Update recommended for current security fixes
 upkeep_version_current = REDAXO {0} is current
 upkeep_version_check_error = Error during version check: {0}
+
+# Security headers
+upkeep_security_headers_set = Security headers set
+upkeep_security_headers_missing = Security headers missing
+
+# PHP Mailer
+upkeep_phpmailer_addon_unavailable = PHPMailer addon not available
+upkeep_phpmailer_unsafe_mail_function = PHPMailer uses unsafe mail() function - SMTP recommended
+upkeep_phpmailer_smtp_fully_configured = PHPMailer SMTP fully configured
+upkeep_phpmailer_smtp_partially_configured = PHPMailer SMTP partially configured
+upkeep_phpmailer_smtp_not_configured = PHPMailer SMTP not configured
+upkeep_phpmailer_configured = PHPMailer configured ({0})
+upkeep_phpmailer_check_failed = PHPMailer check failed: {0}
+
+# SecurityAdvisor Dashboard Messages
+upkeep_mail_security_active = Mail Security active
+upkeep_mail_security_inactive = Mail Security inactive
+
+# Live-Mode Activation
+upkeep_enable_live_mode = Enable Live Mode
+upkeep_live_mode_warning = Warning: Can only be deactivated via config.yml!
+upkeep_live_mode_confirm = Live mode can only be deactivated by manually editing config.yml. Continue?
+upkeep_live_mode_success = Live mode successfully activated. Debug mode disabled.
+upkeep_live_mode_error = Error activating live mode
+upkeep_quick_action = Quick Action
+
+# CSP Activation
+upkeep_enable_csp = Enable CSP
+upkeep_csp_warning = CSP may affect layout and JavaScript functionality!
+upkeep_csp_success = Content Security Policy has been activated. Check your website functionality.
+upkeep_csp_error = Error activating CSP
+upkeep_disable_csp = Disable Backend CSP
+upkeep_csp_disable_success = Backend Content Security Policy has been disabled.
+upkeep_csp_disable_error = Error disabling CSP
+
+# Server Header Checks
+upkeep_server_header_version_disclosed = Server version is disclosed: {0}
+upkeep_server_header_x_powered_by = X-Powered-By header reveals PHP version: {0}
+upkeep_server_header_missing_security = Missing security header: {0}
+upkeep_server_header_description = Server should not disclose sensitive information and should set security headers.
+
+# PHP Configuration Checks
+upkeep_php_config_display_errors = Error messages are displayed (information leakage)
+upkeep_php_config_expose_php = PHP version is disclosed (Information Disclosure)
+upkeep_php_config_allow_url_fopen = Remote URL includes are allowed (SSRF risk)
+upkeep_php_config_allow_url_include = Remote URL includes are allowed (RCE risk)
+upkeep_php_config_register_globals = Register Globals enabled (deprecated/insecure)
+upkeep_php_config_error_reporting_production = Error reporting active in production (information leakage)
+upkeep_php_config_memory_limit_high = Memory limit very high ({0}) - DoS risk
+upkeep_php_config_upload_max_high = Upload max filesize very high ({0})
+upkeep_php_config_post_max_high = Post max size very high ({0})
+upkeep_php_config_open_basedir_unset = Open Basedir not set - PHP can access entire disk
+upkeep_php_config_unlimited_memory = Memory limit unlimited (-1) - severe DoS risk
+upkeep_php_config_eval_enabled = Critically insecure function enabled: eval (should be disabled)
+upkeep_php_config_dangerous_function = Potentially insecure function enabled: {0} (only disable if not needed)
+upkeep_php_config_php_version_unsupported = PHP version no longer supported - security risk
+upkeep_php_config_php_version_deprecated = PHP version deprecated - update recommended
+upkeep_php_config_php_update_required = Urgent PHP version update required
+upkeep_php_config_error_logging_disabled = Error logging disabled - errors are not logged
+upkeep_php_config_ssl_expired = Certificate expires in less than 7 days
+upkeep_php_config_ssl_expiring = Certificate expires soon
+upkeep_php_config_no_ssl_cert = No SSL certificate found
+upkeep_php_config_ssl_connection_failed = SSL connection failed: {0}
+upkeep_php_config_php_optimal = PHP optimally configured
+
+# File Permissions
+upkeep_file_permissions_too_open = Directory {0} has too open permissions: {1} (recommended: {2})
+upkeep_file_permissions_description = Directories should have minimal necessary permissions.
+upkeep_file_permissions_critical_too_open = File {0} has too open permissions: {1} (recommended: {2})
+upkeep_file_permissions_critical_description = Critical files should have restrictive permissions.
+
+# Database Security
+upkeep_db_password_too_short = Database password is too short (< 8 characters)
+upkeep_db_standard_username = Standard username for database used
+upkeep_db_external_connection = Database is not running on localhost - additional network security required
+upkeep_db_description = Database credentials should be configured securely.
+
+# Email Security
+upkeep_email_phpmailer_unavailable = PHPMailer addon not available - email functionality limited
+upkeep_email_unsafe_mail_function = PHPMailer uses unsafe mail() function
+upkeep_email_header_injection_risk = mail() function is vulnerable to header injection attacks
+upkeep_email_smtp_recommended = Switch to SMTP delivery for better security and deliverability
+upkeep_email_smtp_encryption_missing = SMTP without encryption configured (Port: {0})
+upkeep_email_passwords_unencrypted = Email passwords and content are transmitted unencrypted
+upkeep_email_smtp_auth_missing = SMTP authentication not enabled
+upkeep_email_auto_tls_warning = AutoTLS enabled on port {0} - manual TLS/SSL configuration recommended
+upkeep_email_auto_tls_unsecure = AutoTLS may fall back to unencrypted if TLS fails
+upkeep_email_secure_provider = Trusted email provider {0} with AutoTLS
+upkeep_email_microsoft365_optimal = Microsoft 365 Graph API - most modern email transmission with OAuth2
+upkeep_email_microsoft365_secure = Highest security through encrypted API connection
+upkeep_email_sendmail_warning = Sendmail used - SMTP with TLS recommended for better security
+upkeep_email_sendmail_no_encryption = No transmission encryption with Sendmail
+upkeep_email_php_mail_unsafe = PHP mail() function used - insecure and unreliable
+upkeep_email_php_mail_no_security = No encryption, no authentication
+upkeep_email_spam_risk = Emails often land in spam
+upkeep_email_unknown_method = Unknown mailer method: {0}
+upkeep_email_secure_configured = Email transmission is securely configured
+upkeep_email_description = Email transmission should be encrypted (SMTP with TLS/SSL).
+
+# REDAXO Version Checks
+upkeep_redaxo_version_current = REDAXO version is current
+upkeep_redaxo_installer_unavailable = Installer addon not available - version check limited
+upkeep_redaxo_installer_activate = Activate installer addon for automatic update checking
+upkeep_redaxo_org_offline = Connection to redaxo.org not possible - version check offline
+upkeep_redaxo_check_updates_manually = Check manually for updates under System → Core Update
+upkeep_redaxo_development_version = Development version in use: {0}
+upkeep_redaxo_development_not_production = Development versions are not suitable for production servers
+upkeep_redaxo_switch_stable_version = Switch to stable REDAXO version
+upkeep_redaxo_critical_update = Critical REDAXO update available: {0} → {1}
+upkeep_redaxo_major_security_updates = Major updates contain important security updates
+upkeep_redaxo_immediate_update = Immediate update to latest version recommended
+upkeep_redaxo_severely_outdated = REDAXO severely outdated: {0} → {1} ({2} subversions behind)
+upkeep_redaxo_version_too_old = Version is too old and should be updated urgently
+upkeep_redaxo_immediate_required = Immediate update required
+upkeep_redaxo_update_available = REDAXO update available: {0} → {1} ({2} subversion{3} behind)
+upkeep_redaxo_updates_contain_fixes = Updates contain security fixes and bug fixes
+upkeep_redaxo_update_timely = Perform update in a timely manner
+upkeep_redaxo_patch_available = REDAXO update available: {0} → {1}
+upkeep_redaxo_security_fixes = Update recommended for current security fixes
+upkeep_redaxo_version_current_final = REDAXO {0} is current
+upkeep_redaxo_version_check_error = Error during version check: {0}
+# HTTPS/HSTS Methods
+upkeep_https_ssl_required = HTTPS must be available at server level (SSL certificate)!
+upkeep_https_backend_enabled = HTTPS for backend activated. Cache will be cleared...
+upkeep_https_config_error = Error writing config.yml.
+upkeep_https_frontend_enabled = HTTPS for frontend activated. Cache will be cleared...
+upkeep_https_both_enabled = HTTPS for backend and frontend activated. Cache will be cleared...
+upkeep_hsts_warning = HSTS forces browsers to use HTTPS permanently. Deactivation can be difficult!
+upkeep_hsts_enabled = HSTS has been activated (max-age=31536000 / 1 year). Browsers will be forced to use HTTPS only from now on.
+upkeep_hsts_config_error = Error writing config.yml. Check file permissions.
+upkeep_hsts_activation_error = Error activating HSTS: {0}
+upkeep_hsts_disabled = HSTS has been deactivated (max-age=0). WARNING: Browsers may cache the old policy for weeks!
+upkeep_hsts_disable_error = Error deactivating HSTS: {0}
+upkeep_session_security_enabled = Backend session security settings have been successfully activated.
+upkeep_session_security_config_error = Error activating session security: {0}
+upkeep_hsts_disable_warning=WARNING: Browsers can cache the HSTS policy for weeks, even after deactivation!
+upkeep_hsts_disabled=HSTS has been disabled (max-age=0). WARNING: Browsers can cache the old policy for weeks!
+upkeep_hsts_deactivation_error=Error disabling HSTS: %s
+upkeep_https_activation_error=Error activating HTTPS: %s
+upkeep_live_mode_description=REDAXO should run in live mode without debug output.
+upkeep_php_config_description=PHP should be configured securely with appropriate limits and without dangerous functions.
+upkeep_redaxo_version_description=REDAXO should always be kept up to date for optimal security.
+upkeep_session_security_description=Session settings should be configured securely.
+upkeep_system_versions_description=System versions should be current and secure. Uses REDAXO's integrated EOL checks.
+upkeep_webserver_version_description=Webserver should be current and not disclose version information.
+upkeep_production_mode_description=REDAXO should be configured securely for production use.
+upkeep_https_hsts_description=HTTPS encrypts communication and is required for modern web applications. HSTS is shown informatively (optional).
+upkeep_php_config_already_secure=PHP configuration is already secure
+upkeep_production_config_secure=REDAXO production configuration is secure
+upkeep_https_step1_activate=🔒 Step 1: Switch to HTTPS (install SSL certificate)
+upkeep_https_ssl_certificate=📄 SSL/TLS certificate from hosting provider or Let's Encrypt
+upkeep_https_modern_requirement=⚠️ HTTPS is a requirement for modern web applications
+upkeep_https_step2_redaxo_config=⚙️ Step 2: Activate HTTPS in REDAXO
+upkeep_https_backend_config=Backend: set use_https: true in config.yml
+upkeep_https_frontend_config=Frontend: set use_https: "frontend" for frontend HTTPS
+upkeep_https_cache_clear=🔄 Clear cache after configuration change
+upkeep_hsts_step3_activate=🛡️ Step 3: Activate HSTS (optional but recommended)
+upkeep_hsts_browser_force=💡 HSTS forces browsers to use HTTPS permanently
+upkeep_hsts_irreversible_warning=⚠️ WARNING: HSTS is difficult to reverse!
+upkeep_hsts_config_example=Activation: use_hsts: true + hsts_max_age: 31536000
+upkeep_hsts_increase_max_age=⏰ Increase HSTS max-age to 1 year (31536000 seconds)
+upkeep_hsts_longer_cache_better=Longer cache time = better protection
+upkeep_https_hsts_optimal=✅ HTTPS and HSTS are optimally configured!
+upkeep_https_hsts_general_info=📚 HTTPS encrypts data, HSTS prevents downgrades
+upkeep_https_ssl_provider_help=🔧 For problems: check SSL configuration with hosting provider
+upkeep_system_versions_current_supported=All system versions are current and supported
+upkeep_webserver_config_secure=Webserver configuration appears secure
+upkeep_setup_mode_active_security_risk=REDAXO setup mode is still active - serious security risk!
+upkeep_debug_mode_production_info_leak=Debug mode active in production - information leakage possible
+upkeep_default_admin_password_used=Default login admin/admin is used - critical security risk!
+upkeep_default_admin_exists_rename=Default login 'admin' exists - should be renamed
+upkeep_users_without_password=%s users found without password
+upkeep_live_mode_not_active=REDAXO not in live mode - performance and security may be affected
+upkeep_no_password_policy_configured=No password policy configured - weak passwords possible
+upkeep_apache_eol=Apache %s is End-of-Life
+upkeep_apache_very_old_update_recommended=Apache %s is very old, update recommended
+upkeep_nginx_old_update_recommended=Nginx %s is old, update recommended
+upkeep_server_header_discloses_version=Server header discloses version: %s (Information Disclosure)
+upkeep_database_version_check_failed=Database version check failed: %s
+upkeep_session_security_config_warning=Backend session settings are configured in REDAXO's config.yml and are active immediately.
+upkeep_session_security_enabled=Backend session security settings have been successfully activated.
+upkeep_session_security_secure_true=(secure=true for HTTPS)
+upkeep_session_security_secure_false=(secure=false for HTTP)
+upkeep_session_security_activation_error=Error activating session security: %s
+upkeep_check_live_mode=REDAXO Live Mode
+upkeep_check_ssl_certificates=SSL Certificates
+upkeep_check_server_headers=Server Headers
+upkeep_check_database_security=Database Security
+
+# Security Advisor Reports - Additional Translations
+upkeep_live_mode_already_active = Live Mode is already active!
+upkeep_enable_backend_csp = Enable Backend CSP
+upkeep_csp_info_label = Info:
+upkeep_csp_backend_only_warning = Only protects REDAXO backend, not the frontend!
+upkeep_disable_backend_csp = Disable Backend CSP
+upkeep_csp_active_label = Active:
+upkeep_csp_currently_active = Backend CSP is currently enabled and protects the backend.
+upkeep_enable_session_security = Enable Session Security
+upkeep_session_security_info = Configures secure session parameters in the config.yml.
+upkeep_session_security_already_configured = Session security is already configured!
+upkeep_https_step1_currently_http = Step 1: You are currently on HTTP. Switch to HTTPS for better security.
+upkeep_https_step2_activate_redaxo = Step 2: Activate HTTPS in REDAXO configuration:
+upkeep_https_step3_hsts_ready = HTTPS active! Now activate HSTS for additional security:
+upkeep_https_hsts_activated = Optimally configured! HTTPS and HSTS are active
+upkeep_hsts_max_age_years = years
+upkeep_hsts_deactivated = HSTS deactivated
+upkeep_current_headers = Current headers:
+upkeep_header_issues = Issues:
+upkeep_ssl_expires = Expires:
+upkeep_ssl_days_remaining = Remaining:
+upkeep_ssl_issuer = Issuer:
+upkeep_ssl_valid = ✓ Valid
+upkeep_ssl_invalid = ✗ Invalid
+upkeep_export_error = Export error:
+upkeep_enable_https_backend = Backend HTTPS
+upkeep_enable_https_frontend = Frontend HTTPS
+upkeep_enable_https_both = Enable both
+upkeep_hsts_activate_recommended = Activate HSTS (recommended)
+upkeep_hsts_warning_activation = WARNING: HSTS forces browsers to use HTTPS permanently! Difficult to reverse.
+upkeep_hsts_warning_deactivation = WARNING: Browsers can cache HSTS policy for weeks!
+
+# Security Advisor Check Names
+upkeep_check_live_mode = REDAXO Live Mode
+upkeep_check_server_headers = Server Headers
+upkeep_check_php_configuration = PHP & System Security
+upkeep_check_directory_permissions = Directory Permissions
+upkeep_check_database_security = Database Security
+upkeep_check_email_security = Email Security
+upkeep_check_redaxo_version = REDAXO Version
+upkeep_check_content_security_policy = Content Security Policy (Backend)
+upkeep_check_password_policies = Password Policies
+upkeep_check_session_security = Session Security
+upkeep_check_file_permissions = File Permissions
+upkeep_check_https_hsts = HTTPS & HSTS
+upkeep_check_system_versions = System Versions (PHP/DB)
+upkeep_check_webserver_version = Webserver Version
+upkeep_check_production_mode = REDAXO Production Mode

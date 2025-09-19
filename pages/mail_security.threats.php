@@ -51,31 +51,31 @@ if ($showDetails) {
             $content .= '<div class="modal-content">';
             $content .= '<div class="modal-header">';
             $content .= '<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>';
-            $content .= '<h4 class="modal-title">Threat Details - ' . rex_escape($threat['threat_type']) . '</h4>';
+            $content .= '<h4 class="modal-title">' . $addon->i18n('upkeep_mail_security_threat_details') . ' - ' . rex_escape($threat['threat_type']) . '</h4>';
             $content .= '</div>';
             $content .= '<div class="modal-body">';
             
             $content .= '<dl class="dl-horizontal">';
-            $content .= '<dt>Threat ID:</dt><dd>' . $threat['id'] . '</dd>';
-            $content .= '<dt>IP-Adresse:</dt><dd><code>' . rex_escape($threat['ip_address']) . '</code></dd>';
-            $content .= '<dt>Bedrohungstyp:</dt><dd>' . rex_escape($threat['threat_type']) . '</dd>';
-            $content .= '<dt>Kategorie:</dt><dd>' . rex_escape($threat['threat_category']) . '</dd>';
-            $content .= '<dt>Schweregrad:</dt><dd><span class="label label-' . match($threat['severity']) {
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_threat_id') . ':</dt><dd>' . $threat['id'] . '</dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_ip_address') . ':</dt><dd><code>' . rex_escape($threat['ip_address']) . '</code></dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_mail_security_threat_type') . ':</dt><dd>' . rex_escape($threat['threat_type']) . '</dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_category') . ':</dt><dd>' . rex_escape($threat['threat_category']) . '</dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_severity') . ':</dt><dd><span class="label label-' . match($threat['severity']) {
                 'critical' => 'danger',
                 'high' => 'warning',
                 'medium' => 'info',
                 default => 'default'
             } . '">' . rex_escape($threat['severity']) . '</span></dd>';
-            $content .= '<dt>Pattern:</dt><dd><code>' . rex_escape($threat['pattern_matched']) . '</code></dd>';
-            $content .= '<dt>Aktion:</dt><dd>' . rex_escape($threat['action_taken']) . '</dd>';
-            $content .= '<dt>Request URI:</dt><dd><code>' . rex_escape($threat['request_uri']) . '</code></dd>';
-            $content .= '<dt>User Agent:</dt><dd><code>' . rex_escape($threat['user_agent']) . '</code></dd>';
-            $content .= '<dt>Zeitpunkt:</dt><dd>' . rex_formatter::strftime(strtotime($threat['created_at']), 'datetime') . '</dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_pattern') . ':</dt><dd><code>' . rex_escape($threat['pattern_matched']) . '</code></dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_action') . ':</dt><dd>' . rex_escape($threat['action_taken']) . '</dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_request_uri') . ':</dt><dd><code>' . rex_escape($threat['request_uri']) . '</code></dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_user_agent') . ':</dt><dd><code>' . rex_escape($threat['user_agent']) . '</code></dd>';
+            $content .= '<dt>' . $addon->i18n('upkeep_ips_created_at') . ':</dt><dd>' . rex_formatter::strftime(strtotime($threat['created_at']), 'datetime') . '</dd>';
             $content .= '</dl>';
             
             $content .= '</div>';
             $content .= '<div class="modal-footer">';
-            $content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">Schließen</a>';
+            $content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">' . $addon->i18n('upkeep_close') . '</a>';
             $content .= '</div>';
             $content .= '</div>';
             $content .= '</div>';
@@ -86,7 +86,7 @@ if ($showDetails) {
             echo $content;
         }
     } catch (Exception $e) {
-        echo rex_view::error('Fehler beim Laden der Threat-Details: ' . $e->getMessage());
+        echo rex_view::error($addon->i18n('upkeep_mail_security_load_error') . ' ' . $e->getMessage());
     }
 }
 
@@ -97,15 +97,15 @@ $content .= '<input type="hidden" name="subpage" value="mail_security" />';
 $content .= '<input type="hidden" name="subsubpage" value="threats" />';
 
 $content .= '<div class="panel panel-default">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> Filter & Suche</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_filter_search') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 
 $content .= '<div class="col-md-3">';
-$content .= '<label>Bedrohungstyp</label>';
+$content .= '<label>' . $addon->i18n('upkeep_mail_security_threat_type') . '</label>';
 $content .= '<select name="filter_type" class="form-control">';
-$content .= '<option value="">Alle Typen</option>';
+$content .= '<option value="">' . $addon->i18n('upkeep_all_types') . '</option>';
 
 // Threat-Typen laden
 try {
@@ -127,10 +127,15 @@ $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Schweregrad</label>';
+$content .= '<label>' . $addon->i18n('upkeep_ips_severity') . '</label>';
 $content .= '<select name="filter_severity" class="form-control">';
-$content .= '<option value="">Alle Schweregrade</option>';
-$severities = ['low' => 'Niedrig', 'medium' => 'Mittel', 'high' => 'Hoch', 'critical' => 'Kritisch'];
+$content .= '<option value="">' . $addon->i18n('upkeep_all_severities') . '</option>';
+$severities = [
+    'low' => $addon->i18n('upkeep_severity_low'), 
+    'medium' => $addon->i18n('upkeep_severity_medium'), 
+    'high' => $addon->i18n('upkeep_severity_high'), 
+    'critical' => $addon->i18n('upkeep_severity_critical')
+];
 foreach ($severities as $value => $label) {
     $selected = ($filterSeverity === $value) ? ' selected' : '';
     $content .= '<option value="' . $value . '"' . $selected . '>' . $label . '</option>';
@@ -139,19 +144,19 @@ $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>IP-Adresse</label>';
+$content .= '<label>' . $addon->i18n('upkeep_ips_ip_address') . '</label>';
 $content .= '<input type="text" name="filter_ip" class="form-control" placeholder="192.168.1.1" value="' . rex_escape($filterIp) . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Datum</label>';
+$content .= '<label>' . $addon->i18n('upkeep_date') . '</label>';
 $content .= '<input type="date" name="filter_date" class="form-control" value="' . rex_escape($filterDate) . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3">';
 $content .= '<label>&nbsp;</label><br>';
-$content .= '<button type="submit" class="btn btn-primary">Filtern</button> ';
-$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">Reset</a>';
+$content .= '<button type="submit" class="btn btn-primary">' . $addon->i18n('upkeep_filter') . '</button> ';
+$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">' . $addon->i18n('upkeep_reset') . '</a>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -219,7 +224,7 @@ try {
 } catch (Exception $e) {
     $threats = [];
     $totalThreats = 0;
-    echo rex_view::error('Fehler beim Laden der Threats: ' . $e->getMessage());
+    echo rex_view::error($addon->i18n('upkeep_error_loading_threats') . ' ' . $e->getMessage());
 }
 
 // Statistiken Panel
@@ -231,7 +236,7 @@ if (!empty($threats)) {
     $content .= '<div class="panel panel-info">';
     $content .= '<div class="panel-body text-center">';
     $content .= '<h3>' . $totalThreats . '</h3>';
-    $content .= '<p>Gesamt-Threats</p>';
+    $content .= '<p>' . $addon->i18n('upkeep_total_threats') . '</p>';
     $content .= '</div>';
     $content .= '</div>';
     $content .= '</div>';
@@ -243,7 +248,11 @@ if (!empty($threats)) {
         $severityStats[$severity] = ($severityStats[$severity] ?? 0) + 1;
     }
     
-    foreach (['critical' => 'Kritisch', 'high' => 'Hoch', 'medium' => 'Mittel'] as $severity => $label) {
+    foreach ([
+        'critical' => $addon->i18n('upkeep_severity_critical'), 
+        'high' => $addon->i18n('upkeep_severity_high'), 
+        'medium' => $addon->i18n('upkeep_severity_medium')
+    ] as $severity => $label) {
         if (isset($severityStats[$severity])) {
             $class = match($severity) {
                 'critical' => 'danger',
@@ -266,7 +275,7 @@ if (!empty($threats)) {
     $content .= '</div>';
     
     $fragment = new rex_fragment();
-    $fragment->setVar('title', 'Statistiken', false);
+    $fragment->setVar('title', $addon->i18n('upkeep_statistics'), false);
     $fragment->setVar('body', $content, false);
     echo $fragment->parse('core/page/section.php');
 }
@@ -275,20 +284,20 @@ if (!empty($threats)) {
 if (!empty($threats)) {
     $content = '<div class="panel panel-default">';
     $content .= '<div class="panel-heading">';
-    $content .= '<h3 class="panel-title"><i class="fa fa-exclamation-triangle"></i> Mail Security Threats (' . $totalThreats . ' gesamt, Seite ' . $page . ')</h3>';
+    $content .= '<h3 class="panel-title"><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_mail_security_threats') . ' (' . $totalThreats . ' ' . $addon->i18n('upkeep_total') . ', ' . $addon->i18n('upkeep_page') . ' ' . $page . ')</h3>';
     $content .= '</div>';
     
     $content .= '<div class="table-responsive">';
     $content .= '<table class="table table-striped table-hover">';
     $content .= '<thead>';
     $content .= '<tr>';
-    $content .= '<th>Zeit</th>';
-    $content .= '<th>IP-Adresse</th>';
-    $content .= '<th>Bedrohungstyp</th>';
-    $content .= '<th>Pattern</th>';
-    $content .= '<th>Schweregrad</th>';
-    $content .= '<th>Aktion</th>';
-    $content .= '<th>Details</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_time') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_ips_ip_address') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_mail_security_threat_type') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_ips_pattern') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_ips_severity') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_ips_action') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_details') . '</th>';
     $content .= '</tr>';
     $content .= '</thead>';
     $content .= '<tbody>';
@@ -311,7 +320,7 @@ if (!empty($threats)) {
         $content .= '<td><code>' . rex_escape(substr($threat['pattern_matched'], 0, 50)) . (strlen($threat['pattern_matched']) > 50 ? '...' : '') . '</code></td>';
         $content .= '<td><span class="label label-' . $severityClass . '">' . rex_escape($threat['severity']) . '</span></td>';
         $content .= '<td>' . rex_escape($threat['action_taken']) . '</td>';
-        $content .= '<td><a href="' . rex_url::currentBackendPage(['threat_id' => $threat['id']]) . '" class="btn btn-xs btn-primary">Details</a></td>';
+        $content .= '<td><a href="' . rex_url::currentBackendPage(['threat_id' => $threat['id']]) . '" class="btn btn-xs btn-primary">' . $addon->i18n('upkeep_details') . '</a></td>';
         $content .= '</tr>';
     }
     
@@ -330,7 +339,7 @@ if (!empty($threats)) {
         // Previous
         if ($page > 1) {
             $prevParams = array_merge($_GET, ['page' => $page - 1]);
-            $content .= '<li><a href="' . rex_url::currentBackendPage($prevParams) . '">&laquo; Zurück</a></li>';
+            $content .= '<li><a href="' . rex_url::currentBackendPage($prevParams) . '">&laquo; ' . $addon->i18n('upkeep_previous') . '</a></li>';
         }
         
         // Pages
@@ -346,12 +355,12 @@ if (!empty($threats)) {
         // Next
         if ($page < $totalPages) {
             $nextParams = array_merge($_GET, ['page' => $page + 1]);
-            $content .= '<li><a href="' . rex_url::currentBackendPage($nextParams) . '">Weiter &raquo;</a></li>';
+            $content .= '<li><a href="' . rex_url::currentBackendPage($nextParams) . '">' . $addon->i18n('upkeep_next') . ' &raquo;</a></li>';
         }
         
         $content .= '</ul>';
         $content .= '</nav>';
-        $content .= '<p class="text-muted">Zeige ' . (($page - 1) * $limit + 1) . ' - ' . min($page * $limit, $totalThreats) . ' von ' . $totalThreats . ' Threats</p>';
+        $content .= '<p class="text-muted">' . $addon->i18n('upkeep_showing') . ' ' . (($page - 1) * $limit + 1) . ' - ' . min($page * $limit, $totalThreats) . ' ' . $addon->i18n('upkeep_of') . ' ' . $totalThreats . ' ' . $addon->i18n('upkeep_threats') . '</p>';
         $content .= '</div>';
     }
     
@@ -359,8 +368,8 @@ if (!empty($threats)) {
     
 } else {
     $content = '<div class="alert alert-info">';
-    $content .= '<h4>Keine Threats gefunden</h4>';
-    $content .= '<p>Es wurden keine Mail Security Threats gefunden oder Ihre Filter haben keine Ergebnisse geliefert.</p>';
+    $content .= '<h4>' . $addon->i18n('upkeep_no_threats_found') . '</h4>';
+    $content .= '<p>' . $addon->i18n('upkeep_no_threats_message') . '</p>';
     $content .= '</div>';
 }
 

@@ -42,17 +42,17 @@ if (rex_post('form-submit', 'string') === '1') {
         $addon->setConfig('mail_security_notify_admin', (bool) rex_post('notify_admin', 'int', 0));
         $adminEmail = trim(rex_post('admin_notification_email', 'string', ''));
         if (!empty($adminEmail) && !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception('Ungültige Admin-E-Mail-Adresse.');
+            throw new Exception($addon->i18n('upkeep_mail_security_invalid_admin_email'));
         }
         $addon->setConfig('mail_security_admin_email', $adminEmail);
         
         $notificationThreshold = rex_post('notification_threshold', 'string', 'high');
         $addon->setConfig('mail_security_notification_threshold', $notificationThreshold);
         
-        $success = 'Konfiguration erfolgreich gespeichert.';
+        $success = $addon->i18n('upkeep_config_saved');
         
     } catch (Exception $e) {
-        $error = 'Fehler beim Speichern: ' . rex_escape($e->getMessage());
+        $error = $addon->i18n('upkeep_config_error') . ' ' . rex_escape($e->getMessage());
     }
 }
 
@@ -95,16 +95,16 @@ if (rex_post('send-test-email', 'string') === '1') {
             // Mail Security Filter testen
             if (MailSecurityFilter::isMailSecurityActive()) {
                 MailSecurityFilter::filterMail($ep);
-                $success = 'Test-E-Mail (' . $testType . ') wurde vom Filter durchgelassen - kein Threat erkannt.';
+                $success = $addon->i18n('upkeep_mail_security_test_passed', $testType);
             } else {
-                $success = 'Mail Security ist deaktiviert - Test übersprungen.';
+                $success = $addon->i18n('upkeep_mail_security_test_skipped');
             }
             
         } catch (Exception $e) {
-            $success = 'Test-E-Mail (' . $testType . ') wurde vom Filter blockiert: ' . $e->getMessage();
+            $success = $addon->i18n('upkeep_mail_security_test_blocked', $testType, $e->getMessage());
         }
     } else {
-        $error = 'Ungültige Test-E-Mail-Adresse.';
+        $error = $addon->i18n('upkeep_mail_security_invalid_test_email');
     }
 }
 
@@ -144,30 +144,30 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="form-submit" value="1" />';
 
 $content .= '<div class="panel panel-primary">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-cog"></i> Grundeinstellungen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-cog"></i> ' . $addon->i18n('upkeep_mail_security_basic_settings') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 // Hauptschalter
 $n = [];
-$n['label'] = '<label for="mail-security-active"><strong>Mail Security aktivieren</strong></label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-security-active" name="mail_security_active" value="1"' . ($config['mail_security_active'] ? ' checked="checked"' : '') . ' /> Aktiviert das gesamte Mail Security System</label></div>';
+$n['label'] = '<label for="mail-security-active"><strong>' . $addon->i18n('upkeep_mail_security_activate_system') . '</strong></label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-security-active" name="mail_security_active" value="1"' . ($config['mail_security_active'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_activate_system_desc') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="mail-rate-limiting"><strong>Rate Limiting aktivieren</strong></label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-rate-limiting" name="mail_rate_limiting_enabled" value="1"' . ($config['mail_rate_limiting_enabled'] ? ' checked="checked"' : '') . ' /> Begrenzt die Anzahl E-Mails pro IP</label></div>';
+$n['label'] = '<label for="mail-rate-limiting"><strong>' . $addon->i18n('upkeep_mail_security_activate_rate_limiting') . '</strong></label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-rate-limiting" name="mail_rate_limiting_enabled" value="1"' . ($config['mail_rate_limiting_enabled'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_rate_limiting_desc') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="mail-debug"><strong>Debug-Logging</strong></label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-debug" name="mail_security_debug" value="1"' . ($config['mail_security_debug'] ? ' checked="checked"' : '') . ' /> Detaillierte Debug-Informationen loggen</label></div>';
+$n['label'] = '<label for="mail-debug"><strong>' . $addon->i18n('upkeep_mail_security_debug_logging') . '</strong></label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-debug" name="mail_security_debug" value="1"' . ($config['mail_security_debug'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_debug_logging_desc') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="mail-detailed-logging"><strong>Detailliertes Logging</strong></label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-detailed-logging" name="mail_security_detailed_logging" value="1"' . ($config['mail_security_detailed_logging'] ? ' checked="checked"' : '') . ' /> Mail-spezifische Threat-Logs verwenden</label></div>';
+$n['label'] = '<label for="mail-detailed-logging"><strong>' . $addon->i18n('upkeep_mail_security_detailed_logging') . '</strong></label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="mail-detailed-logging" name="mail_security_detailed_logging" value="1"' . ($config['mail_security_detailed_logging'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_detailed_logging_desc') . '</label></div>';
 $formElements[] = $n;
 
 $fragment = new rex_fragment();
@@ -179,23 +179,23 @@ $content .= '</div>';
 
 // Rate-Limiting Konfiguration
 $content .= '<div class="panel panel-info">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-clock-o"></i> Rate-Limiting Konfiguration</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-clock-o"></i> ' . $addon->i18n('upkeep_mail_security_rate_limiting_config') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 $n = [];
-$n['label'] = '<label for="rate-limit-minute">E-Mails pro Minute</label>';
+$n['label'] = '<label for="rate-limit-minute">' . $addon->i18n('upkeep_mail_security_emails_per_minute') . '</label>';
 $n['field'] = '<input class="form-control" type="number" id="rate-limit-minute" name="rate_limit_per_minute" value="' . (int) $config['mail_rate_limit_per_minute'] . '" min="1" max="100" />';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="rate-limit-hour">E-Mails pro Stunde</label>';
+$n['label'] = '<label for="rate-limit-hour">' . $addon->i18n('upkeep_mail_security_emails_per_hour') . '</label>';
 $n['field'] = '<input class="form-control" type="number" id="rate-limit-hour" name="rate_limit_per_hour" value="' . (int) $config['mail_rate_limit_per_hour'] . '" min="1" max="1000" />';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="rate-limit-day">E-Mails pro Tag</label>';
+$n['label'] = '<label for="rate-limit-day">' . $addon->i18n('upkeep_mail_security_emails_per_day') . '</label>';
 $n['field'] = '<input class="form-control" type="number" id="rate-limit-day" name="rate_limit_per_day" value="' . (int) $config['mail_rate_limit_per_day'] . '" min="1" max="10000" />';
 $formElements[] = $n;
 
@@ -208,24 +208,24 @@ $content .= '</div>';
 
 // Erweiterte Sicherheitseinstellungen
 $content .= '<div class="panel panel-warning">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-shield"></i> Erweiterte Sicherheitseinstellungen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-shield"></i> ' . $addon->i18n('upkeep_mail_security_advanced_settings') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 $n = [];
-$n['label'] = '<label for="block-suspicious">Verdächtige E-Mails blockieren</label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="block-suspicious" name="block_suspicious" value="1"' . ($config['mail_security_block_suspicious'] ? ' checked="checked"' : '') . ' /> Auch E-Mails mit mittlerem Bedrohungsgrad blockieren</label></div>';
+$n['label'] = '<label for="block-suspicious">' . $addon->i18n('upkeep_mail_security_block_suspicious') . '</label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="block-suspicious" name="block_suspicious" value="1"' . ($config['mail_security_block_suspicious'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_block_suspicious_desc') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="temp-block-duration">Temporäre Blockierung (Minuten)</label>';
-$n['field'] = '<input class="form-control" type="number" id="temp-block-duration" name="temp_block_duration" value="' . (int) $config['mail_security_temp_block_duration'] . '" min="1" max="1440" /><small class="help-block">Dauer der temporären IP-Blockierung bei kritischen Bedrohungen</small>';
+$n['label'] = '<label for="temp-block-duration">' . $addon->i18n('upkeep_mail_security_temp_block_duration') . '</label>';
+$n['field'] = '<input class="form-control" type="number" id="temp-block-duration" name="temp_block_duration" value="' . (int) $config['mail_security_temp_block_duration'] . '" min="1" max="1440" /><small class="help-block">' . $addon->i18n('upkeep_mail_security_temp_block_duration_desc') . '</small>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="max-spam-attempts">Max. Spam-Versuche</label>';
-$n['field'] = '<input class="form-control" type="number" id="max-spam-attempts" name="max_spam_attempts" value="' . (int) $config['mail_security_max_spam_attempts'] . '" min="1" max="10" /><small class="help-block">Anzahl Spam-Versuche bevor IP an IPS eskaliert wird</small>';
+$n['label'] = '<label for="max-spam-attempts">' . $addon->i18n('upkeep_mail_security_max_spam_attempts') . '</label>';
+$n['field'] = '<input class="form-control" type="number" id="max-spam-attempts" name="max_spam_attempts" value="' . (int) $config['mail_security_max_spam_attempts'] . '" min="1" max="10" /><small class="help-block">' . $addon->i18n('upkeep_mail_security_max_spam_attempts_desc') . '</small>';
 $formElements[] = $n;
 
 $fragment = new rex_fragment();
@@ -237,21 +237,21 @@ $content .= '</div>';
 
 // Content-Filter-Einstellungen
 $content .= '<div class="panel panel-success">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> Content-Filter</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_mail_security_content_filter') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 $n = [];
-$n['label'] = '<label>Zu prüfende Bereiche</label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" name="check_subject" value="1"' . ($config['mail_security_check_subject'] ? ' checked="checked"' : '') . ' /> E-Mail-Betreff prüfen</label></div>';
-$n['field'] .= '<div class="checkbox"><label><input type="checkbox" name="check_body" value="1"' . ($config['mail_security_check_body'] ? ' checked="checked"' : '') . ' /> E-Mail-Inhalt prüfen</label></div>';
-$n['field'] .= '<div class="checkbox"><label><input type="checkbox" name="check_sender" value="1"' . ($config['mail_security_check_sender'] ? ' checked="checked"' : '') . ' /> Absender-Informationen prüfen</label></div>';
+$n['label'] = '<label>' . $addon->i18n('upkeep_mail_security_check_areas') . '</label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" name="check_subject" value="1"' . ($config['mail_security_check_subject'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_check_subject') . '</label></div>';
+$n['field'] .= '<div class="checkbox"><label><input type="checkbox" name="check_body" value="1"' . ($config['mail_security_check_body'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_check_body') . '</label></div>';
+$n['field'] .= '<div class="checkbox"><label><input type="checkbox" name="check_sender" value="1"' . ($config['mail_security_check_sender'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_check_sender') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="sanitize-content">Content automatisch bereinigen</label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="sanitize-content" name="sanitize_content" value="1"' . ($config['mail_security_sanitize_content'] ? ' checked="checked"' : '') . ' /> Gefährlichen Code aus E-Mail-Inhalt entfernen statt blockieren</label></div>';
+$n['label'] = '<label for="sanitize-content">' . $addon->i18n('upkeep_mail_security_sanitize_content') . '</label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="sanitize-content" name="sanitize_content" value="1"' . ($config['mail_security_sanitize_content'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_sanitize_content_desc') . '</label></div>';
 $formElements[] = $n;
 
 $fragment = new rex_fragment();
@@ -263,18 +263,18 @@ $content .= '</div>';
 
 // Absender-Beschränkungen
 $content .= '<div class="panel panel-default">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-users"></i> Absender-Beschränkungen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-users"></i> ' . $addon->i18n('upkeep_mail_security_sender_restrictions') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 $n = [];
-$n['label'] = '<label for="allowed-domains">Erlaubte Sender-Domains<br><small class="text-muted">Eine Domain pro Zeile. Leer = alle Domains erlaubt</small></label>';
+$n['label'] = '<label for="allowed-domains">' . $addon->i18n('upkeep_mail_security_allowed_sender_domains') . '<br><small class="text-muted">' . $addon->i18n('upkeep_mail_security_allowed_sender_domains_desc') . '</small></label>';
 $n['field'] = '<textarea class="form-control" id="allowed-domains" name="allowed_sender_domains" rows="5" placeholder="example.com&#10;mycompany.de">' . rex_escape($config['mail_allowed_sender_domains']) . '</textarea>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="allowed-ips">Erlaubte Sender-IPs<br><small class="text-muted">Eine IP pro Zeile. Leer = alle IPs erlaubt</small></label>';
+$n['label'] = '<label for="allowed-ips">' . $addon->i18n('upkeep_mail_security_allowed_sender_ips') . '<br><small class="text-muted">' . $addon->i18n('upkeep_mail_security_allowed_sender_ips_desc') . '</small></label>';
 $n['field'] = '<textarea class="form-control" id="allowed-ips" name="allowed_sender_ips" rows="3" placeholder="192.168.1.100&#10;10.0.0.50">' . rex_escape($config['mail_allowed_sender_ips']) . '</textarea>';
 $formElements[] = $n;
 
@@ -287,28 +287,28 @@ $content .= '</div>';
 
 // Admin-Benachrichtigungen
 $content .= '<div class="panel panel-info">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-bell"></i> Admin-Benachrichtigungen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-bell"></i> ' . $addon->i18n('upkeep_mail_security_admin_notifications') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $formElements = [];
 
 $n = [];
-$n['label'] = '<label for="notify-admin">Admin-Benachrichtigungen aktivieren</label>';
-$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="notify-admin" name="notify_admin" value="1"' . ($config['mail_security_notify_admin'] ? ' checked="checked"' : '') . ' /> Administrator bei Bedrohungen benachrichtigen</label></div>';
+$n['label'] = '<label for="notify-admin">' . $addon->i18n('upkeep_mail_security_activate_notifications') . '</label>';
+$n['field'] = '<div class="checkbox"><label><input type="checkbox" id="notify-admin" name="notify_admin" value="1"' . ($config['mail_security_notify_admin'] ? ' checked="checked"' : '') . ' /> ' . $addon->i18n('upkeep_mail_security_activate_notifications_desc') . '</label></div>';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="admin-email">Admin E-Mail-Adresse</label>';
+$n['label'] = '<label for="admin-email">' . $addon->i18n('upkeep_mail_security_admin_email') . '</label>';
 $n['field'] = '<input class="form-control" type="email" id="admin-email" name="admin_notification_email" value="' . rex_escape($config['mail_security_admin_email']) . '" placeholder="admin@example.com" />';
 $formElements[] = $n;
 
 $n = [];
-$n['label'] = '<label for="notification-threshold">Benachrichtigungsschwelle</label>';
+$n['label'] = '<label for="notification-threshold">' . $addon->i18n('upkeep_mail_security_notification_threshold') . '</label>';
 $n['field'] = '<select class="form-control" id="notification-threshold" name="notification_threshold">';
-$n['field'] .= '<option value="low"' . ($config['mail_security_notification_threshold'] === 'low' ? ' selected' : '') . '>Alle Bedrohungen (low+)</option>';
-$n['field'] .= '<option value="medium"' . ($config['mail_security_notification_threshold'] === 'medium' ? ' selected' : '') . '>Mittlere+ Bedrohungen</option>';
-$n['field'] .= '<option value="high"' . ($config['mail_security_notification_threshold'] === 'high' ? ' selected' : '') . '>Hohe+ Bedrohungen</option>';
-$n['field'] .= '<option value="critical"' . ($config['mail_security_notification_threshold'] === 'critical' ? ' selected' : '') . '>Nur kritische Bedrohungen</option>';
+$n['field'] .= '<option value="low"' . ($config['mail_security_notification_threshold'] === 'low' ? ' selected' : '') . '>' . $addon->i18n('upkeep_mail_security_threshold_low') . '</option>';
+$n['field'] .= '<option value="medium"' . ($config['mail_security_notification_threshold'] === 'medium' ? ' selected' : '') . '>' . $addon->i18n('upkeep_mail_security_threshold_medium') . '</option>';
+$n['field'] .= '<option value="high"' . ($config['mail_security_notification_threshold'] === 'high' ? ' selected' : '') . '>' . $addon->i18n('upkeep_mail_security_threshold_high') . '</option>';
+$n['field'] .= '<option value="critical"' . ($config['mail_security_notification_threshold'] === 'critical' ? ' selected' : '') . '>' . $addon->i18n('upkeep_mail_security_threshold_critical') . '</option>';
 $n['field'] .= '</select>';
 $formElements[] = $n;
 
@@ -322,7 +322,7 @@ $content .= '</div>';
 // Save Button
 $content .= '<div class="panel panel-default">';
 $content .= '<div class="panel-body text-center">';
-$content .= '<button class="btn btn-primary btn-lg" type="submit"><i class="fa fa-save"></i> Konfiguration speichern</button>';
+$content .= '<button class="btn btn-primary btn-lg" type="submit"><i class="fa fa-save"></i> ' . $addon->i18n('upkeep_settings_saved') . '</button>';
 $content .= '</div>';
 $content .= '</div>';
 
@@ -338,35 +338,34 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="send-test-email" value="1" />';
 
 $content .= '<div class="panel panel-warning">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-flask"></i> Mail Security Testen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-flask"></i> ' . $addon->i18n('upkeep_mail_security_test_system') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-4">';
-$content .= '<label>Test-E-Mail-Adresse</label>';
+$content .= '<label>' . $addon->i18n('upkeep_mail_security_test_email_address') . '</label>';
 $content .= '<input type="email" class="form-control" name="test_email_to" placeholder="test@example.com" required />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-4">';
-$content .= '<label>Test-Typ</label>';
+$content .= '<label>' . $addon->i18n('upkeep_mail_security_test_type') . '</label>';
 $content .= '<select class="form-control" name="test_type">';
-$content .= '<option value="clean">Saubere E-Mail (sollte durchgehen)</option>';
-$content .= '<option value="badword">Badword-Test (sollte blockiert werden)</option>';
-$content .= '<option value="injection">Code-Injection-Test (sollte blockiert werden)</option>';
-$content .= '<option value="spam">Spam-Pattern-Test (sollte blockiert werden)</option>';
+$content .= '<option value="clean">' . $addon->i18n('upkeep_mail_security_test_clean') . '</option>';
+$content .= '<option value="badword">' . $addon->i18n('upkeep_mail_security_test_badword') . '</option>';
+$content .= '<option value="injection">' . $addon->i18n('upkeep_mail_security_test_injection') . '</option>';
+$content .= '<option value="spam">' . $addon->i18n('upkeep_mail_security_test_spam') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-4">';
 $content .= '<label>&nbsp;</label><br>';
-$content .= '<button type="submit" class="btn btn-warning">Test ausführen</button>';
+$content .= '<button type="submit" class="btn btn-warning">' . $addon->i18n('upkeep_mail_security_run_test') . '</button>';
 $content .= '</div>';
 
 $content .= '</div>';
 
 $content .= '<div class="alert alert-info" style="margin-top: 15px;">';
-$content .= '<strong>Hinweis:</strong> Diese Tests prüfen nur die Filter-Logik, es wird keine echte E-Mail versendet. ';
-$content .= 'Die Tests funktionieren nur bei aktivierter Mail Security.';
+$content .= '<strong>' . $addon->i18n('upkeep_mail_security_test_hint_title') . ':</strong> ' . $addon->i18n('upkeep_mail_security_test_hint_desc');
 $content .= '</div>';
 
 $content .= '</div>';

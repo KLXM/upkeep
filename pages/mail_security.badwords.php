@@ -17,16 +17,16 @@ if (rex_post('add-badword', 'string') === '1') {
     if (!empty($pattern)) {
         // Bei RegEx: Syntax validieren
         if ($isRegex && @preg_match($pattern, '') === false) {
-            $error = 'Ungültige RegEx-Syntax in Pattern.';
+            $error = $addon->i18n('upkeep_mail_security_invalid_regex');
         } else {
             if (MailSecurityFilter::addBadword($pattern, $severity, $category, $isRegex, $description)) {
-                $success = 'Badword erfolgreich hinzugefügt.';
+                $success = $addon->i18n('upkeep_mail_security_badword_added');
             } else {
-                $error = 'Fehler beim Hinzufügen des Badwords.';
+                $error = $addon->i18n('upkeep_mail_security_badword_add_error');
             }
         }
     } else {
-        $error = 'Pattern darf nicht leer sein.';
+        $error = $addon->i18n('upkeep_mail_security_pattern_required');
     }
 }
 
@@ -34,9 +34,9 @@ if (rex_post('add-badword', 'string') === '1') {
 if (rex_post('remove-badword', 'int') > 0) {
     $badwordId = rex_post('remove-badword', 'int');
     if (MailSecurityFilter::removeBadword($badwordId)) {
-        $success = 'Badword erfolgreich entfernt.';
+        $success = $addon->i18n('upkeep_mail_security_badword_removed');
     } else {
-        $error = 'Fehler beim Entfernen des Badwords.';
+        $error = $addon->i18n('upkeep_mail_security_badword_remove_error');
     }
 }
 
@@ -54,9 +54,9 @@ if (rex_post('toggle-badword', 'int') > 0) {
         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
         $sql->update();
         
-        $success = 'Badword-Status erfolgreich geändert.';
+        $success = $addon->i18n('upkeep_mail_security_badword_status_changed');
     } catch (Exception $e) {
-        $error = 'Fehler beim Ändern des Status: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_mail_security_status_change_error') . ' ' . $e->getMessage();
     }
 }
 
@@ -98,15 +98,15 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-badwords', 'array'))
         }
         
         $actionNames = [
-            'delete' => 'gelöscht',
-            'activate' => 'aktiviert',
-            'deactivate' => 'deaktiviert'
+            'delete' => $addon->i18n('upkeep_deleted'),
+            'activate' => $addon->i18n('upkeep_activated'),
+            'deactivate' => $addon->i18n('upkeep_deactivated')
         ];
         
-        $success = $affectedCount . ' Badwords wurden ' . ($actionNames[$action] ?? 'bearbeitet') . '.';
+        $success = $affectedCount . ' ' . $addon->i18n('upkeep_badwords_processed') . ' ' . ($actionNames[$action] ?? $addon->i18n('upkeep_modified')) . '.';
         
     } catch (Exception $e) {
-        $error = 'Fehler bei Bulk-Aktion: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_bulk_action_error') . ' ' . $e->getMessage();
     }
 }
 
@@ -144,15 +144,15 @@ if (rex_post('import-badwords', 'string') === '1') {
         }
         
         if ($imported > 0) {
-            $success = $imported . ' Badwords erfolgreich importiert.';
+            $success = $imported . ' ' . $addon->i18n('upkeep_mail_security_badwords_imported');
             if ($errors > 0) {
-                $success .= ' (' . $errors . ' Fehler)';
+                $success .= ' (' . $errors . ' ' . $addon->i18n('upkeep_mail_security_errors_occurred') . ')';
             }
         } else {
-            $error = 'Keine Badwords importiert. ' . ($errors > 0 ? $errors . ' Fehler aufgetreten.' : '');
+            $error = $addon->i18n('upkeep_mail_security_no_badwords_imported') . ' ' . ($errors > 0 ? $errors . ' ' . $addon->i18n('upkeep_mail_security_errors_occurred') : '');
         }
     } else {
-        $error = 'Import-Daten dürfen nicht leer sein.';
+        $error = $addon->i18n('upkeep_mail_security_import_data_empty');
     }
 }
 
@@ -236,13 +236,13 @@ $content .= '<input type="hidden" name="subpage" value="mail_security" />';
 $content .= '<input type="hidden" name="subsubpage" value="badwords" />';
 
 $content .= '<div class="panel panel-default">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> Filter & Suche</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_filter_search') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-3">';
 $content .= '<select name="filter_category" class="form-control">';
-$content .= '<option value="">Alle Kategorien</option>';
+$content .= '<option value="">' . $addon->i18n('upkeep_all_categories') . '</option>';
 foreach ($categories as $cat) {
     $selected = ($filterCategory === $cat) ? ' selected' : '';
     $content .= '<option value="' . rex_escape($cat) . '"' . $selected . '>' . rex_escape($cat) . '</option>';
@@ -252,8 +252,13 @@ $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<select name="filter_severity" class="form-control">';
-$content .= '<option value="">Alle Schweregrade</option>';
-$severities = ['low' => 'Niedrig', 'medium' => 'Mittel', 'high' => 'Hoch', 'critical' => 'Kritisch'];
+$content .= '<option value="">' . $addon->i18n('upkeep_all_severities') . '</option>';
+$severities = [
+    'low' => $addon->i18n('upkeep_severity_low'),
+    'medium' => $addon->i18n('upkeep_severity_medium'),
+    'high' => $addon->i18n('upkeep_severity_high'),
+    'critical' => $addon->i18n('upkeep_severity_critical')
+];
 foreach ($severities as $value => $label) {
     $selected = ($filterSeverity === $value) ? ' selected' : '';
     $content .= '<option value="' . $value . '"' . $selected . '>' . $label . '</option>';
@@ -263,19 +268,19 @@ $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<select name="filter_status" class="form-control">';
-$content .= '<option value="">Alle Status</option>';
-$content .= '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>Aktiv</option>';
-$content .= '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>Inaktiv</option>';
+$content .= '<option value="">' . $addon->i18n('upkeep_all_status') . '</option>';
+$content .= '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>' . $addon->i18n('upkeep_status_active') . '</option>';
+$content .= '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>' . $addon->i18n('upkeep_status_inactive') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3">';
-$content .= '<input type="text" name="filter_search" class="form-control" placeholder="Suche in Pattern/Beschreibung" value="' . rex_escape($filterSearch) . '" />';
+$content .= '<input type="text" name="filter_search" class="form-control" placeholder="' . $addon->i18n('upkeep_search_pattern_description') . '" value="' . rex_escape($filterSearch) . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<button type="submit" class="btn btn-primary">Filtern</button> ';
-$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">Reset</a>';
+$content .= '<button type="submit" class="btn btn-primary">' . $addon->i18n('upkeep_filter') . '</button> ';
+$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">' . $addon->i18n('upkeep_reset') . '</a>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -293,35 +298,35 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="add-badword" value="1" />';
 
 $content .= '<div class="panel panel-success">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> Neues Badword hinzufügen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> ' . $addon->i18n('upkeep_mail_security_add_badword') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-4">';
-$content .= '<label>Pattern *</label>';
-$content .= '<input type="text" class="form-control" name="badword_pattern" placeholder="z.B. viagra oder /spam.{0,20}mail/i" required />';
+$content .= '<label>' . $addon->i18n('upkeep_pattern') . ' *</label>';
+$content .= '<input type="text" class="form-control" name="badword_pattern" placeholder="' . $addon->i18n('upkeep_pattern_example') . '" required />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Schweregrad</label>';
+$content .= '<label>' . $addon->i18n('upkeep_severity') . '</label>';
 $content .= '<select class="form-control" name="badword_severity">';
-$content .= '<option value="low">Niedrig</option>';
-$content .= '<option value="medium" selected>Mittel</option>';
-$content .= '<option value="high">Hoch</option>';
-$content .= '<option value="critical">Kritisch</option>';
+$content .= '<option value="low">' . $addon->i18n('upkeep_severity_low') . '</option>';
+$content .= '<option value="medium" selected>' . $addon->i18n('upkeep_severity_medium') . '</option>';
+$content .= '<option value="high">' . $addon->i18n('upkeep_severity_high') . '</option>';
+$content .= '<option value="critical">' . $addon->i18n('upkeep_severity_critical') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Kategorie</label>';
+$content .= '<label>' . $addon->i18n('upkeep_category') . '</label>';
 $content .= '<select class="form-control" name="badword_category">';
-$content .= '<option value="general">Allgemein</option>';
-$content .= '<option value="profanity">Profanity</option>';
-$content .= '<option value="pharmaceutical">Pharma</option>';
-$content .= '<option value="financial_fraud">Finanzbetrug</option>';
-$content .= '<option value="security">Sicherheit</option>';
-$content .= '<option value="spam">Spam</option>';
-$content .= '<option value="phishing">Phishing</option>';
+$content .= '<option value="general">' . $addon->i18n('upkeep_category_general') . '</option>';
+$content .= '<option value="profanity">' . $addon->i18n('upkeep_category_profanity') . '</option>';
+$content .= '<option value="pharmaceutical">' . $addon->i18n('upkeep_category_pharmaceutical') . '</option>';
+$content .= '<option value="financial_fraud">' . $addon->i18n('upkeep_category_financial_fraud') . '</option>';
+$content .= '<option value="security">' . $addon->i18n('upkeep_category_security') . '</option>';
+$content .= '<option value="spam">' . $addon->i18n('upkeep_category_spam') . '</option>';
+$content .= '<option value="phishing">' . $addon->i18n('upkeep_category_phishing') . '</option>';
 foreach ($categories as $cat) {
     if (!in_array($cat, ['general', 'profanity', 'pharmaceutical', 'financial_fraud', 'security', 'spam', 'phishing'])) {
         $content .= '<option value="' . rex_escape($cat) . '">' . rex_escape($cat) . '</option>';
@@ -333,21 +338,21 @@ $content .= '</div>';
 $content .= '<div class="col-md-2">';
 $content .= '<label>&nbsp;</label><br>';
 $content .= '<label class="checkbox-inline">';
-$content .= '<input type="checkbox" name="badword_is_regex" value="1" /> RegEx';
+$content .= '<input type="checkbox" name="badword_is_regex" value="1" /> ' . $addon->i18n('upkeep_regex');
 $content .= '</label>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<label>&nbsp;</label><br>';
-$content .= '<button type="submit" class="btn btn-success">Hinzufügen</button>';
+$content .= '<button type="submit" class="btn btn-success">' . $addon->i18n('upkeep_add') . '</button>';
 $content .= '</div>';
 
 $content .= '</div>';
 
 $content .= '<div class="row" style="margin-top: 15px;">';
 $content .= '<div class="col-md-12">';
-$content .= '<label>Beschreibung</label>';
-$content .= '<input type="text" class="form-control" name="badword_description" placeholder="Optionale Beschreibung des Badwords" />';
+$content .= '<label>' . $addon->i18n('upkeep_description') . '</label>';
+$content .= '<input type="text" class="form-control" name="badword_description" placeholder="' . $addon->i18n('upkeep_badword_description_placeholder') . '" />';
 $content .= '</div>';
 $content .= '</div>';
 
@@ -365,31 +370,31 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="import-badwords" value="1" />';
 
 $content .= '<div class="panel panel-info">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-upload"></i> Badwords importieren</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-upload"></i> ' . $addon->i18n('upkeep_mail_security_import_badwords') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-8">';
-$content .= '<label>Import-Daten (ein Pattern pro Zeile)</label>';
-$content .= '<textarea class="form-control" name="import_data" rows="6" placeholder="viagra&#10;cialis&#10;spam mail&#10;oder mit Details:&#10;bitcoin scam|critical|financial_fraud|Cryptocurrency fraud"></textarea>';
-$content .= '<small class="help-block">Format: <code>pattern</code> oder <code>pattern|severity|category|description</code></small>';
+$content .= '<label>' . $addon->i18n('upkeep_import_data_label') . '</label>';
+$content .= '<textarea class="form-control" name="import_data" rows="6" placeholder="' . $addon->i18n('upkeep_import_placeholder') . '&#10;' . $addon->i18n('upkeep_import_with_details') . '&#10;' . $addon->i18n('upkeep_import_format') . '"></textarea>';
+$content .= '<small class="help-block">' . $addon->i18n('upkeep_import_help') . '</small>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Standard-Schweregrad</label>';
+$content .= '<label>' . $addon->i18n('upkeep_default_severity') . '</label>';
 $content .= '<select class="form-control" name="import_severity">';
-$content .= '<option value="low">Niedrig</option>';
-$content .= '<option value="medium" selected>Mittel</option>';
-$content .= '<option value="high">Hoch</option>';
-$content .= '<option value="critical">Kritisch</option>';
+$content .= '<option value="low">' . $addon->i18n('upkeep_severity_low') . '</option>';
+$content .= '<option value="medium" selected>' . $addon->i18n('upkeep_severity_medium') . '</option>';
+$content .= '<option value="high">' . $addon->i18n('upkeep_severity_high') . '</option>';
+$content .= '<option value="critical">' . $addon->i18n('upkeep_severity_critical') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Standard-Kategorie</label>';
+$content .= '<label>' . $addon->i18n('upkeep_default_category') . '</label>';
 $content .= '<input type="text" class="form-control" name="import_category" value="imported" />';
 $content .= '<br>';
-$content .= '<button type="submit" class="btn btn-info">Importieren</button>';
+$content .= '<button type="submit" class="btn btn-info">' . $addon->i18n('upkeep_import') . '</button>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -408,7 +413,7 @@ if (!empty($badwords)) {
     
     $content .= '<div class="panel panel-default">';
     $content .= '<div class="panel-heading">';
-    $content .= '<h3 class="panel-title"><i class="fa fa-list"></i> Badwords (' . count($badwords) . ' gefunden)</h3>';
+    $content .= '<h3 class="panel-title"><i class="fa fa-list"></i> ' . $addon->i18n('upkeep_badwords') . ' (' . count($badwords) . ' ' . $addon->i18n('upkeep_found') . ')</h3>';
     $content .= '</div>';
     
     $content .= '<div class="panel-body">';
@@ -418,20 +423,20 @@ if (!empty($badwords)) {
     $content .= '<div class="col-md-6">';
     $content .= '<div class="input-group">';
     $content .= '<select name="bulk-action" class="form-control">';
-    $content .= '<option value="">Bulk-Aktion wählen...</option>';
-    $content .= '<option value="activate">Alle aktivieren</option>';
-    $content .= '<option value="deactivate">Alle deaktivieren</option>';
-    $content .= '<option value="delete">Alle löschen</option>';
+    $content .= '<option value="">' . $addon->i18n('upkeep_bulk_action_select') . '</option>';
+    $content .= '<option value="activate">' . $addon->i18n('upkeep_bulk_activate_all') . '</option>';
+    $content .= '<option value="deactivate">' . $addon->i18n('upkeep_bulk_deactivate_all') . '</option>';
+    $content .= '<option value="delete">' . $addon->i18n('upkeep_bulk_delete_all') . '</option>';
     $content .= '</select>';
     $content .= '<span class="input-group-btn">';
-    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'Bulk-Aktion wirklich ausführen?\')">Ausführen</button>';
+    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'' . $addon->i18n('upkeep_bulk_confirm') . '\')">' . $addon->i18n('upkeep_execute') . '</button>';
     $content .= '</span>';
     $content .= '</div>';
     $content .= '</div>';
     
     $content .= '<div class="col-md-6 text-right">';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#badwords-form input[type=checkbox]\').prop(\'checked\', true)">Alle auswählen</button> ';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#badwords-form input[type=checkbox]\').prop(\'checked\', false)">Alle abwählen</button>';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#badwords-form input[type=checkbox]\').prop(\'checked\', true)">' . $addon->i18n('upkeep_select_all') . '</button> ';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#badwords-form input[type=checkbox]\').prop(\'checked\', false)">' . $addon->i18n('upkeep_deselect_all') . '</button>';
     $content .= '</div>';
     $content .= '</div>';
     
@@ -440,14 +445,14 @@ if (!empty($badwords)) {
     $content .= '<thead>';
     $content .= '<tr>';
     $content .= '<th width="30"><input type="checkbox" id="select-all" /></th>';
-    $content .= '<th>Pattern</th>';
-    $content .= '<th>Kategorie</th>';
-    $content .= '<th>Schweregrad</th>';
-    $content .= '<th>Typ</th>';
-    $content .= '<th>Status</th>';
-    $content .= '<th>Beschreibung</th>';
-    $content .= '<th>Erstellt</th>';
-    $content .= '<th>Aktionen</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_pattern') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_category') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_severity') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_type') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_status') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_description') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_created') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_actions') . '</th>';
     $content .= '</tr>';
     $content .= '</thead>';
     $content .= '<tbody>';
@@ -461,14 +466,14 @@ if (!empty($badwords)) {
         };
         
         $statusClass = $badword['status'] ? 'success' : 'default';
-        $statusText = $badword['status'] ? 'Aktiv' : 'Inaktiv';
+        $statusText = $badword['status'] ? $addon->i18n('upkeep_status_active') : $addon->i18n('upkeep_status_inactive');
         
         $content .= '<tr' . (!$badword['status'] ? ' class="text-muted"' : '') . '>';
         $content .= '<td><input type="checkbox" name="selected-badwords[]" value="' . $badword['id'] . '" /></td>';
         $content .= '<td><code>' . rex_escape($badword['pattern']) . '</code></td>';
         $content .= '<td><span class="label label-default">' . rex_escape($badword['category']) . '</span></td>';
         $content .= '<td><span class="label label-' . $severityClass . '">' . rex_escape($badword['severity']) . '</span></td>';
-        $content .= '<td>' . ($badword['is_regex'] ? '<span class="label label-primary">RegEx</span>' : '<span class="label label-default">Text</span>') . '</td>';
+        $content .= '<td>' . ($badword['is_regex'] ? '<span class="label label-primary">' . $addon->i18n('upkeep_type_regex') . '</span>' : '<span class="label label-default">' . $addon->i18n('upkeep_type_text') . '</span>') . '</td>';
         $content .= '<td><span class="label label-' . $statusClass . '">' . $statusText . '</span></td>';
         $content .= '<td>' . rex_escape(substr($badword['description'] ?? '', 0, 50)) . (strlen($badword['description'] ?? '') > 50 ? '...' : '') . '</td>';
         $content .= '<td>' . rex_formatter::strftime(strtotime($badword['created_at']), 'date') . '</td>';
@@ -478,7 +483,7 @@ if (!empty($badwords)) {
         $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
         $content .= '<input type="hidden" name="toggle-badword" value="' . $badword['id'] . '" />';
         $content .= '<input type="hidden" name="current-status" value="' . ($badword['status'] ? 1 : 0) . '" />';
-        $content .= '<button type="submit" class="btn btn-xs btn-' . ($badword['status'] ? 'warning' : 'success') . '" title="' . ($badword['status'] ? 'Deaktivieren' : 'Aktivieren') . '">';
+        $content .= '<button type="submit" class="btn btn-xs btn-' . ($badword['status'] ? 'warning' : 'success') . '" title="' . ($badword['status'] ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '">';
         $content .= '<i class="fa fa-' . ($badword['status'] ? 'pause' : 'play') . '"></i>';
         $content .= '</button>';
         $content .= '</form> ';
@@ -486,7 +491,7 @@ if (!empty($badwords)) {
         // Löschen
         $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
         $content .= '<input type="hidden" name="remove-badword" value="' . $badword['id'] . '" />';
-        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'Badword wirklich löschen?\')" title="Löschen">';
+        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_delete_badword_confirm') . '\')" title="' . $addon->i18n('upkeep_delete') . '">';
         $content .= '<i class="fa fa-trash"></i>';
         $content .= '</button>';
         $content .= '</form>';
@@ -513,8 +518,8 @@ if (!empty($badwords)) {
     
 } else {
     $content = '<div class="alert alert-info">';
-    $content .= '<h4>Keine Badwords gefunden</h4>';
-    $content .= '<p>Es wurden noch keine Badwords konfiguriert oder Ihre Filter haben keine Ergebnisse geliefert.</p>';
+    $content .= '<h4>' . $addon->i18n('upkeep_no_badwords_found') . '</h4>';
+    $content .= '<p>' . $addon->i18n('upkeep_no_badwords_configured') . '</p>';
     $content .= '</div>';
 }
 

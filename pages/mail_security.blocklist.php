@@ -27,7 +27,7 @@ if (rex_post('add-blocklist', 'string') === '1') {
                 $isValid = true;
                 $targetValue = $email;
             } else {
-                $error = 'Ungültige E-Mail-Adresse.';
+                $error = $addon->i18n('upkeep_mail_security_invalid_email');
             }
             break;
         case 'domain':
@@ -35,7 +35,7 @@ if (rex_post('add-blocklist', 'string') === '1') {
                 $isValid = true;
                 $targetValue = $domain;
             } else {
-                $error = 'Ungültige Domain.';
+                $error = $addon->i18n('upkeep_mail_security_invalid_domain');
             }
             break;
         case 'ip':
@@ -43,7 +43,7 @@ if (rex_post('add-blocklist', 'string') === '1') {
                 $isValid = true;
                 $targetValue = $ip;
             } else {
-                $error = 'Ungültige IP-Adresse. Erlaubt: 192.168.1.1 oder 192.168.*';
+                $error = $addon->i18n('upkeep_mail_security_invalid_ip');
             }
             break;
         case 'pattern':
@@ -51,7 +51,7 @@ if (rex_post('add-blocklist', 'string') === '1') {
                 $isValid = true;
                 $targetValue = $pattern;
             } else {
-                $error = 'Pattern darf nicht leer sein.';
+                $error = $addon->i18n('upkeep_mail_security_pattern_empty');
             }
             break;
     }
@@ -98,9 +98,9 @@ if (rex_post('add-blocklist', 'string') === '1') {
             $sql->setValue('updated_at', date('Y-m-d H:i:s'));
             $sql->insert();
             
-            $success = 'Eintrag erfolgreich zur Blocklist hinzugefügt.';
+            $success = $addon->i18n('upkeep_mail_security_blocklist_entry_added');
         } catch (Exception $e) {
-            $error = 'Fehler beim Hinzufügen: ' . $e->getMessage();
+            $error = $addon->i18n('upkeep_mail_security_error_adding') . ' ' . $e->getMessage();
         }
     }
 }
@@ -112,9 +112,9 @@ if (rex_post('remove-blocklist', 'int') > 0) {
     try {
         $sql = rex_sql::factory();
         $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_blocklist') . " WHERE id = ?", [$blocklistId]);
-        $success = 'Blocklist-Eintrag erfolgreich entfernt.';
+        $success = $addon->i18n('upkeep_mail_security_blocklist_entry_removed');
     } catch (Exception $e) {
-        $error = 'Fehler beim Entfernen: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_mail_security_error_removing') . ' ' . $e->getMessage();
     }
 }
 
@@ -132,9 +132,9 @@ if (rex_post('toggle-blocklist', 'int') > 0) {
         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
         $sql->update();
         
-        $success = 'Blocklist-Status erfolgreich geändert.';
+        $success = $addon->i18n('upkeep_mail_security_blocklist_status_changed');
     } catch (Exception $e) {
-        $error = 'Fehler beim Ändern des Status: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_mail_security_error_changing_status') . ' ' . $e->getMessage();
     }
 }
 
@@ -176,15 +176,15 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-blocklist', 'array')
         }
         
         $actionNames = [
-            'delete' => 'gelöscht',
-            'activate' => 'aktiviert', 
-            'deactivate' => 'deaktiviert'
+            'delete' => $addon->i18n('upkeep_bulk_deleted'),
+            'activate' => $addon->i18n('upkeep_bulk_activated'), 
+            'deactivate' => $addon->i18n('upkeep_bulk_deactivated')
         ];
         
-        $success = $affectedCount . ' Blocklist-Einträge wurden ' . ($actionNames[$action] ?? 'bearbeitet') . '.';
+        $success = $affectedCount . ' ' . $addon->i18n('upkeep_mail_security_blocklist_entries_processed') . ' ' . ($actionNames[$action] ?? $addon->i18n('upkeep_bulk_modified')) . '.';
         
     } catch (Exception $e) {
-        $error = 'Fehler bei Bulk-Aktion: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_bulk_action_error') . ' ' . $e->getMessage();
     }
 }
 
@@ -275,24 +275,29 @@ $content .= '<input type="hidden" name="subpage" value="mail_security" />';
 $content .= '<input type="hidden" name="subsubpage" value="blocklist" />';
 
 $content .= '<div class="panel panel-default">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> Filter & Suche</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-filter"></i> ' . $addon->i18n('upkeep_filter_search') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-2">';
 $content .= '<select name="filter_type" class="form-control">';
-$content .= '<option value="">Alle Typen</option>';
-$content .= '<option value="email"' . ($filterType === 'email' ? ' selected' : '') . '>E-Mail</option>';
-$content .= '<option value="domain"' . ($filterType === 'domain' ? ' selected' : '') . '>Domain</option>';
-$content .= '<option value="ip"' . ($filterType === 'ip' ? ' selected' : '') . '>IP-Adresse</option>';
-$content .= '<option value="pattern"' . ($filterType === 'pattern' ? ' selected' : '') . '>Pattern</option>';
+$content .= '<option value="">' . $addon->i18n('upkeep_all_types') . '</option>';
+$content .= '<option value="email"' . ($filterType === 'email' ? ' selected' : '') . '>' . $addon->i18n('upkeep_type_email') . '</option>';
+$content .= '<option value="domain"' . ($filterType === 'domain' ? ' selected' : '') . '>' . $addon->i18n('upkeep_type_domain') . '</option>';
+$content .= '<option value="ip"' . ($filterType === 'ip' ? ' selected' : '') . '>' . $addon->i18n('upkeep_type_ip') . '</option>';
+$content .= '<option value="pattern"' . ($filterType === 'pattern' ? ' selected' : '') . '>' . $addon->i18n('upkeep_type_pattern') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<select name="filter_severity" class="form-control">';
-$content .= '<option value="">Alle Schweregrade</option>';
-$severities = ['low' => 'Niedrig', 'medium' => 'Mittel', 'high' => 'Hoch', 'critical' => 'Kritisch'];
+$content .= '<option value="">' . $addon->i18n('upkeep_all_severities') . '</option>';
+$severities = [
+    'low' => $addon->i18n('upkeep_severity_low'),
+    'medium' => $addon->i18n('upkeep_severity_medium'),
+    'high' => $addon->i18n('upkeep_severity_high'),
+    'critical' => $addon->i18n('upkeep_severity_critical')
+];
 foreach ($severities as $value => $label) {
     $selected = ($filterSeverity === $value) ? ' selected' : '';
     $content .= '<option value="' . $value . '"' . $selected . '>' . $label . '</option>';
@@ -302,19 +307,19 @@ $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<select name="filter_status" class="form-control">';
-$content .= '<option value="">Alle Status</option>';
-$content .= '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>Aktiv</option>';
-$content .= '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>Inaktiv</option>';
+$content .= '<option value="">' . $addon->i18n('upkeep_all_status') . '</option>';
+$content .= '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>' . $addon->i18n('upkeep_status_active') . '</option>';
+$content .= '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>' . $addon->i18n('upkeep_status_inactive') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-4">';
-$content .= '<input type="text" name="filter_search" class="form-control" placeholder="Suche in E-Mail/Domain/Pattern/Grund" value="' . rex_escape($filterSearch) . '" />';
+$content .= '<input type="text" name="filter_search" class="form-control" placeholder="' . $addon->i18n('upkeep_search_blocklist') . '" value="' . rex_escape($filterSearch) . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<button type="submit" class="btn btn-primary">Filtern</button> ';
-$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">Reset</a>';
+$content .= '<button type="submit" class="btn btn-primary">' . $addon->i18n('upkeep_filter') . '</button> ';
+$content .= '<a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">' . $addon->i18n('upkeep_reset') . '</a>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -332,68 +337,68 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="add-blocklist" value="1" />';
 
 $content .= '<div class="panel panel-danger">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> Zur Blocklist hinzufügen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> ' . $addon->i18n('upkeep_mail_security_add_to_blocklist') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-2">';
-$content .= '<label>Typ *</label>';
+$content .= '<label>' . $addon->i18n('upkeep_type') . ' *</label>';
 $content .= '<select class="form-control" name="blocklist_type" id="blocklist-type" onchange="toggleBlocklistFields()">';
-$content .= '<option value="email">E-Mail</option>';
-$content .= '<option value="domain">Domain</option>';
-$content .= '<option value="ip">IP-Adresse</option>';
-$content .= '<option value="pattern">Pattern</option>';
+$content .= '<option value="email">' . $addon->i18n('upkeep_type_email') . '</option>';
+$content .= '<option value="domain">' . $addon->i18n('upkeep_type_domain') . '</option>';
+$content .= '<option value="ip">' . $addon->i18n('upkeep_type_ip') . '</option>';
+$content .= '<option value="pattern">' . $addon->i18n('upkeep_type_pattern') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="email-field">';
-$content .= '<label>E-Mail-Adresse *</label>';
-$content .= '<input type="email" class="form-control" name="blocklist_email" placeholder="spam@example.com" />';
+$content .= '<label>' . $addon->i18n('upkeep_email_address') . ' *</label>';
+$content .= '<input type="email" class="form-control" name="blocklist_email" placeholder="' . $addon->i18n('upkeep_email_placeholder') . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="domain-field" style="display:none;">';
-$content .= '<label>Domain *</label>';
-$content .= '<input type="text" class="form-control" name="blocklist_domain" placeholder="spam.com" />';
+$content .= '<label>' . $addon->i18n('upkeep_domain') . ' *</label>';
+$content .= '<input type="text" class="form-control" name="blocklist_domain" placeholder="' . $addon->i18n('upkeep_domain_placeholder') . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="ip-field" style="display:none;">';
-$content .= '<label>IP-Adresse *</label>';
-$content .= '<input type="text" class="form-control" name="blocklist_ip" placeholder="192.168.1.100 oder 192.168.*" />';
-$content .= '<small class="help-block">Wildcards möglich: 192.168.* oder 10.0.0.*</small>';
+$content .= '<label>' . $addon->i18n('upkeep_ip_address') . ' *</label>';
+$content .= '<input type="text" class="form-control" name="blocklist_ip" placeholder="' . $addon->i18n('upkeep_ip_placeholder') . '" />';
+$content .= '<small class="help-block">' . $addon->i18n('upkeep_ip_help') . '</small>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-3" id="pattern-field" style="display:none;">';
-$content .= '<label>Pattern *</label>';
-$content .= '<input type="text" class="form-control" name="blocklist_pattern" placeholder="*.spam.com" />';
+$content .= '<label>' . $addon->i18n('upkeep_pattern') . ' *</label>';
+$content .= '<input type="text" class="form-control" name="blocklist_pattern" placeholder="' . $addon->i18n('upkeep_pattern_placeholder') . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Schweregrad</label>';
+$content .= '<label>' . $addon->i18n('upkeep_severity') . '</label>';
 $content .= '<select class="form-control" name="blocklist_severity">';
-$content .= '<option value="low">Niedrig</option>';
-$content .= '<option value="medium" selected>Mittel</option>';
-$content .= '<option value="high">Hoch</option>';
-$content .= '<option value="critical">Kritisch</option>';
+$content .= '<option value="low">' . $addon->i18n('upkeep_severity_low') . '</option>';
+$content .= '<option value="medium" selected>' . $addon->i18n('upkeep_severity_medium') . '</option>';
+$content .= '<option value="high">' . $addon->i18n('upkeep_severity_high') . '</option>';
+$content .= '<option value="critical">' . $addon->i18n('upkeep_severity_critical') . '</option>';
 $content .= '</select>';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
-$content .= '<label>Gültig bis</label>';
+$content .= '<label>' . $addon->i18n('upkeep_valid_until') . '</label>';
 $content .= '<input type="datetime-local" class="form-control" name="blocklist_expires" />';
-$content .= '<small class="help-block">Leer = permanent</small>';
+$content .= '<small class="help-block">' . $addon->i18n('upkeep_empty_permanent') . '</small>';
 $content .= '</div>';
 
 $content .= '</div>';
 
 $content .= '<div class="row" style="margin-top: 15px;">';
 $content .= '<div class="col-md-10">';
-$content .= '<label>Grund</label>';
-$content .= '<input type="text" class="form-control" name="blocklist_reason" placeholder="Grund für Blocklisting (z.B. Spam, Phishing, etc.)" />';
+$content .= '<label>' . $addon->i18n('upkeep_reason') . '</label>';
+$content .= '<input type="text" class="form-control" name="blocklist_reason" placeholder="' . $addon->i18n('upkeep_blocklist_reason_placeholder') . '" />';
 $content .= '</div>';
 
 $content .= '<div class="col-md-2">';
 $content .= '<label>&nbsp;</label><br>';
-$content .= '<button type="submit" class="btn btn-danger">Zur Blocklist hinzufügen</button>';
+$content .= '<button type="submit" class="btn btn-danger">' . $addon->i18n('upkeep_add_to_blocklist') . '</button>';
 $content .= '</div>';
 
 $content .= '</div>';
@@ -424,7 +429,7 @@ if (!empty($blocklistEntries)) {
     
     $content .= '<div class="panel panel-default">';
     $content .= '<div class="panel-heading">';
-    $content .= '<h3 class="panel-title"><i class="fa fa-ban"></i> Blocklist-Einträge (' . count($blocklistEntries) . ' gefunden)</h3>';
+    $content .= '<h3 class="panel-title"><i class="fa fa-ban"></i> ' . $addon->i18n('upkeep_mail_security_blocklist_entries') . ' (' . count($blocklistEntries) . ' ' . $addon->i18n('upkeep_found') . ')</h3>';
     $content .= '</div>';
     
     $content .= '<div class="panel-body">';
@@ -434,20 +439,20 @@ if (!empty($blocklistEntries)) {
     $content .= '<div class="col-md-6">';
     $content .= '<div class="input-group">';
     $content .= '<select name="bulk-action" class="form-control">';
-    $content .= '<option value="">Bulk-Aktion wählen...</option>';
-    $content .= '<option value="activate">Alle aktivieren</option>';
-    $content .= '<option value="deactivate">Alle deaktivieren</option>';
-    $content .= '<option value="delete">Alle löschen</option>';
+    $content .= '<option value="">' . $addon->i18n('upkeep_bulk_action_select') . '</option>';
+    $content .= '<option value="activate">' . $addon->i18n('upkeep_bulk_activate_all') . '</option>';
+    $content .= '<option value="deactivate">' . $addon->i18n('upkeep_bulk_deactivate_all') . '</option>';
+    $content .= '<option value="delete">' . $addon->i18n('upkeep_bulk_delete_all') . '</option>';
     $content .= '</select>';
     $content .= '<span class="input-group-btn">';
-    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'Bulk-Aktion wirklich ausführen?\')">Ausführen</button>';
+    $content .= '<button type="submit" class="btn btn-default" onclick="return confirm(\'' . $addon->i18n('upkeep_bulk_confirm') . '\')">' . $addon->i18n('upkeep_execute') . '</button>';
     $content .= '</span>';
     $content .= '</div>';
     $content .= '</div>';
     
     $content .= '<div class="col-md-6 text-right">';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', true)">Alle auswählen</button> ';
-    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', false)">Alle abwählen</button>';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', true)">' . $addon->i18n('upkeep_select_all') . '</button> ';
+    $content .= '<button type="button" class="btn btn-sm btn-default" onclick="$(\'#blocklist-form input[type=checkbox]\').prop(\'checked\', false)">' . $addon->i18n('upkeep_deselect_all') . '</button>';
     $content .= '</div>';
     $content .= '</div>';
     
@@ -456,14 +461,14 @@ if (!empty($blocklistEntries)) {
     $content .= '<thead>';
     $content .= '<tr>';
     $content .= '<th width="30"><input type="checkbox" id="select-all" /></th>';
-    $content .= '<th>E-Mail/Domain/Pattern</th>';
-    $content .= '<th>Typ</th>';
-    $content .= '<th>Schweregrad</th>';
-    $content .= '<th>Status</th>';
-    $content .= '<th>Grund</th>';
-    $content .= '<th>Gültig bis</th>';
-    $content .= '<th>Erstellt</th>';
-    $content .= '<th>Aktionen</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_email_domain_pattern') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_type') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_severity') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_status') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_reason') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_valid_until') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_created') . '</th>';
+    $content .= '<th>' . $addon->i18n('upkeep_actions') . '</th>';
     $content .= '</tr>';
     $content .= '</thead>';
     $content .= '<tbody>';
@@ -477,21 +482,21 @@ if (!empty($blocklistEntries)) {
         };
         
         $statusClass = 'default';
-        $statusText = 'Inaktiv';
+        $statusText = $addon->i18n('upkeep_status_inactive');
         
         if ($entry['is_expired']) {
             $statusClass = 'warning';
-            $statusText = 'Abgelaufen';
+            $statusText = $addon->i18n('upkeep_status_expired');
         } elseif ($entry['status']) {
             $statusClass = 'success';
-            $statusText = 'Aktiv';
+            $statusText = $addon->i18n('upkeep_status_active');
         }
         
         $typeLabels = [
-            'email' => 'E-Mail',
-            'domain' => 'Domain',
-            'ip' => 'IP-Adresse',
-            'pattern' => 'Pattern'
+            'email' => $addon->i18n('upkeep_type_email'),
+            'domain' => $addon->i18n('upkeep_type_domain'),
+            'ip' => $addon->i18n('upkeep_type_ip'),
+            'pattern' => $addon->i18n('upkeep_type_pattern')
         ];
         
         $rowClass = (!$entry['status'] || $entry['is_expired']) ? ' text-muted' : '';
@@ -521,7 +526,7 @@ if (!empty($blocklistEntries)) {
             $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
             $content .= '<input type="hidden" name="toggle-blocklist" value="' . $entry['id'] . '" />';
             $content .= '<input type="hidden" name="current-status" value="' . ($entry['status'] ? 1 : 0) . '" />';
-            $content .= '<button type="submit" class="btn btn-xs btn-' . ($entry['status'] ? 'warning' : 'success') . '" title="' . ($entry['status'] ? 'Deaktivieren' : 'Aktivieren') . '">';
+            $content .= '<button type="submit" class="btn btn-xs btn-' . ($entry['status'] ? 'warning' : 'success') . '" title="' . ($entry['status'] ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '">';
             $content .= '<i class="fa fa-' . ($entry['status'] ? 'pause' : 'play') . '"></i>';
             $content .= '</button>';
             $content .= '</form> ';
@@ -530,7 +535,7 @@ if (!empty($blocklistEntries)) {
         // Löschen
         $content .= '<form action="' . rex_url::currentBackendPage() . '" method="post" style="display:inline;">';
         $content .= '<input type="hidden" name="remove-blocklist" value="' . $entry['id'] . '" />';
-        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'Blocklist-Eintrag wirklich löschen?\')" title="Löschen">';
+        $content .= '<button type="submit" class="btn btn-xs btn-danger" onclick="return confirm(\'' . $addon->i18n('upkeep_delete_blocklist_confirm') . '\')" title="' . $addon->i18n('upkeep_delete') . '">';
         $content .= '<i class="fa fa-trash"></i>';
         $content .= '</button>';
         $content .= '</form>';
@@ -557,8 +562,8 @@ if (!empty($blocklistEntries)) {
     
 } else {
     $content = '<div class="alert alert-info">';
-    $content .= '<h4>Keine Blocklist-Einträge gefunden</h4>';
-    $content .= '<p>Es wurden noch keine E-Mail-Adressen oder Domains blockiert oder Ihre Filter haben keine Ergebnisse geliefert.</p>';
+    $content .= '<h4>' . $addon->i18n('upkeep_no_blocklist_entries_found') . '</h4>';
+    $content .= '<p>' . $addon->i18n('upkeep_no_blocklist_entries_configured') . '</p>';
     $content .= '</div>';
 }
 

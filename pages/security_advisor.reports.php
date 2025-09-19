@@ -20,7 +20,7 @@ if ($action === 'export') {
     try {
         error_log('Upkeep Export: Starte Export...');
         $results = $securityAdvisor->runAllChecks();
-        exportSecurityReport($results);
+        exportSecurityReport($results, $addon);
         exit;
     } catch (Exception $e) {
         $errorMsg = 'Export-Fehler: ' . $e->getMessage();
@@ -172,7 +172,7 @@ $results = $securityAdvisor->runAllChecks();
                                 <?php if (!empty($check['details'])): ?>
                                     <h5><?= $addon->i18n('upkeep_details') ?></h5>
                                     <div class="check-details">
-                                        <?= renderCheckDetails($check['details'], $checkKey) ?>
+                                        <?= renderCheckDetails($check['details'], $checkKey, $addon) ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -206,7 +206,7 @@ $results = $securityAdvisor->runAllChecks();
                                     <?php else: ?>
                                         <div class="alert alert-success" style="margin-top: 15px;">
                                             <i class="rex-icon fa fa-check"></i>
-                                            Live-Mode ist bereits aktiv! 
+                                            <?= $addon->i18n('upkeep_live_mode_already_active') ?>
                                         </div>
                                     <?php endif; ?>
                                 <?php endif; ?>
@@ -220,22 +220,22 @@ $results = $securityAdvisor->runAllChecks();
                                                     class="btn btn-info btn-sm enable-csp-btn"
                                                     data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
                                                 <i class="rex-icon fa fa-shield"></i>
-                                                Backend-CSP aktivieren
+                                                <?= $addon->i18n('upkeep_enable_backend_csp') ?>
                                             </button>
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-info-circle text-info"></i>
-                                                <strong>Info:</strong> Schützt nur das REDAXO Backend, nicht das Frontend!
+                                                <strong><?= $addon->i18n('upkeep_csp_info_label') ?></strong> <?= $addon->i18n('upkeep_csp_backend_only_warning') ?>
                                             </div>
                                         <?php else: ?>
                                             <button type="button" 
                                                     class="btn btn-warning btn-sm disable-csp-btn"
                                                     data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
                                                 <i class="rex-icon fa fa-shield"></i>
-                                                Backend-CSP deaktivieren
+                                                <?= $addon->i18n('upkeep_disable_backend_csp') ?>
                                             </button>
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-check text-success"></i>
-                                                <strong>Aktiv:</strong> Backend-CSP ist derzeit aktiviert und schützt das Backend.
+                                                <strong><?= $addon->i18n('upkeep_csp_active_label') ?></strong> <?= $addon->i18n('upkeep_csp_currently_active') ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -250,16 +250,16 @@ $results = $securityAdvisor->runAllChecks();
                                                     class="btn btn-warning btn-sm enable-session-security-btn"
                                                     data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
                                                 <i class="rex-icon fa fa-lock"></i>
-                                                Session-Sicherheit aktivieren
+                                                <?= $addon->i18n('upkeep_enable_session_security') ?>
                                             </button>
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-info-circle text-info"></i>
-                                                <strong>Info:</strong> Konfiguriert sichere Session-Parameter in der config.yml.
+                                                <strong><?= $addon->i18n('upkeep_csp_info_label') ?></strong> <?= $addon->i18n('upkeep_session_security_info') ?>
                                             </div>
                                         <?php else: ?>
                                             <div class="alert alert-success" style="margin-top: 15px;">
                                                 <i class="rex-icon fa fa-check"></i>
-                                                Session-Sicherheit ist bereits konfiguriert!
+                                                <?= $addon->i18n('upkeep_session_security_already_configured') ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -280,54 +280,54 @@ $results = $securityAdvisor->runAllChecks();
                                         <?php if (!$currentHttps): ?>
                                             <div class="alert alert-info" style="margin-top: 15px;">
                                                 <i class="rex-icon fa fa-lock"></i>
-                                                <strong>Schritt 1:</strong> Sie sind aktuell auf HTTP. Wechseln Sie zu HTTPS für bessere Sicherheit.
+                                                <strong>Schritt 1:</strong> <?= $addon->i18n('upkeep_https_step1_currently_http') ?>
                                             </div>
                                         <?php elseif (!$backendHttps && !$frontendHttps): ?>
                                             <div class="alert alert-warning" style="margin-top: 15px;">
                                                 <i class="rex-icon fa fa-cog"></i>
-                                                <strong>Schritt 2:</strong> HTTPS in REDAXO-Konfiguration aktivieren:
+                                                <strong>Schritt 2:</strong> <?= $addon->i18n('upkeep_https_step2_activate_redaxo') ?>
                                             </div>
                                             <div class="btn-group" style="margin-top: 10px;">
                                                 <button type="button" class="btn btn-info btn-sm enable-https-backend-btn"
                                                         data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
-                                                    <i class="rex-icon fa fa-shield"></i> Backend HTTPS
+                                                    <i class="rex-icon fa fa-shield"></i> <?= $addon->i18n('upkeep_enable_https_backend') ?>
                                                 </button>
                                                 <button type="button" class="btn btn-info btn-sm enable-https-frontend-btn"
                                                         data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
-                                                    <i class="rex-icon fa fa-globe"></i> Frontend HTTPS
+                                                    <i class="rex-icon fa fa-globe"></i> <?= $addon->i18n('upkeep_enable_https_frontend') ?>
                                                 </button>
                                                 <button type="button" class="btn btn-primary btn-sm enable-https-both-btn"
                                                         data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
-                                                    <i class="rex-icon fa fa-lock"></i> Beide aktivieren
+                                                    <i class="rex-icon fa fa-lock"></i> <?= $addon->i18n('upkeep_enable_https_both') ?>
                                                 </button>
                                             </div>
                                         <?php elseif ($httpsReadyForHsts && !$hstsEnabled): ?>
                                             <div class="alert alert-success" style="margin-top: 15px;">
                                                 <i class="rex-icon fa fa-check"></i>
-                                                <strong>HTTPS aktiv!</strong> Jetzt HSTS für zusätzliche Sicherheit aktivieren:
+                                                                                                <strong>Schritt 3:</strong> <?= $addon->i18n('upkeep_https_step3_hsts_ready') ?>
                                             </div>
                                             <button type="button" class="btn btn-info btn-sm enable-hsts-btn"
                                                     data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
                                                 <i class="rex-icon fa fa-plus-circle"></i>
-                                                HSTS aktivieren (empfohlen)
+                                                <?= $addon->i18n('upkeep_hsts_activate_recommended') ?>
                                             </button>
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-exclamation-triangle text-warning"></i>
-                                                <strong>WARNUNG:</strong> HSTS zwingt Browser dauerhaft zu HTTPS! Schwer rückgängig zu machen.
+                                                <strong>WARNUNG:</strong> <?= $addon->i18n('upkeep_hsts_warning_activation') ?>
                                             </div>
                                         <?php elseif ($hstsEnabled): ?>
                                             <div class="alert alert-success" style="margin-top: 10px;">
                                                 <i class="rex-icon fa fa-check-circle"></i>
-                                                <strong>Optimal konfiguriert!</strong> HTTPS und HSTS sind aktiv (<?= $check['details']['hsts_config']['max_age_years'] ?> Jahre)
+                                                <strong>Optimal konfiguriert!</strong> <?= $addon->i18n('upkeep_https_hsts_activated') ?> (<?= $check['details']['hsts_config']['max_age_years'] ?> <?= $addon->i18n('upkeep_hsts_max_age_years') ?>)
                                             </div>
                                             <button type="button" class="btn btn-warning btn-sm disable-hsts-btn"
                                                     data-csrf="<?= rex_csrf_token::factory('upkeep-security')->getValue() ?>">
                                                 <i class="rex-icon fa fa-times"></i>
-                                                HSTS deaktivieren
+                                                <?= $addon->i18n('upkeep_hsts_deactivated') ?>
                                             </button>
                                             <div class="help-block" style="margin-top: 5px; font-size: 11px;">
                                                 <i class="rex-icon fa fa-exclamation-triangle text-warning"></i>
-                                                <strong>WARNUNG:</strong> Browser können HSTS-Policy noch wochenlang cachen!
+                                                <strong>WARNUNG:</strong> <?= $addon->i18n('upkeep_hsts_warning_deactivation') ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -506,17 +506,17 @@ function getCheckIcon($status) {
     };
 }
 
-function renderCheckDetails($details, $checkKey) {
+function renderCheckDetails($details, $checkKey, $addon) {
     if ($checkKey === 'ssl_certificates') {
-        return renderSslDetails($details);
+        return renderSslDetails($details, $addon);
     } elseif ($checkKey === 'server_headers') {
-        return renderHeaderDetails($details);
+        return renderHeaderDetails($details, $addon);
     } else {
         return renderGenericDetails($details);
     }
 }
 
-function renderSslDetails($details) {
+function renderSslDetails($details, $addon) {
     $html = '<div class="ssl-cert-details">';
     foreach ($details as $domain => $cert) {
         $statusClass = $cert['valid'] ? 
@@ -525,13 +525,13 @@ function renderSslDetails($details) {
         $html .= '<div class="ssl-cert-item">';
         $html .= '<div class="ssl-cert-domain">' . htmlspecialchars($domain) . '</div>';
         $html .= '<div class="ssl-cert-status ' . $statusClass . '">';
-        $html .= $cert['valid'] ? '✓ Gültig' : '✗ Ungültig';
+        $html .= $cert['valid'] ? '✓ ' . $addon->i18n('upkeep_ssl_valid') : '✗ ' . $addon->i18n('upkeep_ssl_invalid');
         $html .= '</div>';
         
         if ($cert['valid']) {
-            $html .= '<div><small>Läuft ab: ' . $cert['expires'] . '</small></div>';
-            $html .= '<div><small>Verbleibend: ' . $cert['days_remaining'] . ' Tage</small></div>';
-            $html .= '<div><small>Aussteller: ' . htmlspecialchars($cert['issuer']) . '</small></div>';
+            $html .= '<div><small>' . $addon->i18n('upkeep_ssl_expires') . ': ' . $cert['expires'] . '</small></div>';
+            $html .= '<div><small>' . $addon->i18n('upkeep_ssl_days_remaining') . ': ' . $cert['days_remaining'] . ' Tage</small></div>';
+            $html .= '<div><small>' . $addon->i18n('upkeep_ssl_issuer') . ': ' . htmlspecialchars($cert['issuer']) . '</small></div>';
         }
         
         if (!empty($cert['errors'])) {
@@ -545,16 +545,16 @@ function renderSslDetails($details) {
     return $html;
 }
 
-function renderHeaderDetails($details) {
+function renderHeaderDetails($details, $addon) {
     $html = '<div class="header-details">';
     
     if (!empty($details['headers'])) {
-        $html .= '<h6>Aktuelle Header:</h6>';
+        $html .= '<h6>' . $addon->i18n('upkeep_current_headers') . ':</h6>';
         $html .= '<pre>' . print_r($details['headers'], true) . '</pre>';
     }
     
     if (!empty($details['issues'])) {
-        $html .= '<h6>Probleme:</h6>';
+        $html .= '<h6>' . $addon->i18n('upkeep_header_issues') . ':</h6>';
         $html .= '<ul>';
         foreach ($details['issues'] as $issue) {
             $html .= '<li>' . htmlspecialchars($issue) . '</li>';
@@ -571,7 +571,7 @@ function renderGenericDetails($details) {
     return '<pre>' . print_r($details, true) . '</pre>';
 }
 
-function exportSecurityReport($results) {
+function exportSecurityReport($results, $addon) {
     try {
         $filename = 'upkeep_security_report_' . date('Y-m-d_H-i-s') . '.json';
         
@@ -620,7 +620,7 @@ function exportSecurityReport($results) {
         
         // Bei Fehlern HTML-Antwort senden
         header('Content-Type: text/html; charset=utf-8');
-        echo rex_view::error('Export-Fehler: ' . $e->getMessage());
+        echo rex_view::error($addon->i18n('upkeep_export_error') . ': ' . $e->getMessage());
     }
 }
 
