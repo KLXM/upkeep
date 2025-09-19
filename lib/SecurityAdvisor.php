@@ -494,14 +494,14 @@ class SecurityAdvisor
         // 5. Open Basedir (Chroot-ähnliche Beschränkung)
         $openBasedir = ini_get('open_basedir');
         if (empty($openBasedir)) {
-            $warnings[] = "Open Basedir nicht gesetzt - PHP kann auf ganze Festplatte zugreifen";
+            $warnings[] = $this->addon->i18n('upkeep_security_openbasedir_missing');
         }
 
         // 6. Error Reporting in Produktion
         $errorReporting = ini_get('error_reporting');
         $logErrors = ini_get('log_errors');
         if ($errorReporting != 0 && ini_get('display_errors') == 'On') {
-            $issues[] = "Error Reporting aktiv in Produktion (Informationsleckage)";
+            $issues[] = $this->addon->i18n('upkeep_security_error_reporting_active');
             $score -= 1;
         }
         
@@ -514,16 +514,16 @@ class SecurityAdvisor
         $deprecatedVersions = ['8.0', '8.1'];
         
         if (in_array($phpMajorMinor, $unsupportedVersions)) {
-            $issues[] = "PHP-Version nicht mehr unterstützt - Sicherheitsrisiko";
-            $issues[] = "Dringende Aktualisierung der PHP-Version erforderlich";
+            $issues[] = $this->addon->i18n('upkeep_security_php_unsupported');
+            $issues[] = $this->addon->i18n('upkeep_security_php_update_urgent');
             $score -= 3;
         } elseif (in_array($phpMajorMinor, $deprecatedVersions)) {
-            $warnings[] = "PHP-Version veraltet - Update empfohlen";
-            $warnings[] = "Aktualisierung auf neuere PHP-Version wird empfohlen";
+            $warnings[] = $this->addon->i18n('upkeep_security_php_deprecated');
+            $warnings[] = $this->addon->i18n('upkeep_security_php_update_recommended');
             $score -= 1;
         }
         if (!$logErrors) {
-            $warnings[] = "Error Logging deaktiviert - Fehler werden nicht protokolliert";
+            $warnings[] = $this->addon->i18n('upkeep_security_error_logging_disabled');
         }
 
         // Status bestimmen
@@ -539,11 +539,11 @@ class SecurityAdvisor
         // Dashboard-kompatible Rückgabe
         $dashboardStatus = $status === 'error' ? 'critical' : ($status === 'warning' ? 'warning' : 'optimal');
         $dashboardMessage = !empty($issues) ? implode(', ', array_slice($issues, 0, 2)) : 
-                           (!empty($warnings) ? implode(', ', array_slice($warnings, 0, 2)) : 'PHP optimal konfiguriert');
+                           (!empty($warnings) ? implode(', ', array_slice($warnings, 0, 2)) : $this->addon->i18n('upkeep_security_php_optimal'));
         
         // Speichere auch im internen Format
         $this->results['checks']['php_configuration'] = [
-            'name' => 'PHP & System-Sicherheit',
+            'name' => $this->addon->i18n('upkeep_security_php_system_check'),
             'status' => $status,
             'severity' => 'high',
             'score' => max(0, $score),
@@ -553,14 +553,14 @@ class SecurityAdvisor
                 'memory_limit' => $memoryLimit,
                 'upload_max_filesize' => $maxFileSize,
                 'post_max_size' => $postMaxSize,
-                'open_basedir' => $openBasedir ?: 'nicht gesetzt',
+                'open_basedir' => $openBasedir ?: $this->addon->i18n('upkeep_security_openbasedir_not_set'),
                 'error_reporting' => $errorReporting,
                 'log_errors' => $logErrors ? 'On' : 'Off',
                 'critical_issues' => $issues,
                 'warnings' => $warnings
             ],
             'recommendations' => $this->getPhpConfigRecommendations($allIssues),
-            'description' => 'PHP sollte sicher konfiguriert sein mit angemessenen Limits und ohne gefährliche Funktionen.'
+            'description' => $this->addon->i18n('upkeep_security_php_description')
         ];
         
         // Dashboard-Format zurückgeben
@@ -1709,10 +1709,10 @@ class SecurityAdvisor
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_security_config_write_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;
@@ -1726,7 +1726,7 @@ class SecurityAdvisor
         $result = [
             'success' => false,
             'message' => '',
-            'warning' => 'HTTPS muss auf Server-Ebene verfügbar sein (SSL-Zertifikat)!'
+            'warning' => $this->addon->i18n('upkeep_security_https_warning')
         ];
 
         try {
@@ -1740,16 +1740,16 @@ class SecurityAdvisor
 
             if (\rex_file::putConfig(\rex_path::coreData('config.yml'), $config)) {
                 $result['success'] = true;
-                $result['message'] = 'HTTPS für Backend und Frontend aktiviert. Cache wird geleert...';
-                $result['backup'] = 'Backup: ' . basename($backupPath);
+                $result['message'] = $this->addon->i18n('upkeep_security_https_both_enabled');
+                $result['backup'] = $this->addon->i18n('upkeep_security_livemode_backup', basename($backupPath));
                 
                 // Cache leeren
                 rex_delete_cache();
             } else {
-                $result['message'] = 'Fehler beim Schreiben der config.yml.';
+                $result['message'] = $this->addon->i18n('upkeep_security_config_write_error');
             }
         } catch (Exception $e) {
-            $result['message'] = 'Fehler: ' . $e->getMessage();
+            $result['message'] = $this->addon->i18n('upkeep_security_error_prefix', $e->getMessage());
         }
 
         return $result;

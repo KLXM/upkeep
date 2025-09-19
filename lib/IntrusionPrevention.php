@@ -1234,39 +1234,41 @@ class IntrusionPrevention
         }
         
         // Language-specific texts
+        $addon = self::getAddon();
+        
         if ($isEnglish) {
             $texts = [
-                'title' => 'Access Denied',
-                'security_notice' => 'Security Notice:',
-                'message' => 'Your request has been blocked by our security system.',
-                'reason' => 'Reason:',
-                'ip_address' => 'Your IP Address:',
-                'timestamp' => 'Time:',
-                'human_verification' => 'Human Verification',
-                'are_you_human' => 'Are you a real person?',
-                'solve_captcha' => 'Solve this simple math problem to get unblocked and redirected to the homepage.',
-                'your_answer' => 'Your Answer:',
-                'unlock_button' => 'Unlock and go to homepage',
-                'support' => 'Support:',
-                'contact_text' => 'If you have questions, please contact:',
-                'powered_by' => 'Powered by REDAXO Upkeep AddOn - Intrusion Prevention System'
+                'title' => $addon->i18n('upkeep_ips_captcha_title_blocked'),
+                'security_notice' => $addon->i18n('upkeep_ips_captcha_security_notice'),
+                'message' => $addon->i18n('upkeep_ips_captcha_blocked_message'),
+                'reason' => $addon->i18n('upkeep_ips_captcha_reason'),
+                'ip_address' => $addon->i18n('upkeep_ips_captcha_ip_address'),
+                'timestamp' => $addon->i18n('upkeep_ips_captcha_timestamp'),
+                'human_verification' => $addon->i18n('upkeep_ips_captcha_human_verification'),
+                'are_you_human' => $addon->i18n('upkeep_ips_captcha_are_you_human'),
+                'solve_captcha' => $addon->i18n('upkeep_ips_captcha_solve_task'),
+                'your_answer' => $addon->i18n('upkeep_ips_captcha_your_answer'),
+                'unlock_button' => $addon->i18n('upkeep_ips_captcha_unlock_button'),
+                'support' => $addon->i18n('upkeep_ips_captcha_support'),
+                'contact_text' => $addon->i18n('upkeep_ips_captcha_contact_text'),
+                'powered_by' => $addon->i18n('upkeep_ips_captcha_powered_by')
             ];
         } else {
             $texts = [
-                'title' => 'Zugriff verweigert',
-                'security_notice' => 'Sicherheitshinweis:',
-                'message' => 'Ihr Request wurde von unserem Sicherheitssystem blockiert.',
-                'reason' => 'Grund:',
-                'ip_address' => 'Ihre IP-Adresse:',
-                'timestamp' => 'Zeitpunkt:',
-                'human_verification' => 'Menschliche Verifikation',
-                'are_you_human' => 'Sie sind ein echter Mensch?',
-                'solve_captcha' => 'Lösen Sie diese einfache Rechenaufgabe, um entsperrt zu werden und zur Startseite weitergeleitet zu werden.',
-                'your_answer' => 'Ihre Antwort:',
-                'unlock_button' => 'Entsperren und zur Startseite',
-                'support' => 'Support:',
-                'contact_text' => 'Bei Fragen wenden Sie sich an:',
-                'powered_by' => 'Powered by REDAXO Upkeep AddOn - Intrusion Prevention System'
+                'title' => $addon->i18n('upkeep_ips_captcha_title_blocked'),
+                'security_notice' => $addon->i18n('upkeep_ips_captcha_security_notice'),
+                'message' => $addon->i18n('upkeep_ips_captcha_blocked_message'),
+                'reason' => $addon->i18n('upkeep_ips_captcha_reason'),
+                'ip_address' => $addon->i18n('upkeep_ips_captcha_ip_address'),
+                'timestamp' => $addon->i18n('upkeep_ips_captcha_timestamp'),
+                'human_verification' => $addon->i18n('upkeep_ips_captcha_human_verification'),
+                'are_you_human' => $addon->i18n('upkeep_ips_captcha_are_you_human'),
+                'solve_captcha' => $addon->i18n('upkeep_ips_captcha_solve_task'),
+                'your_answer' => $addon->i18n('upkeep_ips_captcha_your_answer'),
+                'unlock_button' => $addon->i18n('upkeep_ips_captcha_unlock_button'),
+                'support' => $addon->i18n('upkeep_ips_captcha_support'),
+                'contact_text' => $addon->i18n('upkeep_ips_captcha_contact_text'),
+                'powered_by' => $addon->i18n('upkeep_ips_captcha_powered_by')
             ];
         }
         

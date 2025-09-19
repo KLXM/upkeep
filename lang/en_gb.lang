@@ -925,3 +925,50 @@ upkeep_security_openbasedir_not_set = not set
 upkeep_security_directory_permissions_error = Directory {0} has too open permissions: {1} (recommended: {2})
 upkeep_security_poweredby_header_leak = X-Powered-By header reveals PHP version: {0}
 upkeep_security_missing_header = Missing security header: {0}
+
+# Additional Security Advisor strings
+upkeep_security_openbasedir_missing = Open Basedir not set - PHP can access entire hard drive
+upkeep_security_https_both_enabled = HTTPS activated for backend and frontend. Clearing cache...
+upkeep_security_config_write_permissions_error = Error writing config.yml. Check file permissions.
+
+# Intrusion Prevention CAPTCHA page
+upkeep_ips_captcha_title_blocked = Access Denied
+upkeep_ips_captcha_security_notice = Security Notice:
+upkeep_ips_captcha_blocked_message = Your request has been blocked by our security system.
+upkeep_ips_captcha_reason = Reason:
+upkeep_ips_captcha_ip_address = Your IP Address:
+upkeep_ips_captcha_timestamp = Time:
+upkeep_ips_captcha_human_verification = Human Verification
+upkeep_ips_captcha_are_you_human = Are you a real person?
+upkeep_ips_captcha_solve_task = Solve this simple math problem to get unblocked and redirected to the homepage.
+upkeep_ips_captcha_your_answer = Your Answer:
+upkeep_ips_captcha_unlock_button = Unlock and go to homepage
+upkeep_ips_captcha_support = Support:
+upkeep_ips_captcha_contact_text = If you have questions, please contact:
+upkeep_ips_captcha_powered_by = Powered by REDAXO Upkeep AddOn - Intrusion Prevention System
+
+# Mail Security Badwords
+upkeep_mail_badwords_status_changed = Badword status successfully changed.
+upkeep_mail_badwords_status_error = Error changing status: {0}
+upkeep_mail_badwords_bulk_deleted = deleted
+upkeep_mail_badwords_bulk_activated = activated
+upkeep_mail_badwords_bulk_deactivated = deactivated
+upkeep_mail_badwords_bulk_processed = processed
+upkeep_mail_badwords_bulk_success = {0} badwords were {1}.
+upkeep_mail_badwords_bulk_error = Error in bulk action: {0}
+upkeep_mail_badwords_import_success = {0} badwords successfully imported.
+upkeep_mail_badwords_import_errors = ({0} errors)
+upkeep_mail_badwords_import_no_success = No badwords imported. {0}
+upkeep_mail_badwords_import_error_count = {0} errors occurred.
+upkeep_mail_badwords_load_error = Error loading badwords: {0}
+upkeep_mail_badwords_add_success = Badword successfully added.
+upkeep_mail_badwords_add_error = Error adding badword.
+upkeep_mail_badwords_pattern_empty = Pattern cannot be empty.
+upkeep_mail_badwords_remove_success = Badword successfully removed.
+upkeep_mail_badwords_remove_error = Error removing badword.
+upkeep_mail_badwords_import_data_empty = Import data cannot be empty.
+upkeep_mail_badwords_regex_invalid = Invalid RegEx syntax in pattern.
+upkeep_mail_badwords_none_found = No badwords found
+upkeep_mail_badwords_none_configured = No badwords have been configured yet or your filters returned no results.
+upkeep_mail_badwords_add_new = Add new badword
+upkeep_mail_badwords_import_data_label = Import data (one pattern per line)

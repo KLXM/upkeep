@@ -17,16 +17,16 @@ if (rex_post('add-badword', 'string') === '1') {
     if (!empty($pattern)) {
         // Bei RegEx: Syntax validieren
         if ($isRegex && @preg_match($pattern, '') === false) {
-            $error = 'Ungültige RegEx-Syntax in Pattern.';
+            $error = $addon->i18n('upkeep_mail_badwords_regex_invalid');
         } else {
             if (MailSecurityFilter::addBadword($pattern, $severity, $category, $isRegex, $description)) {
-                $success = 'Badword erfolgreich hinzugefügt.';
+                $success = $addon->i18n('upkeep_mail_badwords_add_success');
             } else {
-                $error = 'Fehler beim Hinzufügen des Badwords.';
+                $error = $addon->i18n('upkeep_mail_badwords_add_error');
             }
         }
     } else {
-        $error = 'Pattern darf nicht leer sein.';
+        $error = $addon->i18n('upkeep_mail_badwords_pattern_empty');
     }
 }
 
@@ -34,9 +34,9 @@ if (rex_post('add-badword', 'string') === '1') {
 if (rex_post('remove-badword', 'int') > 0) {
     $badwordId = rex_post('remove-badword', 'int');
     if (MailSecurityFilter::removeBadword($badwordId)) {
-        $success = 'Badword erfolgreich entfernt.';
+        $success = $addon->i18n('upkeep_mail_badwords_remove_success');
     } else {
-        $error = 'Fehler beim Entfernen des Badwords.';
+        $error = $addon->i18n('upkeep_mail_badwords_remove_error');
     }
 }
 
@@ -54,9 +54,9 @@ if (rex_post('toggle-badword', 'int') > 0) {
         $sql->setValue('updated_at', date('Y-m-d H:i:s'));
         $sql->update();
         
-        $success = 'Badword-Status erfolgreich geändert.';
+        $success = $addon->i18n('upkeep_mail_badwords_status_changed');
     } catch (Exception $e) {
-        $error = 'Fehler beim Ändern des Status: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_mail_badwords_status_error', $e->getMessage());
     }
 }
 
@@ -98,15 +98,15 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-badwords', 'array'))
         }
         
         $actionNames = [
-            'delete' => 'gelöscht',
-            'activate' => 'aktiviert',
-            'deactivate' => 'deaktiviert'
+            'delete' => $addon->i18n('upkeep_mail_badwords_bulk_deleted'),
+            'activate' => $addon->i18n('upkeep_mail_badwords_bulk_activated'),
+            'deactivate' => $addon->i18n('upkeep_mail_badwords_bulk_deactivated')
         ];
         
-        $success = $affectedCount . ' Badwords wurden ' . ($actionNames[$action] ?? 'bearbeitet') . '.';
+        $success = $addon->i18n('upkeep_mail_badwords_bulk_success', $affectedCount, ($actionNames[$action] ?? $addon->i18n('upkeep_mail_badwords_bulk_processed')));
         
     } catch (Exception $e) {
-        $error = 'Fehler bei Bulk-Aktion: ' . $e->getMessage();
+        $error = $addon->i18n('upkeep_mail_badwords_bulk_error', $e->getMessage());
     }
 }
 
@@ -144,15 +144,16 @@ if (rex_post('import-badwords', 'string') === '1') {
         }
         
         if ($imported > 0) {
-            $success = $imported . ' Badwords erfolgreich importiert.';
+            $success = $addon->i18n('upkeep_mail_badwords_import_success', $imported);
             if ($errors > 0) {
-                $success .= ' (' . $errors . ' Fehler)';
+                $success .= ' ' . $addon->i18n('upkeep_mail_badwords_import_errors', $errors);
             }
         } else {
-            $error = 'Keine Badwords importiert. ' . ($errors > 0 ? $errors . ' Fehler aufgetreten.' : '');
+            $errorMsg = $errors > 0 ? $addon->i18n('upkeep_mail_badwords_import_error_count', $errors) : '';
+            $error = $addon->i18n('upkeep_mail_badwords_import_no_success', $errorMsg);
         }
     } else {
-        $error = 'Import-Daten dürfen nicht leer sein.';
+        $error = $addon->i18n('upkeep_mail_badwords_import_data_empty');
     }
 }
 
