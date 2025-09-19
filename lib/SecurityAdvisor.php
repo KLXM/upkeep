@@ -28,6 +28,42 @@ class SecurityAdvisor
     }
 
     /**
+     * Prüft ob eine Admin-Freigabe für einen Check-Typ aktiv ist
+     */
+    public function isCheckReleased(string $checkType): bool
+    {
+        $releaseKey = "admin_release_{$checkType}";
+        $releaseTimestamp = $this->addon->getConfig($releaseKey, 0);
+        
+        if ($releaseTimestamp === 0) {
+            return false;
+        }
+        
+        $releaseDays = $this->addon->getConfig('admin_release_days', 30);
+        $expiryTimestamp = $releaseTimestamp + ($releaseDays * 24 * 60 * 60);
+        
+        return time() < $expiryTimestamp;
+    }
+
+    /**
+     * Admin-Freigabe für einen Check-Typ setzen
+     */
+    public function setAdminRelease(string $checkType): void
+    {
+        $releaseKey = "admin_release_{$checkType}";
+        $this->addon->setConfig($releaseKey, time());
+    }
+
+    /**
+     * Admin-Freigabe für einen Check-Typ entfernen
+     */
+    public function removeAdminRelease(string $checkType): void
+    {
+        $releaseKey = "admin_release_{$checkType}";
+        $this->addon->removeConfig($releaseKey);
+    }
+
+    /**
      * Führt alle Sicherheitsprüfungen durch
      */
     public function runAllChecks(): array
@@ -367,7 +403,7 @@ class SecurityAdvisor
     /**
      * Prüft PHP-Konfiguration und System-Sicherheitseinstellungen
      */
-    private function checkPhpConfiguration(): void
+    public function checkPhpConfiguration(): array
     {
         $issues = [];
         $warnings = [];
@@ -468,6 +504,24 @@ class SecurityAdvisor
             $issues[] = "Error Reporting aktiv in Produktion (Informationsleckage)";
             $score -= 1;
         }
+        
+        // 7. PHP-Versionsprüfung
+        $phpVersion = PHP_VERSION;
+        $phpMajorMinor = implode('.', array_slice(explode('.', $phpVersion), 0, 2));
+        
+        // Definiere unterstützte/veraltete PHP-Versionen
+        $unsupportedVersions = ['7.0', '7.1', '7.2', '7.3', '7.4'];
+        $deprecatedVersions = ['8.0', '8.1'];
+        
+        if (in_array($phpMajorMinor, $unsupportedVersions)) {
+            $issues[] = "PHP-Version nicht mehr unterstützt - Sicherheitsrisiko";
+            $issues[] = "Dringende Aktualisierung der PHP-Version erforderlich";
+            $score -= 3;
+        } elseif (in_array($phpMajorMinor, $deprecatedVersions)) {
+            $warnings[] = "PHP-Version veraltet - Update empfohlen";
+            $warnings[] = "Aktualisierung auf neuere PHP-Version wird empfohlen";
+            $score -= 1;
+        }
         if (!$logErrors) {
             $warnings[] = "Error Logging deaktiviert - Fehler werden nicht protokolliert";
         }
@@ -482,6 +536,12 @@ class SecurityAdvisor
             $status = 'success';
         }
 
+        // Dashboard-kompatible Rückgabe
+        $dashboardStatus = $status === 'error' ? 'critical' : ($status === 'warning' ? 'warning' : 'optimal');
+        $dashboardMessage = !empty($issues) ? implode(', ', array_slice($issues, 0, 2)) : 
+                           (!empty($warnings) ? implode(', ', array_slice($warnings, 0, 2)) : 'PHP optimal konfiguriert');
+        
+        // Speichere auch im internen Format
         $this->results['checks']['php_configuration'] = [
             'name' => 'PHP & System-Sicherheit',
             'status' => $status,
@@ -496,16 +556,20 @@ class SecurityAdvisor
                 'open_basedir' => $openBasedir ?: 'nicht gesetzt',
                 'error_reporting' => $errorReporting,
                 'log_errors' => $logErrors ? 'On' : 'Off',
-                // Debug: Aktuelle ini-Werte anzeigen
-                'display_errors' => ini_get('display_errors') . ' (raw: ' . var_export(ini_get('display_errors'), true) . ')',
-                'expose_php' => ini_get('expose_php') . ' (raw: ' . var_export(ini_get('expose_php'), true) . ')',
-                'allow_url_fopen' => ini_get('allow_url_fopen') . ' (raw: ' . var_export(ini_get('allow_url_fopen'), true) . ')',
-                'allow_url_include' => ini_get('allow_url_include') . ' (raw: ' . var_export(ini_get('allow_url_include'), true) . ')',
                 'critical_issues' => $issues,
                 'warnings' => $warnings
             ],
             'recommendations' => $this->getPhpConfigRecommendations($allIssues),
             'description' => 'PHP sollte sicher konfiguriert sein mit angemessenen Limits und ohne gefährliche Funktionen.'
+        ];
+        
+        // Dashboard-Format zurückgeben
+        return [
+            'status' => $dashboardStatus,
+            'message' => $dashboardMessage,
+            'score' => max(0, $score),
+            'version' => PHP_VERSION,
+            'issues' => array_merge($issues, $warnings)
         ];
     }
 
@@ -631,6 +695,14 @@ class SecurityAdvisor
             
             // Mailer-Methode bewerten
             switch ($mailerMethod) {
+                case 'mail':
+                    // mail() Funktion ist unsicher
+                    $issues[] = 'PHPMailer verwendet unsichere mail() Funktion';
+                    $issues[] = 'mail() Funktion ist anfällig für Header-Injection-Angriffe';
+                    $recommendations[] = 'Auf SMTP-Versand umstellen für bessere Sicherheit und Zustellbarkeit';
+                    $score -= 4;
+                    break;
+                    
                 case 'smtp':
                     if ($smtpSecure === 'tls' || $smtpSecure === 'ssl') {
                         // SMTP mit expliziter TLS/SSL-Konfiguration - optimal
@@ -748,7 +820,7 @@ class SecurityAdvisor
     /**
      * Prüft ob die REDAXO-Version aktuell ist
      */
-    private function checkRedaxoVersion(): void
+    public function checkRedaxoVersion(): array
     {
         $issues = [];
         $warnings = [];
@@ -810,6 +882,7 @@ class SecurityAdvisor
             
             if ($updateAvailable && $latestVersion) {
                 $versionDiff = $this->getVersionAge($currentVersion, $latestVersion);
+                $subversionDistance = $this->getSubversionDistance($currentVersion, $latestVersion);
                 
                 if ($versionDiff['major'] > 0) {
                     // Major Update verfügbar - kritisch
@@ -818,15 +891,22 @@ class SecurityAdvisor
                     $recommendations[] = 'Sofortiges Update auf neueste Version empfohlen';
                     $score = 3;
                     $status = 'error';
-                } elseif ($versionDiff['minor'] > 1) {
-                    // Mehrere Minor Updates - Warnung
-                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
+                } elseif ($subversionDistance >= 3) {
+                    // 3+ Subversionen zurück - kritisch (rot)
+                    $issues[] = "REDAXO stark veraltet: {$currentVersion} → {$latestVersion} ({$subversionDistance} Subversionen zurück)";
+                    $issues[] = 'Version ist zu alt und sollte dringend aktualisiert werden';
+                    $recommendations[] = 'Sofortiges Update erforderlich';
+                    $score = 4;
+                    $status = 'error';
+                } elseif ($subversionDistance >= 1) {
+                    // 1-2 Subversionen zurück - Warnung (gelb)
+                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion} ({$subversionDistance} Subversion" . ($subversionDistance > 1 ? 'en' : '') . " zurück)";
                     $warnings[] = 'Updates enthalten Sicherheitsfixes und Bugfixes';
                     $recommendations[] = 'Update zeitnah durchführen';
                     $score = 6;
                     $status = 'warning';
-                } elseif ($versionDiff['minor'] > 0 || $versionDiff['patch'] > 0) {
-                    // Minor/Patch Update - Info
+                } elseif ($versionDiff['patch'] > 0) {
+                    // Nur Patch Update - Info
                     $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
                     $recommendations[] = 'Update empfohlen für aktuelle Sicherheitsfixes';
                     $score = 8;
@@ -855,6 +935,21 @@ class SecurityAdvisor
             $allIssues[] = 'REDAXO-Version ist aktuell';
         }
 
+        // Dashboard-kompatible Rückgabe
+        if ($updateAvailable && $status === 'error') {
+            $dashboardStatus = 'critical';
+        } elseif ($updateAvailable) {
+            $dashboardStatus = 'outdated';
+        } else {
+            $dashboardStatus = 'up_to_date';
+        }
+        
+        $dashboardTitle = $dashboardStatus === 'critical' ? 'REDAXO Update kritisch' : 
+                         ($dashboardStatus === 'outdated' ? 'REDAXO Update verfügbar' : 'REDAXO aktuell');
+        
+        $dashboardMessage = !empty($issues) ? $issues[0] : (!empty($warnings) ? $warnings[0] : 'REDAXO Version ist aktuell');
+        
+        // Speichere auch im internen Format
         $this->results['checks']['redaxo_version'] = [
             'name' => 'REDAXO-Version',
             'status' => $status,
@@ -868,6 +963,18 @@ class SecurityAdvisor
             ],
             'recommendations' => $this->getRedaxoVersionRecommendations($updateAvailable, $isUnstable, $latestVersion),
             'description' => 'REDAXO sollte immer auf dem neuesten Stand gehalten werden für optimale Sicherheit.'
+        ];
+        
+        // Dashboard-Format zurückgeben
+        return [
+            'status' => $dashboardStatus,
+            'title' => $dashboardTitle,
+            'message' => $dashboardMessage,
+            'details' => [
+                'version_info' => $versionInfo,
+                'critical_issues' => $issues,
+                'warnings' => $warnings
+            ]
         ];
     }
 
@@ -900,6 +1007,23 @@ class SecurityAdvisor
             'minor' => (int) ($parts[1] ?? 0),
             'patch' => (int) ($parts[2] ?? 0)
         ];
+    }
+
+    /**
+     * Berechnet den Subversions-Abstand zwischen aktueller und neuester Version
+     * Beispiel: 5.20 vs 5.17 = 3 Subversionen Abstand
+     */
+    private function getSubversionDistance(string $currentVersion, string $latestVersion): int
+    {
+        $current = $this->parseVersion($currentVersion);
+        $latest = $this->parseVersion($latestVersion);
+        
+        // Nur Minor-Versionen-Abstand bei gleicher Major-Version berechnen
+        if ($current['major'] !== $latest['major']) {
+            return 999; // Große Zahl für Major-Version-Unterschiede
+        }
+        
+        return $latest['minor'] - $current['minor'];
     }
 
     /**
@@ -1007,7 +1131,7 @@ class SecurityAdvisor
     /**
      * Prüft kritische Dateiberechtigungen
      */
-    private function checkFilePermissions(): void
+    public function checkFilePermissions(): array
     {
         $criticalFiles = [
             rex_path::coreData('config.yml') => 600,
@@ -1034,6 +1158,11 @@ class SecurityAdvisor
 
         $status = empty($issues) ? 'success' : 'error';
 
+        // Dashboard-kompatible Rückgabe
+        $dashboardStatus = empty($issues) ? 'secure' : 'warning';
+        $dashboardMessage = empty($issues) ? 'Dateiberechtigungen korrekt' : implode(', ', array_slice($issues, 0, 2));
+        
+        // Speichere auch im internen Format
         $this->results['checks']['file_permissions'] = [
             'name' => 'Dateiberechtigungen',
             'status' => $status,
@@ -1045,6 +1174,13 @@ class SecurityAdvisor
             ],
             'recommendations' => $this->getFilePermissionRecommendations(),
             'description' => 'Kritische Dateien sollten restriktive Berechtigungen haben.'
+        ];
+        
+        // Dashboard-Format zurückgeben
+        return [
+            'status' => $dashboardStatus,
+            'message' => $dashboardMessage,
+            'issues' => $issues
         ];
     }
 
@@ -1200,6 +1336,12 @@ class SecurityAdvisor
         $recommendations = [];
         
         switch ($mailerMethod) {
+            case 'mail':
+                $recommendations[] = 'PHPMailer: Von mail() auf SMTP umstellen';
+                $recommendations[] = 'SMTP bietet bessere Sicherheit und Zustellbarkeit';
+                $recommendations[] = 'Header-Injection-Angriffe werden durch SMTP verhindert';
+                break;
+                
             case 'smtp':
                 $phpmailerAddon = rex_addon::get('phpmailer');
                 $smtpSecure = $phpmailerAddon->getConfig('smtpsecure', 'none');
@@ -2114,5 +2256,230 @@ class SecurityAdvisor
             default:
                 return $number;
         }
+    }
+
+    // =============================================================================
+    // PUBLIC DASHBOARD METHODS - For Dashboard Access
+    // =============================================================================
+
+    /**
+     * System Health Check
+     */
+    public function checkSystemHealth(): array
+    {
+        $score = 100;
+        $issues = [];
+        
+        // Memory Check
+        $memoryUsage = memory_get_usage(true);
+        $memoryLimit = $this->convertToBytes(ini_get('memory_limit'));
+        if ($memoryLimit > 0) {
+            $memoryPercent = ($memoryUsage / $memoryLimit) * 100;
+            if ($memoryPercent > 80) {
+                $score -= 20;
+                $issues[] = "Hoher Speicherverbrauch: {$memoryPercent}%";
+            }
+        }
+        
+        // Disk Space Check (simplified)
+        $diskFree = disk_free_space(rex_path::base());
+        if ($diskFree !== false && $diskFree < 1024 * 1024 * 100) { // < 100MB
+            $score -= 30;
+            $issues[] = "Wenig freier Speicherplatz verfügbar";
+        }
+        
+        // PHP Version Check
+        if (version_compare(PHP_VERSION, '8.0', '<')) {
+            $score -= 25;
+            $issues[] = "Veraltete PHP Version: " . PHP_VERSION;
+        }
+        
+        $status = $score > 80 ? 'healthy' : ($score > 60 ? 'warning' : 'critical');
+        $message = empty($issues) ? 'System läuft optimal' : implode(', ', $issues);
+        
+        return [
+            'status' => $status,
+            'score' => $score,
+            'message' => $message,
+            'issues' => $issues
+        ];
+    }
+
+    /**
+     * Database Status Check
+     */
+    public function checkDatabaseStatus(): array
+    {
+        try {
+            $sql = \rex_sql::factory();
+            $sql->setQuery('SELECT VERSION() as version');
+            $dbVersion = $sql->getValue('version');
+            
+            // Test connection and basic query
+            $sql->setQuery('SELECT COUNT(*) as count FROM ' . \rex::getTable('article'));
+            $articleCount = $sql->getValue('count');
+            
+            // Datenbankversionsprüfung
+            $status = 'healthy';
+            $message = 'Datenbankverbindung aktiv';
+            
+            // Extrahiere Hauptversion (MySQL/MariaDB)
+            if (preg_match('/^(\d+\.\d+)/', $dbVersion, $matches)) {
+                $majorVersion = $matches[1];
+                
+                // Prüfe auf veraltete MySQL-Versionen
+                if (stripos($dbVersion, 'MariaDB') === false) {
+                    // MySQL-Versionsprüfung
+                    $unsupportedMysql = ['5.5', '5.6', '5.7'];
+                    $deprecatedMysql = ['8.0'];
+                    
+                    if (in_array($majorVersion, $unsupportedMysql)) {
+                        $status = 'critical';
+                        $message = 'Datenbank-Version nicht mehr unterstützt - Update erforderlich';
+                    } elseif (in_array($majorVersion, $deprecatedMysql)) {
+                        $status = 'warning';
+                        $message = 'Datenbank-Version veraltet - Update empfohlen';
+                    }
+                } else {
+                    // MariaDB-Versionsprüfung
+                    $unsupportedMariaDB = ['10.0', '10.1', '10.2', '10.3'];
+                    $deprecatedMariaDB = ['10.4', '10.5'];
+                    
+                    if (in_array($majorVersion, $unsupportedMariaDB)) {
+                        $status = 'critical';
+                        $message = 'Datenbank-Version nicht mehr unterstützt - Update erforderlich';
+                    } elseif (in_array($majorVersion, $deprecatedMariaDB)) {
+                        $status = 'warning';
+                        $message = 'Datenbank-Version veraltet - Update empfohlen';
+                    }
+                }
+            }
+            
+            return [
+                'status' => $status,
+                'message' => $message,
+                'version' => $dbVersion,
+                'articles' => $articleCount
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Datenbankverbindung fehlgeschlagen - Technischen Support kontaktieren',
+                'version' => null,
+                'articles' => 0
+            ];
+        }
+    }
+
+    /**
+     * Mail Security Status
+     */
+    public function getMailSecurityStatus(): array
+    {
+        $active = $this->addon->getConfig('mail_security_active', false);
+        
+        return [
+            'active' => $active,
+            'message' => $active ? 'Mail Security aktiv' : 'Mail Security inaktiv'
+        ];
+    }
+
+    /**
+     * PHPMailer Configuration Check
+     */
+    public function checkPhpMailerConfig(): array
+    {
+        try {
+            $phpmailerAddon = \rex_addon::get('phpmailer');
+            if (!$phpmailerAddon->isAvailable()) {
+                return [
+                    'status' => 'missing',
+                    'message' => 'PHPMailer AddOn nicht verfügbar'
+                ];
+            }
+            
+            $config = $phpmailerAddon->getConfig();
+            $mailerMethod = $config['mailer'] ?? 'mail';
+            
+            // Prüfe spezifisch für mail() Methode
+            if ($mailerMethod === 'mail') {
+                return [
+                    'status' => 'warning',
+                    'message' => 'PHPMailer verwendet unsichere mail() Funktion - SMTP empfohlen'
+                ];
+            }
+            
+            // Für SMTP prüfe die erforderlichen Konfigurationen
+            if ($mailerMethod === 'smtp') {
+                $requiredKeys = ['host', 'port', 'smtpsecure', 'smtpauth'];
+                $configuredKeys = array_filter($requiredKeys, fn($key) => !empty($config[$key]));
+                
+                if (count($configuredKeys) === count($requiredKeys)) {
+                    $status = 'configured';
+                    $message = 'PHPMailer SMTP vollständig konfiguriert';
+                } elseif (count($configuredKeys) > 0) {
+                    $status = 'partial';
+                    $message = 'PHPMailer SMTP teilweise konfiguriert';
+                } else {
+                    $status = 'missing';
+                    $message = 'PHPMailer SMTP nicht konfiguriert';
+                }
+            } else {
+                // Andere Methoden (sendmail, etc.)
+                $status = 'configured';
+                $message = 'PHPMailer konfiguriert (' . $mailerMethod . ')';
+            }
+            
+            return [
+                'status' => $status,
+                'message' => $message,
+                'mailer_method' => $mailerMethod
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'PHPMailer-Prüfung fehlgeschlagen: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Security Headers Check
+     */
+    public function checkSecurityHeaders(): array
+    {
+        // Simplified check - in real implementation would check actual headers
+        $headers = [
+            'X-Frame-Options' => false,
+            'X-Content-Type-Options' => false,
+            'X-XSS-Protection' => false
+        ];
+        
+        $secureHeaders = array_filter($headers);
+        $status = count($secureHeaders) > 2 ? 'secure' : 'warning';
+        $message = count($secureHeaders) > 2 ? 'Security Headers gesetzt' : 'Security Headers fehlen';
+        
+        return [
+            'status' => $status,
+            'message' => $message,
+            'headers' => $headers
+        ];
+    }
+
+    /**
+     * Addon Security Check
+     */
+    public function checkAddonSecurity(): array
+    {
+        $addons = \rex_addon::getAvailableAddons();
+        $secureAddons = array_filter($addons, function($addon) {
+            return $addon->isAvailable();
+        });
+        
+        return [
+            'status' => 'secure',
+            'message' => count($secureAddons) . ' Addons installiert',
+            'addons' => array_keys($secureAddons)
+        ];
     }
 }

@@ -1,70 +1,18 @@
 <?php
-/**
- * Interaktives Dashboard für das Upkeep AddOn
- */
 
+use KLXM\Upkeep\SecurityAdvisor;
 use KLXM\Upkeep\IntrusionPrevention;
 use KLXM\Upkeep\MailSecurityFilter;
 
 $addon = rex_addon::get('upkeep');
-$user = rex::getUser();
+$advisor = new SecurityAdvisor();
 
-// Sicherheits-Check für User
-if (!$user) {
-            echo rex_view::error($addon->i18n('upkeep_dashboard_no_user'));
-    return;
-}
-
-// Handle Toggle Requests
-if (rex_post('toggle_action', 'string')) {
-    $action = rex_post('toggle_action', 'string');
-    $user = rex::getUser();
-    $success = false;
-    $message = '';
-    
-    switch ($action) {
-        case 'toggle_frontend':
-            if ($user->hasPerm('upkeep[frontend]') || $user->isAdmin()) {
-                $current = $addon->getConfig('frontend_active', false);
-                $addon->setConfig('frontend_active', !$current);
-                $success = true;
-                $message = $addon->i18n('upkeep_dashboard_frontend_maintenance_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
-            }
-            break;
-            
-        case 'toggle_backend':
-            if ($user->isAdmin()) {
-                $current = $addon->getConfig('backend_active', false);
-                $addon->setConfig('backend_active', !$current);
-                $success = true;
-                $message = $addon->i18n('upkeep_dashboard_backend_maintenance_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
-            }
-            break;
-            
-        case 'toggle_domain_mapping':
-            if ($user->hasPerm('upkeep[domain_mapping]') || $user->isAdmin()) {
-                $current = $addon->getConfig('domain_mapping_active', false);
-                $addon->setConfig('domain_mapping_active', !$current);
-                $success = true;
-                $message = $addon->i18n('upkeep_dashboard_domain_redirects_toggled', $addon->i18n(!$current ? 'upkeep_dashboard_activated' : 'upkeep_dashboard_deactivated'));
-            }
-            break;
-    }
-    
-    if ($success) {
-        rex_delete_cache();
-        echo rex_view::success($message);
-    } else {
-        echo rex_view::error($addon->i18n('upkeep_dashboard_no_permission'));
-    }
-}
-
-// Live-Statistiken abrufen
+// IPS-Statistiken abrufen
 try {
-    $stats = IntrusionPrevention::getStatistics();
+    $ipsStats = IntrusionPrevention::getStatistics();
 } catch (Exception $e) {
     // Fallback wenn Tabellen noch nicht existieren
-    $stats = [
+    $ipsStats = [
         'blocked_ips' => 0,
         'threats_today' => 0,
         'threats_week' => 0,
@@ -82,902 +30,516 @@ try {
         'threats_24h' => 0,
         'blocked_emails_24h' => 0,
         'badwords_count' => 0,
-        'blocklist_count' => 0,
-        'rate_limit_blocks_24h' => 0,
-        'top_threats' => []
+        'blocklist_count' => 0
     ];
 }
 
-// System-Info
-$phpVersion = PHP_VERSION;
-$rexVersion = rex::getVersion();
-$memoryUsage = round(memory_get_usage(true) / 1024 / 1024, 1);
-$memoryLimit = ini_get('memory_limit');
-
-// Status aller Upkeep-Module
+// IPS-Status
 $ipsActive = IntrusionPrevention::isActive();
-$rateLimitActive = IntrusionPrevention::isRateLimitingEnabled();
-$monitorOnlyActive = $addon->getConfig('ips_monitor_only', false);
-$frontendMaintenanceActive = $addon->getConfig('frontend_active', false);
-$backendMaintenanceActive = $addon->getConfig('backend_active', false);
-$domainMappingSystemActive = $addon->getConfig('domain_mapping_active', false);
 
-// Domain-Mapping Statistiken
-$sql = rex_sql::factory();
-$sql->setQuery("SELECT COUNT(*) as total_count FROM " . rex::getTable('upkeep_domain_mapping'));
-$totalRedirects = (int) $sql->getValue('total_count');
+// CSS für Animation
+echo '<style>
+.version-status-success {
+    animation: pulse-success 2s infinite;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-color: #28a745;
+    color: #155724 !important;
+}
 
-$sql->setQuery("SELECT COUNT(*) as active_count FROM " . rex::getTable('upkeep_domain_mapping') . " WHERE status = 1");
-$activeRedirects = (int) $sql->getValue('active_count');
+.version-status-success h4,
+.version-status-success p {
+    color: #155724 !important;
+}
 
-// Wartungsmodus IP-Zählungen
-$allowedIps = $addon->getConfig('allowed_ips', '');
-$allowedIpCount = !empty(trim($allowedIps)) ? count(array_filter(explode("\n", $allowedIps))) : 0;
-
-// Sicherheitsbedrohungen nach Typ der letzten 7 Tage abrufen
-function getSecurityThreatsByType() {
-    try {
-        $sql = rex_sql::factory();
-        $sql->setQuery("
-            SELECT 
-                threat_type,
-                severity,
-                COUNT(*) as count,
-                SUM(CASE WHEN action_taken IN ('permanent_block', 'temporary_block') THEN 1 ELSE 0 END) as blocked_count,
-                MAX(created_at) as last_occurrence
-            FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            GROUP BY threat_type, severity
-            ORDER BY count DESC, severity DESC
-        ");
-        
-        $threatTypes = [];
-        while ($sql->hasNext()) {
-            $threatTypes[] = [
-                'threat_type' => $sql->getValue('threat_type'),
-                'severity' => $sql->getValue('severity'),
-                'count' => (int) $sql->getValue('count'),
-                'blocked_count' => (int) $sql->getValue('blocked_count'),
-                'last_occurrence' => $sql->getValue('last_occurrence')
-            ];
-            $sql->next();
-        }
-        return $threatTypes;
-    } catch (Exception $e) {
-        // Debug: Log the error
-        if (rex_addon::get('upkeep')->getConfig('ips_debug_mode', false)) {
-            rex_logger::factory()->log('error', 'Dashboard getSecurityThreatsByType failed: ' . $e->getMessage());
-        }
-        return [];
+@keyframes pulse-success {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
     }
 }
 
-// Heute gesperrte IPs nach Ländern abrufen
-function getThreatsByCountry() {
-    try {
-        // Prüfe ob GeoIP verfügbar ist
-        if (!class_exists('KLXM\Upkeep\GeoIP')) {
-            rex_logger::factory()->log('debug', 'Dashboard: GeoIP-Klasse nicht verfügbar');
-            return [];
-        }
-        
-        // Hole alle gesperrten IPs (aktive Sperrungen)
-        $sql = rex_sql::factory();
-        
-        $sql->setQuery('
-            SELECT DISTINCT ip_address 
-            FROM ' . rex::getTable('upkeep_ips_blocked_ips') . '
-            ORDER BY ip_address
-        ');
-        
-        $results = $sql->getArray();
-        
-        if (empty($results)) {
-            // Prüfe ob überhaupt Einträge in der Tabelle sind
-            $sql->setQuery('SELECT COUNT(*) as total FROM ' . rex::getTable('upkeep_ips_blocked_ips'));
-            $total = $sql->getValue('total');
-            return [];
-        }
-        
-        $countries = [];
-        
-        foreach ($results as $result) {
-            $ip = $result['ip_address'];
-            
-            
-            $country = \KLXM\Upkeep\IntrusionPrevention::getCountryByIp($ip);
-            $countryCode = $country['code'];
-            
-            if (!isset($countries[$countryCode])) {
-                $countries[$countryCode] = [
-                    'code' => $countryCode,
-                    'name' => $country['name'],
-                    'blocked_count' => 0,
-                    'unique_ips' => 0,
-                    'last_blocked' => null,
-                    'ips' => []
-                ];
-            }
-            
-            $countries[$countryCode]['blocked_count']++;
-            $countries[$countryCode]['unique_ips']++;
-            $countries[$countryCode]['ips'][] = $ip;
-        }
-        
-        // Sortiere nach Anzahl gesperrter IPs
-        uasort($countries, function($a, $b) {
-            return $b['blocked_count'] <=> $a['blocked_count'];
-        });
-        
-        
-        return array_values($countries);
-    } catch (\Exception $e) {
-        rex_logger::factory()->log('error', 'Dashboard getThreatsByCountry failed: ' . $e->getMessage(), []);
-        return [];
+.version-icon-success {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 60%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    80% {
+        transform: translateY(-5px);
     }
 }
 
-$threatsByType = getSecurityThreatsByType();
-$threatsByCountry = getThreatsByCountry();
-
-// Dashboard Assets einbinden
-rex_view::addCssFile($addon->getAssetsUrl('dashboard.css'));
-rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
-
-?>
-
-<div id="upkeep-dashboard" class="upkeep-dashboard">
-    <!-- Header -->
-    <div class="panel panel-default dashboard-header">
-        <div class="panel-body">
-            <div class="row">
-                <div class="col-md-12">
-                    <h1 class="dashboard-title">
-                        <i class="rex-icon fa-dashboard"></i> 
-                        Upkeep Dashboard
-                        <small class="text-muted">System Monitor</small>
-                    </h1>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- System Status Cards -->
-    <div class="row dashboard-cards">
-        <!-- IPS Status -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/ips') ?>" class="status-card-link">
-                <div class="panel panel-<?= $ipsActive ? 'success' : 'warning' ?> status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-shield-alt"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3>IPS</h3>
-                            <p class="status-text"><?= $ipsActive ? 'Aktiv' : 'Inaktiv' ?></p>
-                            <div class="status-indicator <?= $ipsActive ? 'active' : 'inactive' ?>"></div>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Frontend Wartung -->
-        <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $frontendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                <div class="panel-body">
-                    <?php if ($user->hasPerm('upkeep[frontend]') || $user->isAdmin()): ?>
-                    <form method="post" style="position:absolute; top:10px; right:10px;">
-                        <input type="hidden" name="toggle_action" value="toggle_frontend">
-                        <button type="submit" class="btn btn-xs <?= $frontendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>" title="<?= $frontendMaintenanceActive ? $addon->i18n('upkeep_dashboard_frontend_activate') : $addon->i18n('upkeep_dashboard_frontend_maintenance') ?>">
-                            <i class="rex-icon fa-<?= $frontendMaintenanceActive ? 'play' : 'pause' ?>"></i>
-                        </button>
-                    </form>
-                    <?php endif; ?>
-                    
-                    <a href="<?= rex_url::backendPage('upkeep/frontend') ?>" class="status-card-content-link">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-globe"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3>Frontend</h3>
-                            <p class="status-text"><?= $frontendMaintenanceActive ? $addon->i18n('upkeep_dashboard_maintenance') : $addon->i18n('upkeep_dashboard_online') ?></p>
-                            <div class="status-indicator <?= $frontendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Backend Wartung -->
-        <div class="col-md-3 col-sm-6">
-            <div class="panel panel-<?= $backendMaintenanceActive ? 'warning' : 'success' ?> status-card">
-                <div class="panel-body">
-                    <?php if ($user->isAdmin()): ?>
-                    <form method="post" style="position:absolute; top:10px; right:10px;">
-                        <input type="hidden" name="toggle_action" value="toggle_backend">
-                        <button type="submit" class="btn btn-xs <?= $backendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>" title="<?= $backendMaintenanceActive ? $addon->i18n('upkeep_dashboard_backend_activate') : $addon->i18n('upkeep_dashboard_backend_maintenance') ?>">
-                            <i class="rex-icon fa-<?= $backendMaintenanceActive ? 'play' : 'pause' ?>"></i>
-                        </button>
-                    </form>
-                    <?php endif; ?>
-                    
-                    <a href="<?= rex_url::backendPage('upkeep/backend') ?>" class="status-card-content-link">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-users"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3>Backend</h3>
-                            <p class="status-text"><?= $backendMaintenanceActive ? $addon->i18n('upkeep_dashboard_maintenance') : $addon->i18n('upkeep_dashboard_online') ?></p>
-                            <div class="status-indicator <?= $backendMaintenanceActive ? 'maintenance' : 'active' ?>"></div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Domain Redirects -->
-        <div class="col-md-3 col-sm-6">
-            <?php
-            // Bestimme Status-Farbe und Text basierend auf System-Status und Redirect-Anzahl
-            if (!$domainMappingSystemActive) {
-                $panelClass = 'default';
-                $statusText = $addon->i18n('upkeep_dashboard_system_inactive');
-                $statusIndicator = 'inactive';
-            } elseif ($totalRedirects == 0) {
-                $panelClass = 'warning';
-                $statusText = $addon->i18n('upkeep_dashboard_no_redirects');
-                $statusIndicator = 'warning';
-            } elseif ($activeRedirects == 0) {
-                $panelClass = 'warning';
-                $statusText = $addon->i18n('upkeep_dashboard_all_disabled');
-                $statusIndicator = 'warning';
-            } elseif ($activeRedirects < $totalRedirects) {
-                $panelClass = 'info';
-                $statusText = $activeRedirects . ' ' . $addon->i18n('upkeep_dashboard_of') . ' ' . $totalRedirects . ' ' . $addon->i18n('upkeep_dashboard_active');
-                $statusIndicator = 'partial';
-            } else {
-                $panelClass = 'success';
-                $statusText = $addon->i18n('upkeep_dashboard_all_active');
-                $statusIndicator = 'active';
-            }
-            ?>
-            <div class="panel panel-<?= $panelClass ?> status-card">
-                <div class="panel-body">
-                    <?php if ($user->hasPerm('upkeep[domain_mapping]') || $user->isAdmin()): ?>
-                    <form method="post" style="position:absolute; top:10px; right:10px;">
-                        <input type="hidden" name="toggle_action" value="toggle_domain_mapping">
-                        <button type="submit" class="btn btn-xs <?= $domainMappingSystemActive ? 'btn-warning' : 'btn-success' ?>" title="<?= $domainMappingSystemActive ? $addon->i18n('upkeep_dashboard_domain_mapping_deactivate') : $addon->i18n('upkeep_dashboard_domain_mapping_activate') ?>">
-                            <i class="rex-icon fa-<?= $domainMappingSystemActive ? 'pause' : 'play' ?>"></i>
-                        </button>
-                    </form>
-                    <?php endif; ?>
-                    
-                    <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="status-card-content-link">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-share"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3><?= $totalRedirects ?></h3>
-                            <p class="status-text"><?= $statusText ?></p>
-                            <div class="status-indicator <?= $statusIndicator ?>"></div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        <!-- REDAXO Version Status Card -->
-        <div class="col-md-3 col-sm-6">
-            <?php
-            // Kompakte Versionsprüfung für Status-Karte
-            $currentVersion = rex::getVersion();
-            $panelClass = 'success'; // Standard für aktuelle Version
-            $iconClass = 'fa-check-circle';
-            $statusText = 'Aktuell';
-            
-            // Prüfe ob Update verfügbar ist (nur wenn bereits ermittelt)
-            if (isset($versionCheckResults) && $versionCheckResults) {
-                if ($versionCheckResults['status'] === 'error') {
-                    $panelClass = 'danger';
-                    $iconClass = 'fa-exclamation-triangle';
-                    $statusText = 'Update erforderlich';
-                } elseif ($versionCheckResults['status'] === 'warning') {
-                    $panelClass = 'warning';
-                    $iconClass = 'fa-info-circle';
-                    $statusText = 'Update verfügbar';
-                }
-            }
-            ?>
-            <div class="panel panel-<?= $panelClass ?> status-card">
-                <div class="panel-body">
-                    <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="status-card-content-link">
-                        <div class="status-icon">
-                            <i class="rex-icon <?= $iconClass ?>"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3><?= rex_escape($currentVersion) ?><?= rex_escape($subversionInfo) ?></h3>
-                            <p class="status-text"><?= $statusText ?></p>
-                            <div class="status-indicator <?= $panelClass === 'success' ? 'active' : ($panelClass === 'warning' ? 'warning' : 'maintenance') ?>"></div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Intrusion Prevention System (IPS) -->
-    <div class="row">
-        <div class="col-md-12">
-            <h3 class="dashboard-section-title">
-                <i class="rex-icon fa-shield"></i> 
-                <?= $addon->i18n('upkeep_ips_title') ?>
-                <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_website_security') ?></small>
-            </h3>
-        </div>
-    </div>
-    <div class="row dashboard-cards">
-        <!-- Gesperrte IPs -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/ips/blocked') ?>" class="status-card-link">
-                <div class="panel panel-danger status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-ban"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="blocked-ips-count"><?= $stats['blocked_ips'] ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_blocked_ips') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_active_blocks') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Bedrohungen Heute -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="status-card-link">
-                <div class="panel panel-warning status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="threats-today-count"><?= $stats['threats_today'] ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_threats') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Erlaubte IPs -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/ips/positivliste') ?>" class="status-card-link">
-                <div class="panel panel-success status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-check-circle"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="allowed-ips-count"><?= $allowedIpCount ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_dashboard_allowed_ips_title') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_maintenance_mode') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- System Performance -->
-        <div class="col-md-3 col-sm-6">
-            <div class="panel panel-info status-card">
-                <div class="panel-body">
-                    <div class="status-icon">
-                        <i class="rex-icon fa-tachometer"></i>
-                    </div>
-                    <div class="status-content">
-                        <h3><?= $memoryUsage ?>MB</h3>
-                        <p class="status-text"><?= $addon->i18n('upkeep_dashboard_ram_usage') ?></p>
-                        <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_of') ?> <?= $memoryLimit ?></small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mail Security System -->
-    <div class="row">
-        <div class="col-md-12">
-            <h3 class="dashboard-section-title">
-                <i class="rex-icon fa-envelope-o"></i> 
-                <?= $addon->i18n('upkeep_mail_security') ?>
-                <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_email_protection') ?></small>
-            </h3>
-        </div>
-    </div>
-    <div class="row dashboard-cards">
-        <!-- Mail Threats Blocked -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/mail_security/threats') ?>" class="status-card-link">
-                <div class="panel panel-danger status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-shield"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="mail-threats-count"><?= $mailStats['threats_24h'] ?? 0 ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_threats_blocked') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Badwords Detected -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/mail_security/badwords') ?>" class="status-card-link">
-                <div class="panel panel-warning status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="badwords-count"><?= $mailStats['badwords_count'] ?? 0 ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_badwords_detected') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_today') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Blocklisted IPs/Domains -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/mail_security/blocklist') ?>" class="status-card-link">
-                <div class="panel panel-info status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-ban"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="blocklist-entries-count"><?= $mailStats['blocklist_count'] ?? 0 ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_blocklist_entries') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_active_blocks') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Mail Security Status -->
-        <div class="col-md-3 col-sm-6">
-            <a href="<?= rex_url::backendPage('upkeep/mail_security/dashboard') ?>" class="status-card-link">
-                <div class="panel panel-success status-card">
-                    <div class="panel-body">
-                        <div class="status-icon">
-                            <i class="rex-icon fa-envelope-o"></i>
-                        </div>
-                        <div class="status-content">
-                            <h3 id="mail-security-status"><?= ($mailStats['active'] ?? false) ? $addon->i18n('upkeep_active') : $addon->i18n('upkeep_inactive') ?></h3>
-                            <p class="status-text"><?= $addon->i18n('upkeep_mail_security_status') ?></p>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_protection') ?></small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- REDAXO Version Check -->
-    <div class="row dashboard-cards">
-        <div class="col-md-12">
-            <?php
-            // REDAXO-Versionsprüfung durchführen
-            use KLXM\Upkeep\SecurityAdvisor;
-            $securityAdvisor = new SecurityAdvisor();
-            $versionCheckResults = null;
-            $showVersionAlert = false;
-            
-            try {
-                // Führe nur die REDAXO-Versionsprüfung durch
-                $allResults = $securityAdvisor->runAllChecks();
-                if (isset($allResults['checks']['redaxo_version'])) {
-                    $versionCheckResults = $allResults['checks']['redaxo_version'];
-                    $showVersionAlert = in_array($versionCheckResults['status'], ['warning', 'error']);
-                }
-            } catch (Exception $e) {
-                // Fallback bei Fehlern
-                $showVersionAlert = false;
-            }
-            
-            if ($showVersionAlert && $versionCheckResults): 
-                $alertClass = $versionCheckResults['status'] === 'error' ? 'danger' : 'warning';
-                $alertIcon = $versionCheckResults['status'] === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle';
-                $currentVersion = $versionCheckResults['details']['version_info']['current_version'] ?? rex::getVersion();
-                $latestVersion = $versionCheckResults['details']['version_info']['latest_version'] ?? null;
-                $updateAvailable = $versionCheckResults['details']['version_info']['update_available'] ?? false;
-                $isUnstable = $versionCheckResults['details']['version_info']['is_unstable'] ?? false;
-            ?>
-            <div class="alert alert-<?= $alertClass ?> version-alert">
-                <div class="row">
-                    <div class="col-md-8">
-                        <i class="rex-icon <?= $alertIcon ?>"></i>
-                        <strong>REDAXO Version:</strong>
-                        <?php if ($updateAvailable && $latestVersion): ?>
-                            Update verfügbar: <?= rex_escape($currentVersion) ?> → <?= rex_escape($latestVersion) ?>
-                        <?php elseif ($isUnstable): ?>
-                            Entwicklungsversion in Verwendung: <?= rex_escape($currentVersion) ?>
-                        <?php else: ?>
-                            <?= rex_escape($currentVersion) ?> - Prüfung empfohlen
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($versionCheckResults['details']['critical_issues'])): ?>
-                            <br><small class="text-muted">
-                                • <?= implode('<br>• ', array_map('rex_escape', $versionCheckResults['details']['critical_issues'])) ?>
-                            </small>
-                        <?php elseif (!empty($versionCheckResults['details']['warnings'])): ?>
-                            <br><small class="text-muted">
-                                • <?= implode('<br>• ', array_map('rex_escape', array_slice($versionCheckResults['details']['warnings'], 0, 2))) ?>
-                            </small>
-                        <?php endif; ?>
-                    </div>
-                    <div class="col-md-4 text-right">
-                        <?php if (rex_addon::get('install')->isAvailable() && rex::getUser()->isAdmin()): ?>
-                            <a href="<?= rex_url::backendPage('install/packages', ['core' => 1]) ?>" class="btn btn-<?= $alertClass === 'danger' ? 'danger' : 'warning' ?> btn-sm">
-                                <i class="rex-icon fa-download"></i> 
-                                <?= $updateAvailable ? 'Jetzt updaten' : 'Updates prüfen' ?>
-                            </a>
-                        <?php endif; ?>
-                        <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-default btn-sm">
-                            <i class="rex-icon fa-search"></i> Details
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Status-Übersicht mit Hinweisen -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-info-circle"></i> 
-                        <?= $addon->i18n('upkeep_dashboard_system_status') ?>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <div class="row">
-                        <!-- Wartungsmodus Hinweise -->
-                        <div class="col-md-6">
-                            <?php if ($frontendMaintenanceActive || $backendMaintenanceActive): ?>
-                            <div class="alert alert-warning">
-                                <i class="rex-icon fa-wrench"></i>
-                                <strong><?= $addon->i18n('upkeep_dashboard_maintenance_active') ?>:</strong><br>
-                                <?php if ($frontendMaintenanceActive): ?>
-                                • <?= $addon->i18n('upkeep_dashboard_frontend_blocked') ?><br>
-                                <?php endif; ?>
-                                <?php if ($backendMaintenanceActive): ?>
-                                • <?= $addon->i18n('upkeep_dashboard_backend_admin_only') ?><br>
-                                <?php endif; ?>
-                                <?php if ($allowedIpCount > 0): ?>
-                                • <?= $addon->i18n('upkeep_dashboard_allowed_ips', $allowedIpCount, $allowedIpCount > 1 ? 's' : '') ?>
-                                <?php endif; ?>
-                            </div>
-                            <?php else: ?>
-                            <div class="alert alert-success">
-                                <i class="rex-icon fa-check-circle"></i>
-                                <strong><?= $addon->i18n('upkeep_dashboard_system_normal') ?>:</strong><br>
-                                • <?= $addon->i18n('upkeep_dashboard_frontend_public') ?><br>
-                                • <?= $addon->i18n('upkeep_dashboard_backend_available') ?>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-
-                        <!-- Sicherheits-Hinweise -->
-                        <div class="col-md-6">
-                            <?php if ($ipsActive): ?>
-                            <div class="alert alert-info">
-                                <i class="rex-icon fa-shield"></i>
-                                <strong><?= $addon->i18n('upkeep_dashboard_security_active') ?>:</strong><br>
-                                • <?= $addon->i18n('upkeep_dashboard_ips_running') ?><br>
-                                <?php if ($monitorOnlyActive): ?>
-                                • <span class="label label-warning"><?= $addon->i18n('upkeep_dashboard_monitor_only') ?></span><br>
-                                <?php endif; ?>
-                                <?php if ($rateLimitActive): ?>
-                                • <?= $addon->i18n('upkeep_dashboard_rate_limiting') ?><br>
-                                <?php endif; ?>
-                                <?php if ($stats['blocked_ips'] > 0): ?>
-                                • <?= $addon->i18n('upkeep_dashboard_ips_blocked', $stats['blocked_ips'], $stats['blocked_ips'] > 1 ? 's' : '') ?>
-                                <?php endif; ?>
-                            </div>
-                            <?php else: ?>
-                            <div class="alert alert-danger">
-                                <i class="rex-icon fa-exclamation-triangle"></i>
-                                <strong><?= $addon->i18n('upkeep_dashboard_security_warning') ?>:</strong><br>
-                                • <?= $addon->i18n('upkeep_dashboard_ips_deactivated') ?><br>
-                                • <?= $addon->i18n('upkeep_dashboard_website_unprotected') ?><br>
-                                • <?= $addon->i18n('upkeep_dashboard_activation_recommended') ?>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <!-- Domain-Redirects Info -->
-                    <?php if ($domainMappingSystemActive && $activeRedirects > 0): ?>
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="alert alert-info">
-                                <i class="rex-icon fa-share"></i>
-                                <strong><?= $addon->i18n('upkeep_dashboard_domain_redirects') ?>:</strong>
-                                <?= $addon->i18n('upkeep_dashboard_active_redirects', $activeRedirects, $activeRedirects > 1 ? 'en' : '') ?> 
-                                - <a href="<?= rex_url::backendPage('upkeep/domains') ?>" class="alert-link"><?= $addon->i18n('upkeep_dashboard_manage') ?></a>
-                                | <a href="<?= rex_url::backendPage('upkeep/domain_mapping') ?>" class="alert-link"><?= $addon->i18n('upkeep_dashboard_url_redirects') ?></a>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sicherheits-Bedrohungstypen -->
-    <div class="row">
-        <!-- Bedrohungstypen-Statistik -->
-        <div class="col-md-8">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-shield"></i> 
-                        <?= $addon->i18n('upkeep_dashboard_security_threats_title') ?>
-                        <small class="pull-right text-muted"><?= $addon->i18n('upkeep_dashboard_types_count', count($threatsByType)) ?></small>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <?php 
-                    // Debug: Zeige Anzahl gefundener Bedrohungstypen
-                    if ($addon->getConfig('ips_debug_mode', false) && count($threatsByType) === 0): 
-                        echo '<div class="alert alert-info"><strong>' . $addon->i18n('upkeep_dashboard_debug_no_threats', $stats['threats_today']) . '</strong></div>';
-                    endif;
-                    ?>
-                    <?php if (!empty($threatsByType)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th><?= $addon->i18n('upkeep_dashboard_threat_type') ?></th>
-                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_severity') ?></th>
-                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_detected') ?></th>
-                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_blocked') ?></th>
-                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_last_incident') ?></th>
-                                        <th class="text-center"><?= $addon->i18n('upkeep_dashboard_actions') ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($threatsByType as $threat): ?>
-                                        <tr>
-                                            <td>
-                                                <strong><?= rex_escape($threat['threat_type']) ?></strong>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="label label-<?= $threat['severity'] === 'critical' ? 'danger' : ($threat['severity'] === 'high' ? 'warning' : ($threat['severity'] === 'medium' ? 'info' : 'default')) ?>">
-                                                    <?= rex_escape(ucfirst($threat['severity'])) ?>
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge badge-warning"><?= $threat['count'] ?></span>
-                                            </td>
-                                            <td class="text-center">
-                                                <?php if ($threat['blocked_count'] > 0): ?>
-                                                    <span class="badge badge-danger"><?= $threat['blocked_count'] ?></span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">0</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-center">
-                                                <small class="text-muted">
-                                                    <?= date('d.m H:i', strtotime($threat['last_occurrence'])) ?>
-                                                </small>
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="<?= rex_url::backendPage('upkeep/ips/threats', ['threat_type' => $threat['threat_type']]) ?>" 
-                                                   class="btn btn-xs btn-info" title="Details anzeigen">
-                                                    <i class="rex-icon fa-search"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="text-center" style="margin-top: 15px;">
-                            <a href="<?= rex_url::backendPage('upkeep/ips/threats') ?>" class="btn btn-default">
-                                <i class="rex-icon fa-list"></i> Detaillierte Bedrohungsliste
-                            </a>
-                        </div>
-                    <?php else: ?>
-                        <div class="text-center text-muted" style="padding: 40px;">
-                            <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
-                            <h4><?= $addon->i18n('upkeep_dashboard_no_security_events') ?></h4>
-                            <p><?= $addon->i18n('upkeep_dashboard_no_threats_7days') ?></p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <!-- Top Bedrohungen -->
-        <div class="col-md-4">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-list"></i> 
-                        <?= $addon->i18n('upkeep_dashboard_top_threats') ?>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <div class="threat-list">
-                        <?php if (!empty($stats['top_threats'])): ?>
-                            <?php foreach ($stats['top_threats'] as $threat): ?>
-                            <div class="threat-item">
-                                <div class="threat-name"><?= rex_escape($threat['type']) ?></div>
-                                <div class="threat-count">
-                                    <span class="badge"><?= $threat['count'] ?></span>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p class="text-muted">
-                                <i class="rex-icon fa-check-circle"></i> 
-                                <?= $addon->i18n('upkeep_dashboard_no_threats_week') ?>
-                            </p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bedrohungen nach Ländern -->
-    <div class="row dashboard-section">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-globe"></i> 
-                        <?= $addon->i18n('upkeep_dashboard_blocked_ips_countries') ?>
-                        <?php if (!empty($threatsByCountry)): ?>
-                            <small class="text-muted"><?= $addon->i18n('upkeep_dashboard_countries_count', count($threatsByCountry)) ?></small>
-                        <?php endif; ?>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <?php if (!empty($threatsByCountry)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover dashboard-table">
-                                <thead>
-                                    <tr>
-                                        <th><i class="rex-icon fa-flag"></i> <?= $addon->i18n('upkeep_dashboard_country') ?></th>
-                                        <th class="text-center"><i class="rex-icon fa-ban"></i> <?= $addon->i18n('upkeep_dashboard_blocks') ?></th>
-                                        <th class="text-center"><i class="rex-icon fa-globe"></i> <?= $addon->i18n('upkeep_dashboard_unique_ips') ?></th>
-                                        <th class="text-center"><i class="rex-icon fa-clock-o"></i> <?= $addon->i18n('upkeep_dashboard_last_block') ?></th>
-                                        <th class="text-center"><i class="rex-icon fa-cog"></i> <?= $addon->i18n('upkeep_dashboard_actions') ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach (array_slice($threatsByCountry, 0, 10) as $country): ?>
-                                        <tr>
-                                            <td>
-                                                <strong><?= rex_escape($country['name']) ?></strong>
-                                                <small class="text-muted">(<?= rex_escape($country['code']) ?>)</small>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge badge-warning"><?= $country['blocked_count'] ?></span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge badge-info"><?= $country['unique_ips'] ?></span>
-                                            </td>
-                                            <td class="text-center">
-                                                <?php if ($country['last_blocked']): ?>
-                                                    <small class="text-muted">
-                                                        <?= date('d.m H:i', strtotime($country['last_blocked'])) ?>
-                                                    </small>
-                                                <?php else: ?>
-                                                    <small class="text-muted">-</small>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['country' => $country['code']]) ?>" 
-                                                   class="btn btn-xs btn-info" title="<?= $addon->i18n('upkeep_dashboard_show_blocked') ?>">
-                                                    <i class="rex-icon fa-search"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php if (count($threatsByCountry) > 10): ?>
-                            <div class="text-center" style="margin-top: 15px;">
-                                <a href="<?= rex_url::backendPage('upkeep/ips/blocked', ['view' => 'countries']) ?>" class="btn btn-default">
-                                    <i class="rex-icon fa-globe"></i> <?= $addon->i18n('upkeep_dashboard_show_all_countries', count($threatsByCountry)) ?>
-                                </a>
-                            </div>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <div class="text-center text-muted" style="padding: 40px;">
-                            <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
-                            <h4><?= $addon->i18n('upkeep_dashboard_no_blocked_ips') ?></h4>
-                            <p><?= $addon->i18n('upkeep_dashboard_no_blocked_or_geo') ?></p>
-                            <?php if (class_exists('KLXM\Upkeep\GeoIP')): ?>
-                                <?php $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
-                                <?php if (!$geoStatus['available']): ?>
-                                    <a href="<?= rex_url::backendPage('upkeep/ips/settings', ['action' => 'update_geo']) ?>" class="btn btn-sm btn-primary">
-                                        <i class="rex-icon fa-download"></i> <?= $addon->i18n('upkeep_dashboard_install_geo') ?>
-                                    </a>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mail Security Quick Actions -->
-    <div class="row dashboard-section">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        <i class="rex-icon fa-envelope-o"></i> 
-                        <?= $addon->i18n('upkeep_mail_security_quick_actions') ?>
-                        <small class="text-muted"><?= $addon->i18n('upkeep_mail_security_quick_access') ?></small>
-                    </h3>
-                </div>
-                <div class="panel-body">
-                    <div class="row">
-                        <div class="col-md-3 col-sm-6">
-                            <a href="<?= rex_url::backendPage('upkeep/mail_security/dashboard') ?>" class="btn btn-block btn-primary">
-                                <i class="rex-icon fa-dashboard"></i>
-                                <?= $addon->i18n('upkeep_mail_security_dashboard') ?>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <a href="<?= rex_url::backendPage('upkeep/mail_security/badwords') ?>" class="btn btn-block btn-warning">
-                                <i class="rex-icon fa-exclamation-triangle"></i>
-                                <?= $addon->i18n('upkeep_mail_security_badwords') ?>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <a href="<?= rex_url::backendPage('upkeep/mail_security/blocklist') ?>" class="btn btn-block btn-danger">
-                                <i class="rex-icon fa-ban"></i>
-                                <?= $addon->i18n('upkeep_mail_security_blocklist') ?>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <a href="<?= rex_url::backendPage('upkeep/mail_security/settings') ?>" class="btn btn-block btn-default">
-                                <i class="rex-icon fa-cog"></i>
-                                <?= $addon->i18n('upkeep_mail_security_settings') ?>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Dashboard JavaScript wird über rex_view::addJsFile geladen -->
-<script>
-// Dashboard-spezifische Konfiguration
-if (typeof UpkeepDashboard !== 'undefined') {
-    // Weitere Konfiguration hier falls nötig
-    console.log('Upkeep Dashboard initialisiert');
+.version-status-warning {
+    animation: pulse-warning 3s infinite;
+    color: #856404 !important;
 }
-</script>
+
+.version-status-warning h4,
+.version-status-warning p {
+    color: #856404 !important;
+}
+
+@keyframes pulse-warning {
+    0%, 100% {
+        background-color: #fff3cd;
+    }
+    50% {
+        background-color: #ffeaa7;
+    }
+}
+
+.version-status-danger {
+    animation: pulse-danger 2s infinite;
+    color: #721c24 !important;
+}
+
+.version-status-danger h4,
+.version-status-danger p {
+    color: #721c24 !important;
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        background-color: #f8d7da;
+    }
+    50% {
+        background-color: #f5c6cb;
+    }
+}
+</style>';
+
+// REDAXO Version Check - IMMER anzeigen mit Animation
+$redaxoCheck = $advisor->checkRedaxoVersion();
+
+// Alert-Klasse und Icon basierend auf Status
+$alertClass = match($redaxoCheck['status']) {
+    'up_to_date' => 'alert-success version-status-success',
+    'critical' => 'alert-danger version-status-danger',
+    'outdated' => 'alert-warning version-status-warning',
+    default => 'alert-info'
+};
+
+$icon = match($redaxoCheck['status']) {
+    'up_to_date' => 'fa-check-circle version-icon-success',
+    'critical' => 'fa-exclamation-triangle',
+    'outdated' => 'fa-exclamation-circle',
+    default => 'fa-info-circle'
+};
+
+$dismissible = $redaxoCheck['status'] === 'up_to_date' ? '' : 'alert-dismissible';
+
+echo '<div class="alert ' . $alertClass . ' ' . $dismissible . '" role="alert">';
+if ($redaxoCheck['status'] !== 'up_to_date') {
+    echo '<button type="button" class="close" data-dismiss="alert" aria-label="Close">';
+    echo '<span aria-hidden="true">&times;</span>';
+    echo '</button>';
+}
+echo '<h4><i class="fa ' . $icon . '"></i> ' . $redaxoCheck['title'] . '</h4>';
+echo '<p>' . $redaxoCheck['message'] . '</p>';
+if (isset($redaxoCheck['details'])) {
+    $detailsText = '';
+    if (is_array($redaxoCheck['details'])) {
+        $allDetails = [];
+        if (!empty($redaxoCheck['details']['critical_issues'])) {
+            $allDetails = array_merge($allDetails, $redaxoCheck['details']['critical_issues']);
+        }
+        if (!empty($redaxoCheck['details']['warnings'])) {
+            $allDetails = array_merge($allDetails, $redaxoCheck['details']['warnings']);
+        }
+        $detailsText = implode(', ', $allDetails);
+    } else {
+        $detailsText = $redaxoCheck['details'];
+    }
+    if (!empty($detailsText)) {
+        echo '<p><strong>Details:</strong> ' . $detailsText . '</p>';
+    }
+}
+echo '</div>';
+
+// Wartungsempfehlung basierend auf Admin-Freigaben und System-Status
+$nextMaintenanceInfo = '';
+$adminReleases = [];
+$nextMaintenanceDate = null;
+
+// Sammle alle Admin-Freigaben mit Ablaufdaten
+$checkTypes = ['database', 'php_config', 'server_status', 'security_settings'];
+foreach ($checkTypes as $checkType) {
+    if ($advisor->isCheckReleased($checkType)) {
+        $releaseTimestamp = $addon->getConfig("admin_release_{$checkType}", 0);
+        $releaseDays = $addon->getConfig('admin_release_days', 30);
+        $expiryTimestamp = $releaseTimestamp + ($releaseDays * 24 * 60 * 60);
+        $adminReleases[$checkType] = $expiryTimestamp;
+    }
+}
+
+// Finde das nächste Ablaufdatum
+if (!empty($adminReleases)) {
+    $nextMaintenanceDate = min($adminReleases);
+    $daysUntilMaintenance = ceil(($nextMaintenanceDate - time()) / (24 * 60 * 60));
+    
+    if ($daysUntilMaintenance > 0) {
+        $nextMaintenanceInfo = 'Nächste Systemprüfung empfohlen: <strong>' . date('d.m.Y', $nextMaintenanceDate) . '</strong> (in ' . $daysUntilMaintenance . ' Tagen)';
+    } else {
+        $nextMaintenanceInfo = 'Systemprüfung <strong>überfällig</strong> - Bitte kontaktieren Sie Ihren technischen Maintainer';
+    }
+} else {
+    // Keine Admin-Freigaben aktiv - Standard-Empfehlung
+    $lastMaintenanceCheck = $addon->getConfig('last_maintenance_info', time());
+    $daysSinceLastInfo = floor((time() - $lastMaintenanceCheck) / (24 * 60 * 60));
+    
+    if ($daysSinceLastInfo >= 30) {
+        $nextMaintenanceInfo = 'Regelmäßige Systemprüfung empfohlen - Kontaktieren Sie Ihren technischen Maintainer';
+        // Aktualisiere Timestamp damit Info nicht täglich erscheint
+        $addon->setConfig('last_maintenance_info', time());
+    }
+}
+
+// Zeige Wartungsempfehlung an
+if (!empty($nextMaintenanceInfo)) {
+    echo '<div class="alert alert-info" role="alert">';
+    echo '<h4><i class="fa fa-calendar"></i> Wartungsempfehlung</h4>';
+    echo '<p>' . $nextMaintenanceInfo . '</p>';
+
+    echo '</div>';
+}
+
+// Debug Admin-Freigaben (nur im Debug-Modus)
+if (rex::isDebugMode()) {
+    $debugInfo = '';
+    $debugInfo .= 'Database Released: ' . ($advisor->isCheckReleased('database') ? 'JA' : 'NEIN') . '<br>';
+    $debugInfo .= 'PHP Config Released: ' . ($advisor->isCheckReleased('php_config') ? 'JA' : 'NEIN') . '<br>';
+    $debugInfo .= 'Server Status Released: ' . ($advisor->isCheckReleased('server_status') ? 'JA' : 'NEIN') . '<br>';
+    $debugInfo .= 'Security Settings Released: ' . ($advisor->isCheckReleased('security_settings') ? 'JA' : 'NEIN') . '<br>';
+    $debugInfo .= 'Current Time: ' . date('Y-m-d H:i:s') . '<br>';
+
+    echo '<div class="alert alert-info"><strong>Debug Admin-Freigaben:</strong><br>' . $debugInfo . '</div>';
+}
+
+// System Status Dashboard
+$content = '<div class="row">';
+
+// System Health Card
+$systemHealth = $advisor->checkSystemHealth();
+$healthClass = match($systemHealth['status']) {
+    'healthy' => 'success',
+    'warning' => 'warning', 
+    'critical' => 'danger',
+    default => 'default'
+};
+
+$healthIcon = match($systemHealth['status']) {
+    'healthy' => 'fa-heart',
+    'warning' => 'fa-exclamation-triangle',
+    'critical' => 'fa-times-circle',
+    default => 'fa-question-circle'
+};
+
+$content .= '<div class="col-lg-3 col-md-6">';
+$content .= '<div class="panel panel-' . $healthClass . '">';
+$content .= '<div class="panel-heading">';
+$content .= '<div class="row">';
+$content .= '<div class="col-xs-3"><i class="fa ' . $healthIcon . ' fa-5x"></i></div>';
+$content .= '<div class="col-xs-9 text-right">';
+$content .= '<div class="huge">' . $systemHealth['score'] . '%</div>';
+$content .= '<div>System Health</div>';
+$content .= '</div></div></div>';
+$content .= '<div class="panel-footer"><span class="pull-left">' . $systemHealth['message'] . '</span>';
+$content .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
+$content .= '</div></div>';
+
+// Database Status Card - mit Admin-Freigabe-Prüfung
+$databaseStatus = $advisor->checkDatabaseStatus();
+$dbReleased = $advisor->isCheckReleased('database');
+
+// Status anpassen wenn Admin-Freigabe aktiv ist
+if ($dbReleased && $databaseStatus['status'] !== 'healthy') {
+    $dbClass = 'info';
+    $dbIcon = 'fa-database';
+    $dbDisplayStatus = 'GEPRÜFT ✓';
+    $dbMessage = 'Geprüft und freigegeben';
+} else {
+    $dbClass = match($databaseStatus['status']) {
+        'healthy' => 'success',
+        'warning' => 'warning',
+        'critical' => 'danger',
+        default => 'danger'
+    };
+    $dbIcon = match($databaseStatus['status']) {
+        'healthy' => 'fa-database',
+        'warning' => 'fa-exclamation-circle',
+        'critical' => 'fa-exclamation-triangle',
+        default => 'fa-times-circle'
+    };
+    
+    $dbDisplayStatus = match($databaseStatus['status']) {
+        'healthy' => 'OK',
+        'warning' => 'UPDATE',
+        'critical' => 'KRITISCH',
+        'error' => 'FEHLER',
+        default => 'PRÜFEN'
+    };
+    $dbMessage = $databaseStatus['message'];
+}
+
+$content .= '<div class="col-lg-3 col-md-6">';
+$content .= '<div class="panel panel-' . $dbClass . '">';
+$content .= '<div class="panel-heading">';
+$content .= '<div class="row">';
+$content .= '<div class="col-xs-3"><i class="fa ' . $dbIcon . ' fa-5x"></i></div>';
+$content .= '<div class="col-xs-9 text-right">';
+$content .= '<div class="huge">' . $dbDisplayStatus . '</div>';
+$content .= '<div>Datenbank</div>';
+$content .= '</div></div></div>';
+$content .= '<div class="panel-footer"><span class="pull-left">' . $dbMessage . '</span>';
+$content .= '<span class="pull-right"><i class="fa fa-database"></i></span><div class="clearfix"></div></div>';
+$content .= '</div></div>';
+
+// Dateisicherheit Card - vereinfacht
+$filePermissions = $advisor->checkFilePermissions();
+$permClass = $filePermissions['status'] === 'secure' ? 'success' : 'warning';
+$permIcon = $filePermissions['status'] === 'secure' ? 'fa-lock' : 'fa-unlock';
+
+$permMessage = $filePermissions['status'] === 'secure' ? 'Dateisicherheit konfiguriert' : 'Dateisicherheit überprüfen';
+
+$content .= '<div class="col-lg-3 col-md-6">';
+$content .= '<div class="panel panel-' . $permClass . '">';
+$content .= '<div class="panel-heading">';
+$content .= '<div class="row">';
+$content .= '<div class="col-xs-3"><i class="fa ' . $permIcon . ' fa-5x"></i></div>';
+$content .= '<div class="col-xs-9 text-right">';
+$content .= '<div class="huge">' . ($filePermissions['status'] === 'secure' ? 'OK' : 'PRÜFEN') . '</div>';
+$content .= '<div>Dateisicherheit</div>';
+$content .= '</div></div></div>';
+$content .= '<div class="panel-footer"><span class="pull-left">' . $permMessage . '</span>';
+$content .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
+$content .= '</div></div>';
+
+// Server Konfiguration Card - mit Admin-Freigabe-Prüfung
+$phpConfig = $advisor->checkPhpConfiguration();
+$phpReleased = $advisor->isCheckReleased('php_config');
+$serverStatusReleased = $advisor->isCheckReleased('server_status');
+
+// Detailliertere PHP-Statusprüfung für Dashboard
+if ($phpConfig['status'] === 'optimal') {
+    // Alles OK - Grün
+    $phpClass = 'success';
+    $serverMessage = 'Server Konfiguration optimal';
+} elseif ($phpReleased || $serverStatusReleased) {
+    // Admin hat Freigabe erteilt - Grün
+    $phpClass = 'success';
+    $serverMessage = 'Geprüft und freigegeben';
+} else {
+    // Probleme vorhanden - Rot oder Orange je nach Schwere
+    $serverMessage = match($phpConfig['status']) {
+        'warning' => count($phpConfig['issues'] ?? []) > 0 ? 'Server Version veraltet - Update erforderlich' : 'Server Einstellungen überprüfen',
+        'error' => 'Server Version kritisch veraltet - Sofortiges Update erforderlich',
+        default => 'Server Status überprüfen'
+    };
+    
+    // Bei kritischen PHP-Problemen Rot, sonst Orange
+    $phpClass = 'danger'; // Standard: Rot für alle Probleme
+    if ($phpConfig['status'] === 'warning' && count($phpConfig['issues'] ?? []) === 0) {
+        $phpClass = 'warning'; // Nur bei harmlosen Warnings Orange
+    }
+}
+
+$content .= '<div class="col-lg-3 col-md-6">';
+$content .= '<div class="panel panel-' . $phpClass . '">';
+$content .= '<div class="panel-heading">';
+$content .= '<div class="row">';
+$content .= '<div class="col-xs-3"><i class="fa fa-server fa-5x"></i></div>';
+$content .= '<div class="col-xs-9 text-right">';
+$content .= '<div class="huge">' . ($phpConfig['status'] === 'optimal' ? 'OK' : ($phpReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
+$content .= '<div>Server Setup</div>';
+$content .= '</div></div></div>';
+$content .= '<div class="panel-footer"><span class="pull-left">' . $serverMessage . '</span>';
+$content .= '<span class="pull-right"><i class="fa fa-server"></i></span><div class="clearfix"></div></div>';
+$content .= '</div></div>';
+
+$content .= '</div>'; // Ende row
+
+$fragment = new rex_fragment();
+$fragment->setVar('title', '<i class="fa fa-tachometer"></i> System Status <small>Core System Checks</small>', false);
+$fragment->setVar('body', $content, false);
+echo $fragment->parse('core/page/section.php');
+
+// Security Checks Section
+$securityContent = '<div class="row">';
+
+// Mail Security Card - ohne Links
+$mailSecurityStatus = $advisor->getMailSecurityStatus();
+$mailClass = $mailSecurityStatus['active'] ? 'success' : 'info';
+$mailIcon = $mailSecurityStatus['active'] ? 'fa-envelope-o' : 'fa-envelope';
+
+$mailMessage = $mailSecurityStatus['active'] ? 'E-Mail Schutz aktiv' : 'E-Mail Schutz konfigurieren';
+
+$securityContent .= '<div class="col-lg-3 col-md-6">';
+$securityContent .= '<div class="panel panel-' . $mailClass . '">';
+$securityContent .= '<div class="panel-heading">';
+$securityContent .= '<div class="row">';
+$securityContent .= '<div class="col-xs-3"><i class="fa ' . $mailIcon . ' fa-5x"></i></div>';
+$securityContent .= '<div class="col-xs-9 text-right">';
+$securityContent .= '<div class="huge">' . ($mailSecurityStatus['active'] ? 'AKTIV' : 'SETUP') . '</div>';
+$securityContent .= '<div>E-Mail Schutz</div>';
+$securityContent .= '</div></div></div>';
+$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $mailMessage . '</span>';
+$securityContent .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
+$securityContent .= '</div></div>';
+
+// E-Mail Konfiguration Card - Vereinfacht
+$phpmailerStatus = $advisor->checkPhpMailerConfig();
+$phpmailerClass = match($phpmailerStatus['status']) {
+    'configured' => 'success',
+    'partial' => 'warning',
+    'missing' => 'warning',
+    'warning' => 'warning',
+    default => 'default'
+};
+
+// Benutzerfreundliche Meldung ohne technische Details
+$emailMessage = match($phpmailerStatus['status']) {
+    'configured' => 'E-Mail System konfiguriert',
+    'partial' => 'E-Mail Einstellungen überprüfen',
+    'missing' => 'E-Mail Einstellungen überprüfen',
+    'warning' => 'E-Mail Einstellungen überprüfen',
+    default => 'E-Mail Status unbekannt'
+};
+
+$securityContent .= '<div class="col-lg-3 col-md-6">';
+$securityContent .= '<div class="panel panel-' . $phpmailerClass . '">';
+$securityContent .= '<div class="panel-heading">';
+$securityContent .= '<div class="row">';
+$securityContent .= '<div class="col-xs-3"><i class="fa fa-envelope-square fa-5x"></i></div>';
+$securityContent .= '<div class="col-xs-9 text-right">';
+$securityContent .= '<div class="huge">' . ($phpmailerStatus['status'] === 'configured' ? 'OK' : 'PRÜFEN') . '</div>';
+$securityContent .= '<div>E-Mail System</div>';
+$securityContent .= '</div></div></div>';
+$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $emailMessage . '</span>';
+$securityContent .= '<span class="pull-right"><i class="fa fa-cog"></i></span><div class="clearfix"></div></div>';
+$securityContent .= '</div></div>';
+
+// Sicherheits-Konfiguration Card - mit Admin-Freigabe-Prüfung
+$securityHeaders = $advisor->checkSecurityHeaders();
+$securityReleased = $advisor->isCheckReleased('security_settings');
+
+// Status basierend auf Sicherheitsstatus und Admin-Freigabe
+if ($securityHeaders['status'] === 'secure') {
+    // Alles OK - Grün
+    $headersClass = 'success';
+    $headersIcon = 'fa-shield';
+    $securityMessage = 'Sicherheitseinstellungen aktiv';
+} elseif ($securityReleased) {
+    // Admin hat Freigabe erteilt - Grün
+    $headersClass = 'success';
+    $headersIcon = 'fa-shield';
+    $securityMessage = 'Geprüft und freigegeben';
+} else {
+    // Probleme vorhanden - Orange/Rot
+    $headersClass = 'warning';
+    $headersIcon = 'fa-exclamation-triangle';
+    $securityMessage = 'Sicherheitseinstellungen überprüfen';
+}
+
+$securityContent .= '<div class="col-lg-3 col-md-6">';
+$securityContent .= '<div class="panel panel-' . $headersClass . '">';
+$securityContent .= '<div class="panel-heading">';
+$securityContent .= '<div class="row">';
+$securityContent .= '<div class="col-xs-3"><i class="fa ' . $headersIcon . ' fa-5x"></i></div>';
+$securityContent .= '<div class="col-xs-9 text-right">';
+$securityContent .= '<div class="huge">' . ($securityHeaders['status'] === 'secure' ? 'OK' : ($securityReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
+$securityContent .= '<div>Sicherheit</div>';
+$securityContent .= '</div></div></div>';
+$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $securityMessage . '</span>';
+$securityContent .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
+$securityContent .= '</div></div>';
+
+// Addon Security Card
+$addonSecurity = $advisor->checkAddonSecurity();
+$addonClass = $addonSecurity['status'] === 'secure' ? 'success' : 'info';
+
+$securityContent .= '<div class="col-lg-3 col-md-6">';
+$securityContent .= '<div class="panel panel-' . $addonClass . '">';
+$securityContent .= '<div class="panel-heading">';
+$securityContent .= '<div class="row">';
+$securityContent .= '<div class="col-xs-3"><i class="fa fa-puzzle-piece fa-5x"></i></div>';
+$securityContent .= '<div class="col-xs-9 text-right">';
+$securityContent .= '<div class="huge">' . count($addonSecurity['addons']) . '</div>';
+$securityContent .= '<div>Addons</div>';
+$securityContent .= '</div></div></div>';
+$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $addonSecurity['message'] . '</span>';
+$securityContent .= '<span class="pull-right"><i class="fa fa-puzzle-piece"></i></span><div class="clearfix"></div></div>';
+$securityContent .= '</div></div>';
+
+$securityContent .= '</div>'; // Ende row
+
+$fragment = new rex_fragment();
+$fragment->setVar('title', '<i class="fa fa-shield"></i> Security Checks <small>Security Assessment & Monitoring</small>', false);
+$fragment->setVar('body', $securityContent, false);
+echo $fragment->parse('core/page/section.php');
+
+
+
+// System Status Panel - Vereinfacht ohne technische Details
+$actionsContent = '<div class="row">';
+$actionsContent .= '<div class="col-lg-12">';
+$actionsContent .= '<div class="panel panel-default">';
+$actionsContent .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-info-circle"></i> System Status</h3></div>';
+$actionsContent .= '<div class="panel-body">';
+
+// Einfache Statistiken ohne technische Details
+$actionsContent .= '<div class="row">';
+$actionsContent .= '<div class="col-md-3 text-center">';
+$actionsContent .= '<h4>' . $ipsStats['blocked_ips'] . '</h4>';
+$actionsContent .= '<p class="text-muted">Blockierte Zugriffe</p>';
+$actionsContent .= '</div>';
+$actionsContent .= '<div class="col-md-3 text-center">';
+$actionsContent .= '<h4>' . $ipsStats['threats_today'] . '</h4>';
+$actionsContent .= '<p class="text-muted">Bedrohungen heute</p>';
+$actionsContent .= '</div>';
+$actionsContent .= '<div class="col-md-3 text-center">';
+$actionsContent .= '<h4>' . ($mailStats['threats_24h'] ?? 0) . '</h4>';
+$actionsContent .= '<p class="text-muted">E-Mail Bedrohungen</p>';
+$actionsContent .= '</div>';
+$actionsContent .= '<div class="col-md-3 text-center">';
+$actionsContent .= '<h4>' . ($ipsActive ? 'Aktiv' : 'Inaktiv') . '</h4>';
+$actionsContent .= '<p class="text-muted">Sicherheitssystem</p>';
+$actionsContent .= '</div>';
+$actionsContent .= '</div>';
+
+// Hinweis bei Problemen - berücksichtige Admin-Freigaben
+$serverStatusReleased = $advisor->isCheckReleased('server_status');
+$securitySettingsReleased = $advisor->isCheckReleased('security_settings');
+$hasUnreleasedIssues = ($systemHealth['status'] !== 'healthy') || 
+                       (!$ipsActive) || 
+                       ($phpConfig['status'] !== 'optimal' && !$phpReleased && !$serverStatusReleased) ||
+                       ($databaseStatus['status'] !== 'healthy' && !$dbReleased) ||
+                       ($securityHeaders['status'] !== 'secure' && !$securitySettingsReleased);
+                       
+if ($hasUnreleasedIssues) {
+    $actionsContent .= '<hr>';
+    $actionsContent .= '<div class="alert alert-info">';
+    $actionsContent .= '<i class="fa fa-info-circle"></i> ';
+    $actionsContent .= '<strong>Wartung erforderlich:</strong> ';
+    $actionsContent .= 'Bitte informieren Sie Ihren technischen Maintainer oder die verantwortliche Agentur über erforderliche Systemwartungen.';
+    $actionsContent .= '</div>';
+}
+
+$actionsContent .= '</div>';
+$actionsContent .= '</div>';
+$actionsContent .= '</div>';
+$actionsContent .= '</div>'; // Ende row
+
+$fragment = new rex_fragment();
+$fragment->setVar('title', '<i class="fa fa-tachometer"></i> System Übersicht', false);
+$fragment->setVar('body', $actionsContent, false);
+echo $fragment->parse('core/page/section.php');

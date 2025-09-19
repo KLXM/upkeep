@@ -13,14 +13,23 @@ page:
     block: system
     icon: 'rex-icon fa fa-wrench'
     subpages:
+        dashboard_admin:
+            title: 'Upkeep Dashboard'
+            icon: rex-icon fa fa-dashboard
+            perm: admin
         dashboard:
             title: 'Upkeep Dashboard'
             icon: rex-icon fa fa-dashboard
             perm: upkeep[]
+        admin_settings:
+            title: 'Admin Einstellungen'
+            icon: rex-icon fa fa-cog
+            perm: admin
+            hidden: true
         ips:
             title: 'translate:upkeep_ips_title'
             icon: rex-icon fa fa-shield
-            perm: upkeep[security]
+            perm: upkeep[ips]
             subpages:
                 threats: {title: 'translate:upkeep_ips_threats', icon: rex-icon fa fa-exclamation-triangle}
                 blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
@@ -32,14 +41,14 @@ page:
         security_advisor:
             title: 'translate:upkeep_security_advisor_title'
             icon: rex-icon fa fa-shield
-            perm: upkeep[security]
+            perm: upkeep[advisor]
             subpages:
                 reports: {title: 'translate:upkeep_security_reports', icon: rex-icon fa fa-list}
                 help: {title: 'translate:upkeep_security_advisor_help_title', subPath: SECURITY_ADVISOR.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
         mail_security:
             title: 'Mail Security'
             icon: rex-icon fa fa-envelope-o
-            perm: upkeep[security]
+            perm: upkeep[mail_security]
             subpages:
                 dashboard: {title: 'Dashboard', icon: rex-icon fa fa-dashboard}
                 threats: {title: 'Threat Log', icon: rex-icon fa fa-exclamation-triangle}
@@ -51,7 +60,7 @@ page:
         reporting:
             title: 'translate:upkeep_reporting_title'
             icon: rex-icon fa fa-bar-chart
-            perm: upkeep[security]
+            perm: upkeep[reporting]
             subpages:
                 overview: {title: 'translate:upkeep_reporting_overview', icon: rex-icon fa fa-dashboard}
                 system_health: {title: 'translate:upkeep_system_health_title', icon: rex-icon fa fa-heartbeat}
@@ -59,11 +68,11 @@ page:
         maintenance:
             title: 'translate:upkeep_maintenance_title'
             icon: rex-icon fa fa-wrench
-            perm: upkeep[]
+            perm: upkeep[maintenance]
             subpages:
-                frontend: {title: 'translate:upkeep_frontend_title', icon: rex-icon fa fa-globe, perm: upkeep[frontend]}
+                frontend: {title: 'translate:upkeep_frontend_title', icon: rex-icon fa fa-globe, perm: upkeep[maintenance]}
                 backend: {title: 'translate:upkeep_backend_title', icon: rex-icon fa fa-users, perm: admin[]}
-                domains: {title: 'translate:upkeep_domains_title', icon: rex-icon fa fa-sitemap, perm: upkeep[domains]}
+                domains: {title: 'translate:upkeep_domains_title', icon: rex-icon fa fa-sitemap, perm: upkeep[maintenance_domains]}
                 help: {title: 'translate:upkeep_maintenance_help_title', subPath: MAINTENANCE.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
         domain_mapping:
             title: 'translate:upkeep_domain_mapping_title'
@@ -114,3 +123,5 @@ default_config:
     http_status_code: 503
     retry_after: 3600
     all_domains_locked: false
+    # Admin-Wartungsfreigaben
+    admin_release_days: 30
