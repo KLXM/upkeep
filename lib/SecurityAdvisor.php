@@ -371,7 +371,7 @@ class SecurityAdvisor
             }
         }
 
-        // 2. PHP-Grundeinstellungen
+        // 2. PHP-Grundeinstellungen - korrekte Boolean-Prüfung
         $settings = [
             'display_errors' => ['Off', 'Fehlermeldungen werden angezeigt (Informationsleckage)'],
             'expose_php' => ['Off', 'PHP-Version wird preisgegeben (Information Disclosure)'],
@@ -382,7 +382,25 @@ class SecurityAdvisor
 
         foreach ($settings as $setting => $config) {
             $value = ini_get($setting);
-            if ($value !== $config[0] && $value !== '' && $value !== false) {
+            
+            // Korrekte Boolean-Prüfung für PHP ini-Werte (alle Schreibweisen)
+            $isActive = false;
+            
+            if (is_string($value)) {
+                // String-Werte normalisieren und prüfen
+                $normalizedValue = strtolower(trim($value));
+                // Aktiviert: "1", "on", "true", "yes", "enabled"
+                $isActive = in_array($normalizedValue, ['1', 'on', 'true', 'yes', 'enabled']);
+            } elseif (is_numeric($value)) {
+                // Numerische Werte: 1 = aktiviert, 0 = deaktiviert
+                $isActive = (int) $value === 1;
+            } else {
+                // Boolean/andere Werte: true = aktiviert
+                $isActive = (bool) $value;
+            }
+            
+            // Nur als Problem melden wenn es aktiviert ist (aber deaktiviert sein sollte)
+            if ($isActive) {
                 $issues[] = $config[1];
                 $score -= 1;
             }
@@ -452,6 +470,11 @@ class SecurityAdvisor
                 'open_basedir' => $openBasedir ?: 'nicht gesetzt',
                 'error_reporting' => $errorReporting,
                 'log_errors' => $logErrors ? 'On' : 'Off',
+                // Debug: Aktuelle ini-Werte anzeigen
+                'display_errors' => ini_get('display_errors') . ' (raw: ' . var_export(ini_get('display_errors'), true) . ')',
+                'expose_php' => ini_get('expose_php') . ' (raw: ' . var_export(ini_get('expose_php'), true) . ')',
+                'allow_url_fopen' => ini_get('allow_url_fopen') . ' (raw: ' . var_export(ini_get('allow_url_fopen'), true) . ')',
+                'allow_url_include' => ini_get('allow_url_include') . ' (raw: ' . var_export(ini_get('allow_url_include'), true) . ')',
                 'critical_issues' => $issues,
                 'warnings' => $warnings
             ],
