@@ -516,22 +516,27 @@ $actionsContent .= '<p class="text-muted">Sicherheitssystem</p>';
 $actionsContent .= '</div>';
 $actionsContent .= '</div>';
 
-// Hinweis bei Problemen - berücksichtige Admin-Freigaben
-$serverStatusReleased = $advisor->isCheckReleased('server_status');
-$securitySettingsReleased = $advisor->isCheckReleased('security_settings');
-$hasUnreleasedIssues = ($systemHealth['status'] !== 'healthy') || 
-                       (!$ipsActive) || 
-                       ($phpConfig['status'] !== 'optimal' && !$phpReleased && !$serverStatusReleased) ||
-                       ($databaseStatus['status'] !== 'healthy' && !$dbReleased) ||
-                       ($securityHeaders['status'] !== 'secure' && !$securitySettingsReleased);
-                       
-if ($hasUnreleasedIssues) {
-    $actionsContent .= '<hr>';
-    $actionsContent .= '<div class="alert alert-info">';
-    $actionsContent .= '<i class="fa fa-info-circle"></i> ';
-    $actionsContent .= '<strong>' . $addon->i18n('upkeep_dashboard_maintenance_required') . ':</strong> ';
-    $actionsContent .= $addon->i18n('upkeep_dashboard_contact_technical_maintainer');
-    $actionsContent .= '</div>';
+// Wartungsstatus separat prüfen
+$maintenanceCheck = $advisor->runAllChecks();
+$maintenanceStatus = $maintenanceCheck['checks']['maintenance_status'] ?? null;
+
+// Zeige Wartungsnachricht IMMER an, wenn Wartung erforderlich ist
+if ($maintenanceStatus && $maintenanceStatus['status'] === 'error') {
+    echo '<div class="alert alert-danger" role="alert">';
+    echo '<h4><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_dashboard_maintenance_required') . '</h4>';
+    
+    // Zeige alle Wartungsnachrichten
+    $maintenanceDetails = $maintenanceStatus['details'];
+    if (!empty($maintenanceDetails['maintenance_message'])) {
+        echo '<p><strong>' . $addon->i18n('upkeep_maintenance_message') . ':</strong> ' . $maintenanceDetails['maintenance_message'] . '</p>';
+    }
+    
+    if (!empty($maintenanceDetails['maintenance_contact'])) {
+        echo '<p><strong>' . $addon->i18n('upkeep_dashboard_contact_technical_maintainer', $maintenanceDetails['maintenance_contact']) . '</strong></p>';
+    }
+    
+    echo '<p>' . $addon->i18n('upkeep_maintenance_system_unavailable') . '</p>';
+    echo '</div>';
 }
 
 $actionsContent .= '</div>';

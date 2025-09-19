@@ -83,6 +83,7 @@ class SecurityAdvisor
         $this->checkDatabaseSecurity();
         $this->checkEmailSecurity();
         $this->checkRedaxoVersion();
+        $this->checkMaintenanceStatus();
         $this->checkContentSecurityPolicy();
         $this->checkPasswordPolicies();
         $this->checkSessionSecurity();
@@ -813,6 +814,53 @@ class SecurityAdvisor
     }
 
     /**
+     * Prüft den Wartungsstatus des Systems
+     */
+    private function checkMaintenanceStatus(): void
+    {
+        $maintenanceRequired = $this->addon->getConfig('maintenance_required', false);
+        $maintenanceMessage = $this->addon->getConfig('maintenance_message', '');
+        $maintenanceContact = $this->addon->getConfig('maintenance_contact', '');
+
+        $issues = [];
+        $warnings = [];
+        $score = 10;
+        $status = 'success';
+
+        if ($maintenanceRequired) {
+            $issues[] = $this->addon->i18n('upkeep_dashboard_maintenance_required');
+            if (!empty($maintenanceMessage)) {
+                $issues[] = $maintenanceMessage;
+            }
+            if (!empty($maintenanceContact)) {
+                $issues[] = $this->addon->i18n('upkeep_dashboard_contact_technical_maintainer', $maintenanceContact);
+            }
+            $score = 0;
+            $status = 'error';
+        }
+
+        $allIssues = array_merge($issues, $warnings);
+        if (empty($allIssues)) {
+            $allIssues[] = $this->addon->i18n('upkeep_maintenance_not_required');
+        }
+
+        $this->results['checks']['maintenance_status'] = [
+            'name' => $this->addon->i18n('upkeep_check_maintenance_status'),
+            'status' => $status,
+            'severity' => 'high',
+            'score' => $score,
+            'details' => [
+                'maintenance_required' => $maintenanceRequired,
+                'maintenance_message' => $maintenanceMessage,
+                'maintenance_contact' => $maintenanceContact,
+                'critical_issues' => $issues,
+                'warnings' => $warnings
+            ],
+            'recommendations' => $allIssues,
+            'description' => $this->addon->i18n('upkeep_maintenance_status_description')
+        ];
+    }
+    /**
      * Prüft ob die REDAXO-Version aktuell ist
      */
     public function checkRedaxoVersion(): array
@@ -822,12 +870,12 @@ class SecurityAdvisor
         $recommendations = [];
         $score = 10;
         $status = 'success';
-        
+
         $currentVersion = rex::getVersion();
         $latestVersion = null;
         $updateAvailable = false;
         $isUnstable = false;
-        
+
         try {
             // Prüfe ob Installer-AddOn verfügbar ist
             if (!rex_addon::get('install')->isAvailable()) {
@@ -839,7 +887,7 @@ class SecurityAdvisor
                 // Versuche aktuelle REDAXO-Version von redaxo.org zu holen
                 try {
                     $versions = \rex_api_install_core_update::getVersions();
-                    
+
                     if (!empty($versions)) {
                         // Neueste stabile Version finden
                         $latestStable = null;
@@ -850,7 +898,7 @@ class SecurityAdvisor
                                 }
                             }
                         }
-                        
+
                         if ($latestStable) {
                             $latestVersion = $latestStable;
                             $updateAvailable = \rex_version::compare($latestVersion, $currentVersion, '>');
@@ -863,10 +911,10 @@ class SecurityAdvisor
                     $status = 'warning';
                 }
             }
-            
+
             // Prüfe ob aktuelle Version instabil ist
             $isUnstable = \rex_version::isUnstable($currentVersion);
-            
+
             if ($isUnstable) {
                 $warnings[] = $this->addon->i18n('upkeep_development_version', $currentVersion);
                 $warnings[] = $this->addon->i18n('upkeep_development_not_production');
@@ -874,11 +922,11 @@ class SecurityAdvisor
                 $score = 6;
                 $status = 'warning';
             }
-            
+
             if ($updateAvailable && $latestVersion) {
                 $versionDiff = $this->getVersionAge($currentVersion, $latestVersion);
                 $subversionDistance = $this->getSubversionDistance($currentVersion, $latestVersion);
-                
+
                 if ($versionDiff['major'] > 0) {
                     // Major Update verfügbar - kritisch
                     $issues[] = $this->addon->i18n('upkeep_critical_update', $currentVersion, $latestVersion);
@@ -910,13 +958,13 @@ class SecurityAdvisor
             } elseif ($latestVersion && !$updateAvailable) {
                 $recommendations[] = $this->addon->i18n('upkeep_version_current', $currentVersion);
             }
-            
+
         } catch (\Exception $e) {
             $warnings[] = $this->addon->i18n('upkeep_version_check_error', $e->getMessage());
             $score = 5;
             $status = 'warning';
         }
-        
+
         $versionInfo = [
             'current_version' => $currentVersion,
             'latest_version' => $latestVersion,
@@ -924,7 +972,7 @@ class SecurityAdvisor
             'is_unstable' => $isUnstable,
             'installer_available' => rex_addon::get('install')->isAvailable()
         ];
-        
+
         $allIssues = array_merge($issues, $warnings, $recommendations);
         if (empty($allIssues)) {
             $allIssues[] = $this->addon->i18n('upkeep_redaxo_version_current_final', $currentVersion);
@@ -938,12 +986,12 @@ class SecurityAdvisor
         } else {
             $dashboardStatus = 'up_to_date';
         }
-        
-        $dashboardTitle = $dashboardStatus === 'critical' ? 'REDAXO Update kritisch' : 
+
+        $dashboardTitle = $dashboardStatus === 'critical' ? 'REDAXO Update kritisch' :
                          ($dashboardStatus === 'outdated' ? 'REDAXO Update verfügbar' : 'REDAXO aktuell');
-        
+
         $dashboardMessage = !empty($issues) ? $issues[0] : (!empty($warnings) ? $warnings[0] : $this->addon->i18n('upkeep_redaxo_version_current'));
-        
+
         // Speichere auch im internen Format
         $this->results['checks']['redaxo_version'] = [
             'name' => $this->addon->i18n('upkeep_check_redaxo_version'),
@@ -959,7 +1007,7 @@ class SecurityAdvisor
             'recommendations' => $this->getRedaxoVersionRecommendations($updateAvailable, $isUnstable, $latestVersion),
             'description' => $this->addon->i18n('upkeep_redaxo_version_description')
         ];
-        
+
         // Dashboard-Format zurückgeben
         return [
             'status' => $dashboardStatus,

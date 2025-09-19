@@ -2,6 +2,10 @@
 
 $addon = rex_addon::get('upkeep');
 
+// Variablen initialisieren
+$error = '';
+$success = '';
+
 // Cleanup-Aktionen
 if (rex_post('cleanup-action', 'string')) {
     $action = rex_post('cleanup-action', 'string');

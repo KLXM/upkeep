@@ -4,7 +4,7 @@ use KLXM\Upkeep\MailSecurityFilter;
 
 $error = '';
 $success = '';
-
+$addon = rex_addon::get('upkeep');
 // Threat-Details anzeigen
 $threatId = rex_request('threat_id', 'int', 0);
 $showDetails = $threatId > 0;
