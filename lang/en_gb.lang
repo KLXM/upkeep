@@ -497,6 +497,26 @@ upkeep_ips_cronjob_retention_label = Threat log retention (days)
 upkeep_ips_cronjob_success = IPS data cleanup successfully performed
 upkeep_ips_cronjob_error = Error during IPS data cleanup
 
+# Mail Security
+upkeep_mail_security = Mail Security
+upkeep_mail_security_dashboard = Mail Security Dashboard
+upkeep_mail_security_badwords = Badwords
+upkeep_mail_security_blocklist = Blocklist
+upkeep_mail_security_blocklist_entries = Blocklist Entries
+upkeep_mail_security_blacklist = IP/Domain Blacklist
+upkeep_mail_security_settings = Mail Security Settings
+upkeep_mail_security_threats = Threat Log
+upkeep_mail_security_cleanup = Cleanup
+upkeep_mail_security_quick_actions = Mail Security - Quick Actions
+upkeep_mail_security_quick_access = Quick access to Mail Security functions
+upkeep_mail_security_threats_blocked = Mail Threats
+upkeep_mail_security_badwords_detected = Badwords detected
+upkeep_mail_security_blacklist_entries = Blacklist entries
+upkeep_mail_security_status = Mail Security Status
+upkeep_mail_security_protection = Protection active
+upkeep_mail_security_email_protection = Email Security & Spam Protection
+upkeep_dashboard_website_security = Website Security & Attack Detection
+
 # Dashboard texts
 upkeep_dashboard_system_status = System status & notices
 upkeep_dashboard_maintenance_active = Maintenance mode active
