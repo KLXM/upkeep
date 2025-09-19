@@ -925,10 +925,7 @@ upkeep_security_openbasedir_not_set = not set
 upkeep_security_directory_permissions_error = Directory {0} has too open permissions: {1} (recommended: {2})
 upkeep_security_poweredby_header_leak = X-Powered-By header reveals PHP version: {0}
 upkeep_security_missing_header = Missing security header: {0}
-
-# Additional Security Advisor strings
 upkeep_security_openbasedir_missing = Open Basedir not set - PHP can access entire hard drive
-upkeep_security_https_both_enabled = HTTPS activated for backend and frontend. Clearing cache...
 upkeep_security_config_write_permissions_error = Error writing config.yml. Check file permissions.
 
 # Intrusion Prevention CAPTCHA page

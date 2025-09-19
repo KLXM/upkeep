@@ -227,7 +227,7 @@ try {
 } catch (Exception $e) {
     $badwords = [];
     $categories = [];
-    echo rex_view::error('Fehler beim Laden der Badwords: ' . $e->getMessage());
+    echo rex_view::error($addon->i18n('upkeep_mail_badwords_load_error', $e->getMessage()));
 }
 
 // Filter-Panel
@@ -294,7 +294,7 @@ $content = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
 $content .= '<input type="hidden" name="add-badword" value="1" />';
 
 $content .= '<div class="panel panel-success">';
-$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> Neues Badword hinzufügen</h3></div>';
+$content .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-plus"></i> ' . $addon->i18n('upkeep_mail_badwords_add_new') . '</h3></div>';
 $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
@@ -371,7 +371,7 @@ $content .= '<div class="panel-body">';
 
 $content .= '<div class="row">';
 $content .= '<div class="col-md-8">';
-$content .= '<label>Import-Daten (ein Pattern pro Zeile)</label>';
+$content .= '<label>' . $addon->i18n('upkeep_mail_badwords_import_data_label') . '</label>';
 $content .= '<textarea class="form-control" name="import_data" rows="6" placeholder="viagra&#10;cialis&#10;spam mail&#10;oder mit Details:&#10;bitcoin scam|critical|financial_fraud|Cryptocurrency fraud"></textarea>';
 $content .= '<small class="help-block">Format: <code>pattern</code> oder <code>pattern|severity|category|description</code></small>';
 $content .= '</div>';
@@ -514,8 +514,8 @@ if (!empty($badwords)) {
     
 } else {
     $content = '<div class="alert alert-info">';
-    $content .= '<h4>Keine Badwords gefunden</h4>';
-    $content .= '<p>Es wurden noch keine Badwords konfiguriert oder Ihre Filter haben keine Ergebnisse geliefert.</p>';
+    $content .= '<h4>' . $addon->i18n('upkeep_mail_badwords_none_found') . '</h4>';
+    $content .= '<p>' . $addon->i18n('upkeep_mail_badwords_none_configured') . '</p>';
     $content .= '</div>';
 }
 

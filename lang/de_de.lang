@@ -914,10 +914,7 @@ upkeep_security_openbasedir_not_set = nicht gesetzt
 upkeep_security_directory_permissions_error = Verzeichnis {0} hat zu offene Berechtigungen: {1} (empfohlen: {2})
 upkeep_security_poweredby_header_leak = X-Powered-By Header enthüllt PHP-Version: {0}
 upkeep_security_missing_header = Fehlender Sicherheits-Header: {0}
-
-# Additional Security Advisor strings
 upkeep_security_openbasedir_missing = Open Basedir nicht gesetzt - PHP kann auf ganze Festplatte zugreifen
-upkeep_security_https_both_enabled = HTTPS für Backend und Frontend aktiviert. Cache wird geleert...
 upkeep_security_config_write_permissions_error = Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.
 
 # Intrusion Prevention CAPTCHA page
