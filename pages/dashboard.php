@@ -365,6 +365,42 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </a>
                 </div>
             </div>
+        <!-- REDAXO Version Status Card -->
+        <div class="col-md-3 col-sm-6">
+            <?php
+            // Kompakte Versionsprüfung für Status-Karte
+            $currentVersion = rex::getVersion();
+            $panelClass = 'success'; // Standard für aktuelle Version
+            $iconClass = 'fa-check-circle';
+            $statusText = 'Aktuell';
+            
+            // Prüfe ob Update verfügbar ist (nur wenn bereits ermittelt)
+            if (isset($versionCheckResults) && $versionCheckResults) {
+                if ($versionCheckResults['status'] === 'error') {
+                    $panelClass = 'danger';
+                    $iconClass = 'fa-exclamation-triangle';
+                    $statusText = 'Update erforderlich';
+                } elseif ($versionCheckResults['status'] === 'warning') {
+                    $panelClass = 'warning';
+                    $iconClass = 'fa-info-circle';
+                    $statusText = 'Update verfügbar';
+                }
+            }
+            ?>
+            <div class="panel panel-<?= $panelClass ?> status-card">
+                <div class="panel-body">
+                    <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="status-card-content-link">
+                        <div class="status-icon">
+                            <i class="rex-icon <?= $iconClass ?>"></i>
+                        </div>
+                        <div class="status-content">
+                            <h3><?= rex_escape($currentVersion) ?><?= rex_escape($subversionInfo) ?></h3>
+                            <p class="status-text"><?= $statusText ?></p>
+                            <div class="status-indicator <?= $panelClass === 'success' ? 'active' : ($panelClass === 'warning' ? 'warning' : 'maintenance') ?>"></div>
+                        </div>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -531,6 +567,76 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                     </div>
                 </div>
             </a>
+        </div>
+    </div>
+
+    <!-- REDAXO Version Check -->
+    <div class="row dashboard-cards">
+        <div class="col-md-12">
+            <?php
+            // REDAXO-Versionsprüfung durchführen
+            use KLXM\Upkeep\SecurityAdvisor;
+            $securityAdvisor = new SecurityAdvisor();
+            $versionCheckResults = null;
+            $showVersionAlert = false;
+            
+            try {
+                // Führe nur die REDAXO-Versionsprüfung durch
+                $allResults = $securityAdvisor->runAllChecks();
+                if (isset($allResults['checks']['redaxo_version'])) {
+                    $versionCheckResults = $allResults['checks']['redaxo_version'];
+                    $showVersionAlert = in_array($versionCheckResults['status'], ['warning', 'error']);
+                }
+            } catch (Exception $e) {
+                // Fallback bei Fehlern
+                $showVersionAlert = false;
+            }
+            
+            if ($showVersionAlert && $versionCheckResults): 
+                $alertClass = $versionCheckResults['status'] === 'error' ? 'danger' : 'warning';
+                $alertIcon = $versionCheckResults['status'] === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+                $currentVersion = $versionCheckResults['details']['version_info']['current_version'] ?? rex::getVersion();
+                $latestVersion = $versionCheckResults['details']['version_info']['latest_version'] ?? null;
+                $updateAvailable = $versionCheckResults['details']['version_info']['update_available'] ?? false;
+                $isUnstable = $versionCheckResults['details']['version_info']['is_unstable'] ?? false;
+            ?>
+            <div class="alert alert-<?= $alertClass ?> version-alert">
+                <div class="row">
+                    <div class="col-md-8">
+                        <i class="rex-icon <?= $alertIcon ?>"></i>
+                        <strong>REDAXO Version:</strong>
+                        <?php if ($updateAvailable && $latestVersion): ?>
+                            Update verfügbar: <?= rex_escape($currentVersion) ?> → <?= rex_escape($latestVersion) ?>
+                        <?php elseif ($isUnstable): ?>
+                            Entwicklungsversion in Verwendung: <?= rex_escape($currentVersion) ?>
+                        <?php else: ?>
+                            <?= rex_escape($currentVersion) ?> - Prüfung empfohlen
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($versionCheckResults['details']['critical_issues'])): ?>
+                            <br><small class="text-muted">
+                                • <?= implode('<br>• ', array_map('rex_escape', $versionCheckResults['details']['critical_issues'])) ?>
+                            </small>
+                        <?php elseif (!empty($versionCheckResults['details']['warnings'])): ?>
+                            <br><small class="text-muted">
+                                • <?= implode('<br>• ', array_map('rex_escape', array_slice($versionCheckResults['details']['warnings'], 0, 2))) ?>
+                            </small>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        <?php if (rex_addon::get('install')->isAvailable() && rex::getUser()->isAdmin()): ?>
+                            <a href="<?= rex_url::backendPage('install/packages', ['core' => 1]) ?>" class="btn btn-<?= $alertClass === 'danger' ? 'danger' : 'warning' ?> btn-sm">
+                                <i class="rex-icon fa-download"></i> 
+                                <?= $updateAvailable ? 'Jetzt updaten' : 'Updates prüfen' ?>
+                            </a>
+                        <?php endif; ?>
+                        <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-default btn-sm">
+                            <i class="rex-icon fa-search"></i> Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 

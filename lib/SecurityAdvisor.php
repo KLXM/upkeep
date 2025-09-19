@@ -46,6 +46,7 @@ class SecurityAdvisor
         $this->checkDirectoryPermissions();
         $this->checkDatabaseSecurity();
         $this->checkEmailSecurity();
+        $this->checkRedaxoVersion();
         $this->checkContentSecurityPolicy();
         $this->checkPasswordPolicies();
         $this->checkSessionSecurity();
@@ -745,6 +746,163 @@ class SecurityAdvisor
     }
 
     /**
+     * Prüft ob die REDAXO-Version aktuell ist
+     */
+    private function checkRedaxoVersion(): void
+    {
+        $issues = [];
+        $warnings = [];
+        $recommendations = [];
+        $score = 10;
+        $status = 'success';
+        
+        $currentVersion = rex::getVersion();
+        $latestVersion = null;
+        $updateAvailable = false;
+        $isUnstable = false;
+        
+        try {
+            // Prüfe ob Installer-AddOn verfügbar ist
+            if (!rex_addon::get('install')->isAvailable()) {
+                $warnings[] = 'Installer-AddOn nicht verfügbar - Versionsprüfung eingeschränkt';
+                $recommendations[] = 'Installer-AddOn aktivieren für automatische Update-Prüfung';
+                $score = 8;
+                $status = 'warning';
+            } else {
+                // Versuche aktuelle REDAXO-Version von redaxo.org zu holen
+                try {
+                    $versions = \rex_api_install_core_update::getVersions();
+                    
+                    if (!empty($versions)) {
+                        // Neueste stabile Version finden
+                        $latestStable = null;
+                        foreach ($versions as $version) {
+                            if (!\rex_version::isUnstable($version['version'])) {
+                                if ($latestStable === null || \rex_version::compare($version['version'], $latestStable, '>')) {
+                                    $latestStable = $version['version'];
+                                }
+                            }
+                        }
+                        
+                        if ($latestStable) {
+                            $latestVersion = $latestStable;
+                            $updateAvailable = \rex_version::compare($latestVersion, $currentVersion, '>');
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $warnings[] = 'Verbindung zu redaxo.org nicht möglich - Versionsprüfung offline';
+                    $warnings[] = 'Prüfen Sie manuell auf Updates unter System → Core-Update';
+                    $score = 7;
+                    $status = 'warning';
+                }
+            }
+            
+            // Prüfe ob aktuelle Version instabil ist
+            $isUnstable = \rex_version::isUnstable($currentVersion);
+            
+            if ($isUnstable) {
+                $warnings[] = "Entwicklungsversion in Verwendung: {$currentVersion}";
+                $warnings[] = 'Entwicklungsversionen sind nicht für Produktionsserver geeignet';
+                $recommendations[] = 'Auf stabile REDAXO-Version wechseln';
+                $score = 6;
+                $status = 'warning';
+            }
+            
+            if ($updateAvailable && $latestVersion) {
+                $versionDiff = $this->getVersionAge($currentVersion, $latestVersion);
+                
+                if ($versionDiff['major'] > 0) {
+                    // Major Update verfügbar - kritisch
+                    $issues[] = "Kritisches REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
+                    $issues[] = 'Major-Updates enthalten wichtige Sicherheitsupdates';
+                    $recommendations[] = 'Sofortiges Update auf neueste Version empfohlen';
+                    $score = 3;
+                    $status = 'error';
+                } elseif ($versionDiff['minor'] > 1) {
+                    // Mehrere Minor Updates - Warnung
+                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
+                    $warnings[] = 'Updates enthalten Sicherheitsfixes und Bugfixes';
+                    $recommendations[] = 'Update zeitnah durchführen';
+                    $score = 6;
+                    $status = 'warning';
+                } elseif ($versionDiff['minor'] > 0 || $versionDiff['patch'] > 0) {
+                    // Minor/Patch Update - Info
+                    $warnings[] = "REDAXO-Update verfügbar: {$currentVersion} → {$latestVersion}";
+                    $recommendations[] = 'Update empfohlen für aktuelle Sicherheitsfixes';
+                    $score = 8;
+                    $status = 'warning';
+                }
+            } elseif ($latestVersion && !$updateAvailable) {
+                $recommendations[] = "REDAXO {$currentVersion} ist aktuell";
+            }
+            
+        } catch (\Exception $e) {
+            $warnings[] = 'Fehler bei der Versionsprüfung: ' . $e->getMessage();
+            $score = 5;
+            $status = 'warning';
+        }
+        
+        $versionInfo = [
+            'current_version' => $currentVersion,
+            'latest_version' => $latestVersion,
+            'update_available' => $updateAvailable,
+            'is_unstable' => $isUnstable,
+            'installer_available' => rex_addon::get('install')->isAvailable()
+        ];
+        
+        $allIssues = array_merge($issues, $warnings, $recommendations);
+        if (empty($allIssues)) {
+            $allIssues[] = 'REDAXO-Version ist aktuell';
+        }
+
+        $this->results['checks']['redaxo_version'] = [
+            'name' => 'REDAXO-Version',
+            'status' => $status,
+            'severity' => $updateAvailable ? 'high' : 'medium',
+            'score' => max(0, $score),
+            'details' => [
+                'version_info' => $versionInfo,
+                'critical_issues' => $issues,
+                'warnings' => $warnings,
+                'positive_points' => $recommendations
+            ],
+            'recommendations' => $this->getRedaxoVersionRecommendations($updateAvailable, $isUnstable, $latestVersion),
+            'description' => 'REDAXO sollte immer auf dem neuesten Stand gehalten werden für optimale Sicherheit.'
+        ];
+    }
+
+    /**
+     * Berechnet den Versionsabstand zwischen zwei Versionen
+     */
+    private function getVersionAge(string $currentVersion, string $latestVersion): array
+    {
+        $current = $this->parseVersion($currentVersion);
+        $latest = $this->parseVersion($latestVersion);
+        
+        return [
+            'major' => $latest['major'] - $current['major'],
+            'minor' => $latest['minor'] - $current['minor'],
+            'patch' => $latest['patch'] - $current['patch']
+        ];
+    }
+    
+    /**
+     * Parst eine Versionsnummer in ihre Bestandteile
+     */
+    private function parseVersion(string $version): array
+    {
+        // Entferne Beta/Alpha/RC Suffixe für den Vergleich
+        $cleanVersion = preg_replace('/-(alpha|beta|rc|dev).*$/i', '', $version);
+        $parts = explode('.', $cleanVersion);
+        
+        return [
+            'major' => (int) ($parts[0] ?? 0),
+            'minor' => (int) ($parts[1] ?? 0),
+            'patch' => (int) ($parts[2] ?? 0)
+        ];
+    }
+
+    /**
      * Prüft Content Security Policy
      */
     private function checkContentSecurityPolicy(): void
@@ -1091,6 +1249,49 @@ class SecurityAdvisor
         // Allgemeine Empfehlungen
         $recommendations[] = 'SMTP-Authentifizierung aktivieren';
         $recommendations[] = 'Regelmäßig E-Mail-Zustellbarkeit testen';
+        
+        return $recommendations;
+    }
+
+    private function getRedaxoVersionRecommendations(bool $updateAvailable, bool $isUnstable, ?string $latestVersion): array
+    {
+        $recommendations = [];
+        
+        if ($updateAvailable && $latestVersion) {
+            $currentVersion = rex::getVersion();
+            $versionDiff = $this->getVersionAge($currentVersion, $latestVersion);
+            
+            if ($versionDiff['major'] > 0) {
+                $recommendations[] = "Kritisches Update auf REDAXO {$latestVersion} sofort durchführen";
+                $recommendations[] = 'Major-Updates enthalten wichtige Sicherheitsupdates und neue Features';
+                $recommendations[] = 'Backup vor Update erstellen und auf Testumgebung testen';
+                $recommendations[] = 'System → Core-Update verwenden oder manuell über redaxo.org';
+            } elseif ($versionDiff['minor'] > 1) {
+                $recommendations[] = "Update auf REDAXO {$latestVersion} zeitnah durchführen";
+                $recommendations[] = 'Minor-Updates enthalten Sicherheitsfixes und Bugfixes';
+                $recommendations[] = 'Regelmäßige Updates halten das System sicher';
+            } elseif ($versionDiff['minor'] > 0 || $versionDiff['patch'] > 0) {
+                $recommendations[] = "Update auf REDAXO {$latestVersion} empfohlen";
+                $recommendations[] = 'Aktuelle Patches enthalten wichtige Sicherheitsfixes';
+            }
+        }
+        
+        if ($isUnstable) {
+            $recommendations[] = 'Auf stabile REDAXO-Version wechseln für Produktionsserver';
+            $recommendations[] = 'Entwicklungsversionen nur für Test- und Entwicklungsumgebungen verwenden';
+            $recommendations[] = 'Stabile Version von redaxo.org herunterladen';
+        }
+        
+        if (!rex_addon::get('install')->isAvailable()) {
+            $recommendations[] = 'Installer-AddOn aktivieren für einfache Updates';
+            $recommendations[] = 'Automatische Update-Benachrichtigungen über Installer-AddOn';
+        }
+        
+        // Allgemeine Empfehlungen
+        $recommendations[] = 'Regelmäßig auf Updates prüfen (mindestens monatlich)';
+        $recommendations[] = 'Update-Benachrichtigungen von REDAXO abonnieren';
+        $recommendations[] = 'Vor Updates immer Backup erstellen';
+        $recommendations[] = 'Updates zuerst auf Testumgebung testen';
         
         return $recommendations;
     }
