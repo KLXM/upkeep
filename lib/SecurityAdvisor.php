@@ -45,6 +45,7 @@ class SecurityAdvisor
         $this->checkProductionMode();
         $this->checkDirectoryPermissions();
         $this->checkDatabaseSecurity();
+        $this->checkEmailSecurity();
         $this->checkContentSecurityPolicy();
         $this->checkPasswordPolicies();
         $this->checkSessionSecurity();
@@ -603,6 +604,147 @@ class SecurityAdvisor
     }
 
     /**
+     * Prüft E-Mail-Sicherheit und Übertragungsmethoden
+     */
+    private function checkEmailSecurity(): void
+    {
+        $issues = [];
+        $warnings = [];
+        $recommendations = [];
+        $score = 10;
+        $status = 'success';
+        
+        // PHPMailer-AddOn prüfen
+        $phpmailerAddon = rex_addon::get('phpmailer');
+        if (!$phpmailerAddon->isAvailable()) {
+            $warnings[] = 'PHPMailer-AddOn nicht verfügbar - E-Mail-Funktionalität eingeschränkt';
+            $score -= 1;
+        } else {
+            // PHPMailer-Konfiguration analysieren (korrekte Config-Keys)
+            $mailerMethod = $phpmailerAddon->getConfig('mailer', 'mail');
+            $smtpHost = $phpmailerAddon->getConfig('host', '');
+            $smtpPort = $phpmailerAddon->getConfig('port', 25);
+            $smtpSecure = $phpmailerAddon->getConfig('smtpsecure', '');
+            $smtpAuth = $phpmailerAddon->getConfig('smtpauth', false);
+            $securityMode = $phpmailerAddon->getConfig('security_mode', true); // AutoTLS
+            
+            // Mailer-Methode bewerten
+            switch ($mailerMethod) {
+                case 'smtp':
+                    if ($smtpSecure === 'tls' || $smtpSecure === 'ssl') {
+                        // SMTP mit expliziter TLS/SSL-Konfiguration - optimal
+                        if ($smtpPort == 587 && $smtpSecure === 'tls') {
+                            // Port 587 mit TLS - perfekt
+                            $score = 10;
+                        } elseif ($smtpPort == 465 && $smtpSecure === 'ssl') {
+                            // Port 465 mit SSL - auch gut
+                            $score = 9;
+                        } else {
+                            $warnings[] = "SMTP-Konfiguration ungewöhnlich: Port {$smtpPort} mit {$smtpSecure}";
+                            $score = 8;
+                        }
+                    } elseif ($securityMode) {
+                        // AutoTLS aktiviert - versucht automatisch TLS
+                        if ($smtpPort == 587 || $smtpPort == 465) {
+                            $warnings[] = "AutoTLS aktiviert auf Port {$smtpPort} - manuelle TLS/SSL-Konfiguration empfohlen";
+                            $warnings[] = "AutoTLS kann auf unverschlüsselt zurückfallen wenn TLS fehlschlägt";
+                            $score = 7;
+                        } else {
+                            $warnings[] = "AutoTLS auf Port {$smtpPort} - Verschlüsselung ungewiss";
+                            $score = 6;
+                        }
+                        
+                        // Bekannte sichere Anbieter erkennen
+                        if ($smtpHost) {
+                            if (stripos($smtpHost, 'smtp.gmail.com') !== false ||
+                                stripos($smtpHost, 'smtp-mail.outlook.com') !== false ||
+                                stripos($smtpHost, 'smtp.office365.com') !== false ||
+                                stripos($smtpHost, 'outlook.office365.com') !== false ||
+                                stripos($smtpHost, 'smtp.live.com') !== false ||
+                                stripos($smtpHost, 'smtp.mailgun.org') !== false ||
+                                stripos($smtpHost, 'smtp.sendgrid.net') !== false) {
+                                // Bekannte sichere Anbieter - Bonus auch bei AutoTLS
+                                $recommendations[] = "Vertrauensvoller E-Mail-Provider {$smtpHost} mit AutoTLS";
+                                $score += 1; // Bonus für bekannte Provider
+                            }
+                        }
+                        
+                    } else {
+                        // SMTP ohne Verschlüsselung - kritisch
+                        $issues[] = "SMTP ohne Verschlüsselung konfiguriert (Port: {$smtpPort})";
+                        $issues[] = 'E-Mail-Passwörter und -Inhalte werden unverschlüsselt übertragen';
+                        $score = 2;
+                        $status = 'error';
+                    }
+                    
+                    if (!$smtpAuth) {
+                        $warnings[] = 'SMTP-Authentifizierung nicht aktiviert';
+                        $score -= 1;
+                    }
+                    break;
+                    
+                case 'microsoft365':
+                    $recommendations[] = 'Microsoft 365 Graph API - modernste E-Mail-Übertragung mit OAuth2';
+                    $recommendations[] = 'Höchste Sicherheit durch verschlüsselte API-Verbindung';
+                    $score = 10;
+                    $status = 'success';
+                    break;
+                    
+                case 'sendmail':
+                    $warnings[] = 'Sendmail verwendet - SMTP mit TLS empfohlen für bessere Sicherheit';
+                    $warnings[] = 'Keine Übertragungsverschlüsselung bei Sendmail';
+                    $score = 6;
+                    $status = 'warning';
+                    break;
+                    
+                case 'mail':
+                    $warnings[] = 'PHP mail() Funktion verwendet - unsicher und unzuverlässig';
+                    $warnings[] = 'Keine Verschlüsselung, keine Authentifizierung';
+                    $warnings[] = 'E-Mails landen oft im Spam';
+                    $score = 4;
+                    $status = 'warning';
+                    break;
+                    
+                default:
+                    $issues[] = "Unbekannte Mailer-Methode: {$mailerMethod}";
+                    $score = 3;
+                    $status = 'error';
+                    break;
+            }
+            
+            $emailConfig = [
+                'mailer_method' => $mailerMethod,
+                'smtp_host' => $smtpHost,
+                'smtp_port' => $smtpPort,
+                'smtp_secure' => $smtpSecure,
+                'smtp_auth' => $smtpAuth,
+                'security_mode' => $securityMode // AutoTLS
+            ];
+        }
+        
+        $allIssues = array_merge($issues, $warnings, $recommendations);
+        if (empty($allIssues)) {
+            $allIssues[] = 'E-Mail-Übertragung ist sicher konfiguriert';
+        }
+
+        $this->results['checks']['email_security'] = [
+            'name' => 'E-Mail-Sicherheit',
+            'status' => $status,
+            'severity' => 'medium',
+            'score' => max(0, $score),
+            'details' => [
+                'phpmailer_available' => $phpmailerAddon->isAvailable(),
+                'email_config' => $emailConfig ?? [],
+                'critical_issues' => $issues,
+                'warnings' => $warnings,
+                'positive_points' => $recommendations
+            ],
+            'recommendations' => $this->getEmailSecurityRecommendations($mailerMethod ?? 'unknown'),
+            'description' => 'E-Mail-Übertragung sollte verschlüsselt erfolgen (SMTP mit TLS/SSL).'
+        ];
+    }
+
+    /**
      * Prüft Content Security Policy
      */
     private function checkContentSecurityPolicy(): void
@@ -892,6 +1034,64 @@ class SecurityAdvisor
             'X-Powered-By Header durch expose_php=Off deaktivieren',
             'Sicherheits-Header in .htaccess oder Webserver-Konfiguration hinzufügen'
         ];
+        return $recommendations;
+    }
+
+    private function getEmailSecurityRecommendations(string $mailerMethod): array
+    {
+        $recommendations = [];
+        
+        switch ($mailerMethod) {
+            case 'smtp':
+                $phpmailerAddon = rex_addon::get('phpmailer');
+                $smtpSecure = $phpmailerAddon->getConfig('smtpsecure', 'none');
+                
+                if ($smtpSecure === 'tls' || $smtpSecure === 'ssl') {
+                    $recommendations[] = 'SMTP-Verschlüsselung explizit konfiguriert - optimale Sicherheit';
+                    $recommendations[] = 'Sichere E-Mail-Anbieter: Gmail, Microsoft 365/Outlook, Mailgun, SendGrid empfohlen';
+                } else {
+                    // Leere smtpsecure bedeutet AutoTLS oder keine Verschlüsselung
+                    $securityMode = $phpmailerAddon->getConfig('security_mode', true);
+                    if ($securityMode) {
+                        $recommendations[] = 'AutoTLS durch manuelle TLS/SSL-Konfiguration ersetzen';
+                        $recommendations[] = 'PHPMailer: SMTPSecure explizit auf "tls" (Port 587) oder "ssl" (Port 465) setzen';
+                        $recommendations[] = 'Manuelle Konfiguration verhindert Fallback auf unverschlüsselte Verbindung';
+                    } else {
+                        $recommendations[] = 'SMTP-Verschlüsselung aktivieren: TLS (Port 587) oder SSL (Port 465)';
+                        $recommendations[] = 'PHPMailer: SMTPSecure auf "tls" oder "ssl" setzen';
+                    }
+                }
+                break;
+                
+            case 'microsoft365':
+                $recommendations[] = 'Microsoft 365 Graph API optimal konfiguriert - modernste E-Mail-Sicherheit';
+                $recommendations[] = 'OAuth2-Authentifizierung bietet höchste Sicherheit ohne Passwort-Speicherung';
+                break;
+                
+            case 'sendmail':
+                $recommendations[] = 'Auf SMTP mit TLS umstellen für bessere Sicherheit und Zustellbarkeit';
+                $recommendations[] = 'PHPMailer-AddOn: Mailer auf "smtp" umstellen';
+                $recommendations[] = 'SMTP-Server konfigurieren (z.B. Gmail: smtp.gmail.com:587 oder Microsoft 365: smtp.office365.com:587 mit TLS)';
+                break;
+                
+            case 'mail':
+                $recommendations[] = 'PHP mail() nicht mehr verwenden - sehr unsicher und unzuverlässig';
+                $recommendations[] = 'Sofort auf SMTP mit TLS umstellen';
+                $recommendations[] = 'Sichere Anbieter: Gmail SMTP, Microsoft 365, oder professionelle E-Mail-Services';
+                break;
+                
+            case 'unknown':
+            default:
+                $recommendations[] = 'PHPMailer-AddOn installieren und konfigurieren';
+                $recommendations[] = 'SMTP mit TLS/SSL-Verschlüsselung einrichten';
+                $recommendations[] = 'Empfohlene Konfiguration: SMTP, Port 587, TLS, mit Authentifizierung';
+                break;
+        }
+        
+        // Allgemeine Empfehlungen
+        $recommendations[] = 'SMTP-Authentifizierung aktivieren';
+        $recommendations[] = 'Regelmäßig E-Mail-Zustellbarkeit testen';
+        
         return $recommendations;
     }
 
