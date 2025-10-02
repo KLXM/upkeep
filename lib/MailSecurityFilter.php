@@ -130,15 +130,22 @@ class MailSecurityFilter
             '/Function\s*\(/i',
         ],
         'medium' => [
-            // Suspicious HTML tags
-            '/<style[^>]*>/i',
-            '/<\/style>/i',
-            '/expression\s*\(/i',
-            '/behavior\s*:/i',
+            // Gefährliche CSS-Inhalte (nicht die Tags selbst)
+            '/expression\s*\(/i',                    // expression() kann JS ausführen
+            '/behavior\s*:/i',                       // behavior: kann Scripts laden
+            '/javascript\s*:/i',                     // javascript: URLs
+            '/vbscript\s*:/i',                       // vbscript: URLs
+            '/data\s*:\s*text\/html/i',              // data: URLs mit HTML
             
-            // Suspicious attributes
+            // Base64 encoded gefährliche Inhalte
+            '/data\s*:\s*text\/html\s*;\s*base64\s*,/i', // data:text/html;base64,
+            '/data\s*:\s*text\/javascript\s*;\s*base64\s*,/i', // data:text/javascript;base64,
+            '/data\s*:\s*application\/javascript\s*;\s*base64\s*,/i', // data:application/javascript;base64,
+            
+            // Verdächtige style Attribute
             '/style\s*=.*expression/i',
             '/style\s*=.*javascript/i',
+            '/style\s*=.*vbscript/i',
         ]
     ];
 
