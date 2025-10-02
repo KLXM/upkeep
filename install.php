@@ -584,60 +584,66 @@ if ($addon->getConfig('mail_security_detailed_logging') === null) {
     $addon->setConfig('mail_security_detailed_logging', false);
 }
 
-// Standard-Badwords einfügen, falls noch nicht vorhanden
+// Standard-Badwords einfügen, falls noch nicht vorhanden - reduziert auf das Wesentliche,
+// da viele bereits in den Default Patterns abgedeckt sind
 $sql = rex_sql::factory();
 $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_mail_badwords'));
 $existingBadwords = (int) $sql->getValue('count');
 
 if ($existingBadwords === 0) {
     $defaultBadwords = [
-        // Kritische Bedrohungen
+        // Kritische Bedrohungen - Deutsche Varianten hinzugefügt
         'critical' => [
-            'viagra' => 'Pharmaceutical spam',
-            'cialis' => 'Pharmaceutical spam',
-            'bitcoin scam' => 'Cryptocurrency fraud',
-            'nigerian prince' => 'Classic fraud scheme',
-            'inheritance fund' => 'Advance fee fraud',
-            'lottery winner' => 'Lottery scam',
-            'covid vaccine scam' => 'Health fraud',
-            '<script' => 'JavaScript injection attempt',
-            '<?php' => 'PHP code injection attempt',
-            'eval(' => 'Code execution attempt',
-            'javascript:' => 'JavaScript protocol injection'
+            'bitcoin betrug' => 'Kryptowährungsbetrug',
+            'nigerianischer prinz' => 'Klassisches Betrugsschema',
+            'erbschaftsbetrug' => 'Vorauszahlungsbetrug',
+            'lotteriegewinn' => 'Lotteriegewinn-Betrug',
+            'impfstoff betrug' => 'Gesundheitsbetrug',
+            'dringend handeln' => 'Betrügerische Dringlichkeit',
+            'millionen euro gewonnen' => 'Falsche Gewinnbenachrichtigung',
+            'reliable sourcing agent services' => 'Betrügerische Beschaffungsdienste',
+            'millionär werden' => 'Unrealistische Reichtumsversprechen',
+            'medikamente günstig' => 'Illegale Medikamentenangebote'
         ],
         
-        // Hohe Bedrohungen
+        // Hohe Bedrohungen - Deutsche Spam-Phrasen
         'high' => [
-            'phishing' => 'Phishing attempt',
-            'malware' => 'Malware distribution',
-            'trojan' => 'Trojan horse',
-            'backdoor' => 'Backdoor access',
-            'botnet' => 'Botnet participation',
-            'keylogger' => 'Keylogger software',
-            'ransomware' => 'Ransomware threat',
-            'credit card theft' => 'Financial fraud',
-            'identity theft' => 'Identity fraud'
+            'schnell geld verdienen' => 'Schnelles Geld Versprechen',
+            'reich ohne anstrengung' => 'Verdächtige Geldversprechen',
+            'erbschaftsanspruch' => 'Vorschussbetrug',
+            'einmalige chance' => 'Manipulative Dringlichkeit',
+            'geheimes investment' => 'Verdächtige Investition',
+            'garantierte rendite' => 'Unrealistische Finanzversprechen',
+            'sofort zugreifen' => 'Drängende Handlungsaufforderung'
         ],
         
-        // Mittlere Bedrohungen
+        // Mittlere Bedrohungen - Deutsche Varianten
         'medium' => [
-            'free money' => 'Money scam',
-            'work from home' => 'Work from home scam',
-            'make money fast' => 'Get rich quick scheme',
-            'guaranteed income' => 'Income fraud',
-            'risk free' => 'Investment scam',
-            'limited time offer' => 'Pressure tactic',
-            'act now' => 'Urgency spam',
-            'click here' => 'Suspicious link'
+            'kostenloses geld' => 'Geldversprechen',
+            'von zuhause arbeiten' => 'Verdächtige Arbeitsangebote',
+            'nebenverdienst garantiert' => 'Fragwürdige Einkommensversprechen',
+            'risikofrei' => 'Irreführende Angebotsbeschreibung',
+            'zeitlich begrenzt' => 'Künstliche Dringlichkeit',
+            'jetzt handeln' => 'Drängende Handlungsaufforderung',
+            'hier klicken' => 'Verdächtiger Link'
         ],
         
-        // Niedrige Bedrohungen (Profanity Filter)
-        'low' => [
-            'fuck' => 'Profanity',
-            'shit' => 'Profanity',
-            'damn' => 'Mild profanity',  
-            'bitch' => 'Offensive language',
-            'asshole' => 'Offensive language'
+        // Deutsche Spam-Formulierungen
+        'german_spam' => [
+            'nur noch heute' => 'Künstliche Dringlichkeit',
+            'sonderangebot' => 'Werbeversprechen',
+            'gratis geschenk' => 'Lockangebot',
+            'limitierte stückzahl' => 'Künstliche Verknappung',
+            'exklusivangebot' => 'Marketing-Taktik',
+            'lastminute' => 'Künstliche Dringlichkeit',
+            'sensationeller preis' => 'Übertriebene Preisdarstellung',
+            'streamline services' => 'Verdächtige Geschäftsangebote',
+            'billigste preise' => 'Übertriebene Preisversprechen',
+            'verschreibungspflichtige medikamente' => 'Illegaler Medikamentenhandel',
+            'ohne rezept bestellen' => 'Illegale Medikamentenangebote',
+            'finanzielle freiheit' => 'Unrealistische Finanzversprechen',
+            'passives einkommen' => 'Fragwürdige Geldversprechen',
+            'reich im schlaf' => 'Irreführende Einkommensversprechen'
         ]
     ];
     
