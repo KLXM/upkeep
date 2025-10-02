@@ -23,6 +23,7 @@ use rex_extension_point;
  */
 class MailSecurityFilter
 {
+    private static ?rex_addon $addon = null;
     /**
      * Liefert die Addon-Instanz
      */
@@ -33,7 +34,6 @@ class MailSecurityFilter
         }
         return self::$addon;
     }
-    private static ?rex_addon $addon = null;
 
     /**
      * Holt Standard-Mail-Patterns aus der Datenbank
