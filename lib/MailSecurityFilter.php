@@ -1114,4 +1114,68 @@ class MailSecurityFilter
             throw new \Exception('Mail blockiert: ' . $reason);
         }
     }
+
+    /**
+     * Schaltet den Status eines Standard-Patterns um
+     */
+    public static function toggleDefaultPatternStatus(int $id): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT status FROM " . rex::getTable('upkeep_mail_default_patterns') . " WHERE id = ?", [$id]);
+            
+            if ($sql->getRows() > 0) {
+                $currentStatus = (bool) $sql->getValue('status');
+                $newStatus = $currentStatus ? 0 : 1;
+                
+                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_default_patterns') . " SET status = ?, updated_at = NOW() WHERE id = ?", [$newStatus, $id]);
+                
+                // Cache leeren
+                self::clearDefaultPatternsCache();
+                
+                return true;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            self::debugLog("Failed to toggle default pattern status: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Aktualisiert ein Standard-Pattern
+     */
+    public static function updateDefaultPattern(int $id, string $pattern, string $description, string $severity, bool $isRegex, bool $status): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_default_patterns') . " SET 
+                           pattern = ?, 
+                           description = ?, 
+                           severity = ?, 
+                           is_regex = ?, 
+                           status = ?, 
+                           updated_at = NOW() 
+                           WHERE id = ?", 
+                           [$pattern, $description, $severity, $isRegex ? 1 : 0, $status ? 1 : 0, $id]);
+            
+            // Cache leeren
+            self::clearDefaultPatternsCache();
+            
+            return true;
+        } catch (Exception $e) {
+            self::debugLog("Failed to update default pattern: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Leert den Cache für Standard-Patterns
+     */
+    private static function clearDefaultPatternsCache(): void
+    {
+        // Cache durch erneutes Laden leeren
+        self::getDefaultMailPatterns();
+    }
 }

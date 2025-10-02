@@ -54,6 +54,7 @@ page:
                 threats: {title: 'Threat Log', icon: 'rex-icon fa fa-exclamation-triangle'}
                 badwords: {title: 'Badwords', icon: 'rex-icon fa fa-filter'}
                 blocklist: {title: 'Blocklist', icon: 'rex-icon fa fa-ban'}
+                default_patterns: {title: 'Standard-Patterns', icon: 'rex-icon fa fa-cogs'}
                 settings: {title: 'Settings', icon: 'rex-icon fa fa-cog'}
                 cleanup: {title: 'Cleanup', icon: 'rex-icon fa fa-trash'}
                 help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
@@ -97,6 +98,7 @@ permissions:
     upkeep[domains]: 'translate:upkeep[domains]'
     upkeep[domain_mapping]: 'translate:upkeep[domain_mapping]'
     upkeep[security]: 'translate:upkeep[security]'
+    upkeep[mail_security]: 'Mail Security Verwaltung'
 
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
