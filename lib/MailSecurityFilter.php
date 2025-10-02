@@ -954,7 +954,15 @@ class MailSecurityFilter
     }
 
     /**
-     * Fügt Badword hinzu
+     * Fügt ein neues Badword hinzu
+     * 
+     * @param string $pattern     Das zu sperrende Wort oder Muster
+     * @param string $severity    Schweregrad (low, medium, high, critical)
+     * @param string $category    Kategorie (general, spam, phishing, etc.)
+     * @param bool $isRegex       Ob es sich um einen regulären Ausdruck handelt
+     * @param string $description Beschreibung des Badwords
+     * 
+     * @return bool               Erfolgsstatus
      */
     public static function addBadword(string $pattern, string $severity = 'medium', string $category = 'general', bool $isRegex = false, string $description = ''): bool
     {
@@ -962,13 +970,16 @@ class MailSecurityFilter
             $sql = rex_sql::factory();
             $sql->setTable(rex::getTable('upkeep_mail_badwords'));
             $sql->setValue('pattern', $pattern);
-            $sql->setValue('severity', $severity);
-            $sql->setValue('category', $category);
-            $sql->setValue('is_regex', $isRegex ? 1 : 0);
             $sql->setValue('description', $description);
+            $sql->setValue('category', $category);
+            $sql->setValue('severity', $severity);
+            $sql->setValue('is_regex', $isRegex ? 1 : 0);
             $sql->setValue('status', 1);
+            $sql->setValue('is_default', 0); // Benutzerdefiniertes Badword, kein Standard
+            $sql->setValue('is_editable', 1); // Bearbeitbar
             $sql->setValue('created_at', date('Y-m-d H:i:s'));
             $sql->setValue('updated_at', date('Y-m-d H:i:s'));
+            $sql->setValue('edited_by', rex::getUser() ? rex::getUser()->getLogin() : '');
             $sql->insert();
             
             // Cache leeren
@@ -983,18 +994,35 @@ class MailSecurityFilter
     }
 
     /**
-     * Entfernt Badword
+     * Entfernt ein Badword
+     * 
+     * @param int $id Die ID des zu löschenden Badwords
+     * @return bool   Erfolgsstatus
      */
     public static function removeBadword(int $id): bool
     {
         try {
+            // Prüfen ob es sich um ein Standard-Badword handelt (diese können nicht gelöscht werden)
             $sql = rex_sql::factory();
-            $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
+            $sql->setQuery("SELECT is_default, is_editable FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
             
-            // Cache leeren
-            self::clearBadwordsCache();
+            if ($sql->getRows() > 0) {
+                $isDefault = (bool) $sql->getValue('is_default');
+                $isEditable = (bool) $sql->getValue('is_editable');
+                
+                // Nur löschbar, wenn es kein Standard-Badword ist und bearbeitbar ist
+                if (!$isDefault && $isEditable) {
+                    $sql->setTable(rex::getTable('upkeep_mail_badwords'));
+                    $sql->setWhere(['id' => $id]);
+                    $sql->delete();
+                    
+                    // Cache leeren
+                    self::clearBadwordsCache();
+                    return true;
+                }
+            }
             
-            return true;
+            return false;
         } catch (Exception $e) {
             self::debugLog("Failed to remove badword: " . $e->getMessage());
             return false;
@@ -1033,6 +1061,106 @@ class MailSecurityFilter
     {
         // Cache durch erneutes Laden leeren
         self::getBadwords(true);
+    }
+    
+    /**
+     * Schaltet den Status eines Badwords um
+     * 
+     * @param int $id Die ID des Badwords
+     * @return bool   Erfolgsstatus
+     */
+    public static function toggleBadwordStatus(int $id): bool
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT status FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
+            
+            if ($sql->getRows() > 0) {
+                $currentStatus = (bool) $sql->getValue('status');
+                $newStatus = $currentStatus ? 0 : 1;
+                
+                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_badwords') . " SET 
+                               status = ?, 
+                               updated_at = NOW(), 
+                               edited_by = ? 
+                               WHERE id = ?", 
+                               [$newStatus, rex::getUser() ? rex::getUser()->getLogin() : '', $id]);
+                
+                // Cache leeren
+                self::clearBadwordsCache();
+                
+                return true;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            self::debugLog("Failed to toggle badword status: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Aktualisiert ein Badword
+     * 
+     * @param int $id           Die ID des zu aktualisierenden Badwords
+     * @param string $pattern   Das neue Muster
+     * @param string $description Die neue Beschreibung
+     * @param string $category  Die neue Kategorie
+     * @param string $severity  Der neue Schweregrad
+     * @param bool $status      Der neue Status
+     * 
+     * @return bool             Erfolgsstatus
+     */
+    public static function updateBadword(int $id, string $pattern, string $description, string $category, string $severity, bool $status): bool
+    {
+        try {
+            // Prüfen ob das Badword bearbeitbar ist
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT is_editable FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
+            
+            if ($sql->getRows() > 0) {
+                $isEditable = (bool) $sql->getValue('is_editable');
+                
+                // Bei nicht bearbeitbaren Badwords nur den Status ändern
+                if (!$isEditable) {
+                    return self::toggleBadwordStatus($id);
+                }
+                
+                // Ansonsten vollständiges Update
+                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_badwords') . " SET 
+                               pattern = ?, 
+                               description = ?, 
+                               category = ?, 
+                               severity = ?, 
+                               status = ?, 
+                               updated_at = NOW(),
+                               edited_by = ? 
+                               WHERE id = ?", 
+                               [$pattern, $description, $category, $severity, $status ? 1 : 0, 
+                                rex::getUser() ? rex::getUser()->getLogin() : '', $id]);
+                
+                // Cache leeren
+                self::clearBadwordsCache();
+                
+                return true;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            self::debugLog("Failed to update badword: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Entfernt ein Badword (mit Berechtigungsprüfung)
+     * 
+     * @param int $id Die ID des zu löschenden Badwords
+     * @return bool   Erfolgsstatus
+     */
+    public static function deleteBadword(int $id): bool
+    {
+        return self::removeBadword($id);
     }
 
     /**

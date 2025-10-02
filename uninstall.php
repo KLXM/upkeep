@@ -23,7 +23,13 @@ $tables = [
     'upkeep_ips_default_patterns',  // Neue Tabelle für Standard-Patterns
     'upkeep_ips_rate_limit',
     'upkeep_ips_positivliste',
-    'upkeep_ips_whitelist'          // Falls noch vorhanden (alte Bezeichnung)
+    'upkeep_ips_whitelist',         // Falls noch vorhanden (alte Bezeichnung)
+    // Mail Security Tabellen
+    'upkeep_mail_rate_limit',
+    'upkeep_mail_badwords',
+    'upkeep_mail_blocklist',
+    'upkeep_mail_threat_log',
+    'upkeep_mail_default_patterns'  // Standard-Mail-Patterns
 ];
 
 foreach ($tables as $table) {
@@ -51,7 +57,19 @@ if ($addon->isInstalled()) {
         'ips_captcha_trust_duration',
         'ips_burst_limit',
         'ips_strict_limit',
-        'ips_burst_window'
+        'ips_burst_window',
+        // Mail Security Einstellungen
+        'mail_security_active',
+        'mail_rate_limiting_enabled',
+        'mail_rate_limit_per_minute',
+        'mail_rate_limit_per_hour',
+        'mail_rate_limit_per_day',
+        'mail_security_debug',
+        'mail_security_detailed_logging',
+        // Mehrsprachigkeits-Einstellungen
+        'multilanguage_enabled',
+        'multilanguage_default',
+        'multilanguage_texts'
     ];
     
     foreach ($configKeys as $key) {

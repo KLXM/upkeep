@@ -43,20 +43,11 @@ if (rex_post('remove-badword', 'int') > 0) {
 // Badword-Status ändern
 if (rex_post('toggle-badword', 'int') > 0) {
     $badwordId = rex_post('toggle-badword', 'int');
-    $currentStatus = rex_post('current-status', 'int', 1);
-    $newStatus = $currentStatus ? 0 : 1;
     
-    try {
-        $sql = rex_sql::factory();
-        $sql->setTable(rex::getTable('upkeep_mail_badwords'));
-        $sql->setWhere(['id' => $badwordId]);
-        $sql->setValue('status', $newStatus);
-        $sql->setValue('updated_at', date('Y-m-d H:i:s'));
-        $sql->update();
-        
+    if (MailSecurityFilter::toggleBadwordStatus($badwordId)) {
         $success = $addon->i18n('upkeep_mail_security_badword_status_changed');
-    } catch (Exception $e) {
-        $error = $addon->i18n('upkeep_mail_security_status_change_error') . ' ' . $e->getMessage();
+    } else {
+        $error = $addon->i18n('upkeep_mail_security_status_change_error');
     }
 }
 
@@ -67,31 +58,34 @@ if (rex_post('bulk-action', 'string') && rex_post('selected-badwords', 'array'))
     $affectedCount = 0;
     
     try {
-        $sql = rex_sql::factory();
-        
         foreach ($selectedIds as $id) {
             $id = (int) $id;
             if ($id > 0) {
                 switch ($action) {
                     case 'delete':
-                        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
-                        $affectedCount++;
+                        if (MailSecurityFilter::removeBadword($id)) {
+                            $affectedCount++;
+                        }
                         break;
                     case 'activate':
-                        $sql->setTable(rex::getTable('upkeep_mail_badwords'));
-                        $sql->setWhere(['id' => $id]);
-                        $sql->setValue('status', 1);
-                        $sql->setValue('updated_at', date('Y-m-d H:i:s'));
-                        $sql->update();
-                        $affectedCount++;
+                        // Status auf aktiv setzen
+                        $sql = rex_sql::factory();
+                        $sql->setQuery("SELECT status FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
+                        if ($sql->getRows() > 0 && !(bool)$sql->getValue('status')) {
+                            if (MailSecurityFilter::toggleBadwordStatus($id)) {
+                                $affectedCount++;
+                            }
+                        }
                         break;
                     case 'deactivate':
-                        $sql->setTable(rex::getTable('upkeep_mail_badwords'));
-                        $sql->setWhere(['id' => $id]);
-                        $sql->setValue('status', 0);
-                        $sql->setValue('updated_at', date('Y-m-d H:i:s'));
-                        $sql->update();
-                        $affectedCount++;
+                        // Status auf inaktiv setzen
+                        $sql = rex_sql::factory();
+                        $sql->setQuery("SELECT status FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
+                        if ($sql->getRows() > 0 && (bool)$sql->getValue('status')) {
+                            if (MailSecurityFilter::toggleBadwordStatus($id)) {
+                                $affectedCount++;
+                            }
+                        }
                         break;
                 }
             }

@@ -498,7 +498,7 @@ rex_sql_table::get(rex::getTable('upkeep_mail_rate_limit'))
     ->ensureIndex(new rex_sql_index('ip_time', ['ip_address', 'created_at']))
     ->ensure();
 
-// Mail Badwords Tabelle
+// Mail Badwords Tabelle mit erweiterten Editiermöglichkeiten
 rex_sql_table::get(rex::getTable('upkeep_mail_badwords'))
     ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
     ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
@@ -507,10 +507,14 @@ rex_sql_table::get(rex::getTable('upkeep_mail_badwords'))
     ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
     ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
     ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('is_default', 'tinyint(1)', false, '0')) // Flag für Standard-Badwords
+    ->ensureColumn(new rex_sql_column('is_editable', 'tinyint(1)', false, '1')) // Flag für bearbeitbare Badwords
     ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
     ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('edited_by', 'varchar(100)', true)) // Benutzer, der das Badword bearbeitet hat
     ->setPrimaryKey('id')
     ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
+    ->ensureIndex(new rex_sql_index('is_editable', ['is_editable']))
     ->ensure();
 
 // Mail Blocklist Tabelle (E-Mail-Adressen und Domains)
@@ -683,21 +687,7 @@ rex_sql_table::get(rex::getTable('upkeep_mail_default_patterns'))
     ->ensureIndex(new rex_sql_index('status', ['status']))
     ->ensure();
 
-// Mail Custom Patterns Tabelle erstellen - für benutzerdefinierte Patterns
-rex_sql_table::get(rex::getTable('upkeep_mail_custom_patterns'))
-    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
-    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
-    ->ensureColumn(new rex_sql_column('description', 'text', true))
-    ->ensureColumn(new rex_sql_column('category', 'varchar(100)', false, 'custom'))
-    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
-    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
-    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
-    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
-    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
-    ->setPrimaryKey('id')
-    ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
-    ->ensureIndex(new rex_sql_index('status', ['status']))
-    ->ensure();
+// Die custom_patterns Tabelle wird nicht mehr benötigt, da wir die erweiterte badwords Tabelle verwenden
 
 // Standard Mail Patterns in die Datenbank migrieren, falls noch nicht vorhanden
 $sql = rex_sql::factory();
