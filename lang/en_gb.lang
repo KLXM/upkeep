@@ -842,9 +842,105 @@ upkeep_security_fixes = Update recommended for current security fixes
 upkeep_version_current = REDAXO {0} is current
 upkeep_version_check_error = Error during version check: {0}
 
+# PHPMailer Configuration Messages
+upkeep_phpmailer_addon_unavailable = PHPMailer add-on not available
+upkeep_phpmailer_unsafe_mail_function = PHPMailer uses unsafe mail() function - SMTP recommended
+upkeep_phpmailer_smtp_fully_configured = PHPMailer SMTP fully configured
+upkeep_phpmailer_smtp_partially_configured = PHPMailer SMTP partially configured
+upkeep_phpmailer_smtp_not_configured = PHPMailer SMTP not configured
+upkeep_phpmailer_configured = PHPMailer configured ({0})
+upkeep_phpmailer_check_failed = PHPMailer check failed: {0}
+upkeep_security_headers_set = Security headers set
+upkeep_security_headers_missing = Security headers missing
+upkeep_addons_installed = {0} Addons installed
+
+# Server Header Checks
+upkeep_server_header_version_disclosed = Server version is being disclosed: {0}
+upkeep_server_header_x_powered_by = X-Powered-By header reveals PHP version: {0}
+upkeep_server_header_missing_security = Missing security header: {0}
+upkeep_server_header_description = Server should not disclose sensitive information and should set security headers.
+
+# PHP Configuration Checks
+upkeep_php_config_display_errors = Error messages are displayed (information leakage)
+upkeep_php_config_expose_php = PHP version is being disclosed (Information Disclosure)
+upkeep_php_config_allow_url_fopen = Remote URL includes are allowed (SSRF risk)
+upkeep_php_config_allow_url_include = Remote URL includes are allowed (RCE risk)
+upkeep_php_config_register_globals = Register Globals enabled (deprecated/unsafe)
+upkeep_php_config_error_reporting_production = Error Reporting active in production (information leakage)
+upkeep_php_config_memory_limit_high = Memory limit very high ({0}) - DoS risk
+upkeep_php_config_upload_max_high = Upload max filesize very high ({0})
+upkeep_php_config_post_max_high = Post max size very high ({0})
+upkeep_php_config_open_basedir_unset = Open Basedir not set - PHP can access entire disk
+upkeep_php_config_unlimited_memory = Memory limit unlimited (-1) - severe DoS risk
+upkeep_php_config_eval_enabled = Critically unsafe function enabled: eval (should be disabled)
+upkeep_php_config_dangerous_function = Potentially unsafe function enabled: {0} (only disable if not needed)
+upkeep_php_config_php_version_unsupported = PHP version no longer supported - security risk
+upkeep_php_config_php_version_deprecated = PHP version deprecated - update recommended
+upkeep_php_config_php_update_required = Urgent PHP version update required
+upkeep_php_config_error_logging_disabled = Error logging disabled - errors are not logged
+upkeep_php_config_ssl_expired = Certificate expires in less than 7 days
+upkeep_php_config_ssl_expiring = Certificate expiring soon
+upkeep_php_config_no_ssl_cert = No SSL certificate found
+upkeep_php_config_ssl_connection_failed = SSL connection failed: {0}
+upkeep_php_config_php_optimal = PHP optimally configured
+
 # SecurityAdvisor Dashboard Messages
 upkeep_mail_security_active = Mail Security active
 upkeep_mail_security_inactive = Mail Security inactive
+
+# File Permissions
+upkeep_file_permissions_too_open = Directory {0} has overly permissive permissions: {1} (recommended: {2})
+upkeep_file_permissions_description = Directories should have minimal necessary permissions.
+upkeep_file_permissions_critical_too_open = File {0} has overly permissive permissions: {1} (recommended: {2})
+upkeep_file_permissions_critical_description = Critical files should have restrictive permissions.
+
+# Database Security
+upkeep_db_password_too_short = Database password is too short (< 8 characters)
+upkeep_db_standard_username = Standard username used for database
+upkeep_db_external_connection = Database not running on localhost - additional network security required
+upkeep_db_description = Database credentials should be securely configured.
+
+# Email Security
+upkeep_email_phpmailer_unavailable = PHPMailer add-on not available - email functionality limited
+upkeep_email_unsafe_mail_function = PHPMailer uses unsafe mail() function
+upkeep_email_header_injection_risk = mail() function is vulnerable to header injection attacks
+upkeep_email_smtp_recommended = Switch to SMTP for better security and deliverability
+upkeep_email_smtp_encryption_missing = SMTP configured without encryption (Port: {0})
+upkeep_email_passwords_unencrypted = Email passwords and content transmitted unencrypted
+upkeep_email_smtp_auth_missing = SMTP authentication not enabled
+upkeep_email_auto_tls_warning = AutoTLS enabled on port {0} - manual TLS/SSL configuration recommended
+upkeep_email_auto_tls_unsecure = AutoTLS can fall back to unencrypted if TLS fails
+upkeep_email_secure_provider = Trusted email provider {0} with AutoTLS
+upkeep_email_microsoft365_optimal = Microsoft 365 Graph API - most modern email transmission with OAuth2
+upkeep_email_microsoft365_secure = Highest security through encrypted API connection
+upkeep_email_sendmail_warning = Sendmail used - SMTP with TLS recommended for better security
+upkeep_email_sendmail_no_encryption = No transmission encryption with Sendmail
+upkeep_email_php_mail_unsafe = PHP mail() function used - unsafe and unreliable
+upkeep_email_php_mail_no_security = No encryption, no authentication
+upkeep_email_spam_risk = Emails often end up in spam
+upkeep_email_unknown_method = Unknown mailer method: {0}
+upkeep_email_secure_configured = Email transmission is securely configured
+upkeep_email_description = Email transmission should be encrypted (SMTP with TLS/SSL).
+
+# REDAXO Version Checks
+upkeep_redaxo_installer_unavailable = Installer add-on not available - version check limited
+upkeep_redaxo_installer_activate = Activate Installer add-on for automatic update check
+upkeep_redaxo_check_updates_manually = Check for updates manually under System → Core Update
+upkeep_redaxo_development_version = Development version in use: {0}
+upkeep_redaxo_development_not_production = Development versions are not suitable for production servers
+upkeep_redaxo_switch_stable_version = Switch to stable REDAXO version
+upkeep_redaxo_critical_update = Critical REDAXO update available: {0} → {1}
+upkeep_redaxo_major_security_updates = Major updates contain important security updates
+upkeep_redaxo_immediate_update = Immediate update to the latest version recommended
+upkeep_redaxo_severely_outdated = REDAXO severely outdated: {0} → {1} ({2} subversions behind)
+upkeep_redaxo_version_too_old = Version is too old and should be updated urgently
+upkeep_redaxo_immediate_required = Immediate update required
+upkeep_redaxo_update_available = REDAXO update available: {0} → {1} ({2} subversion{3} behind)
+upkeep_redaxo_updates_contain_fixes = Updates contain security fixes and bug fixes
+upkeep_redaxo_update_timely = Perform update in a timely manner
+upkeep_redaxo_patch_available = REDAXO update available: {0} → {1}
+upkeep_redaxo_security_fixes = Update recommended for current security fixes
+upkeep_redaxo_version_current_final = REDAXO {0} is current
 
 # Maintenance Frontend - Multilanguage Settings (Hardcoded Text Replacements)
 upkeep_language_code_label = Language code (e.g., de, en, fr)
