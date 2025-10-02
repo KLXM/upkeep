@@ -817,6 +817,54 @@ if ($existingPatterns === 0) {
                 '/sale/i' => 'Spam: Sale'
             ],
             'severity' => 'low'
+        ],
+
+        // Bogus Code & Obfuscation Patterns
+        'bogus_code' => [
+            'patterns' => [
+                '/data\s*:\s*text\/javascript\s*;\s*base64\s*,/i' => 'Base64-encoded JavaScript',
+                '/data\s*:\s*text\/html\s*;\s*base64\s*,/i' => 'Base64-encoded HTML mit Script',
+                '/\\x[0-9a-f]{2}/i' => 'Hex-encoded JavaScript',
+                '/\\u[0-9a-f]{4}/i' => 'Unicode-Escapes in JavaScript',
+                '/eval\s*\(\s*atob\s*\(/i' => 'Obfuscated eval statements',
+                '/["\']\s*\+\s*["\']/' => 'String concatenation obfuscation',
+                '/new\s+Function\s*\(/i' => 'Dynamic function creation',
+                '/<script[^>]*src\s*=\s*["\'][^"\']*["\'][^>]*>/i' => 'Obfuscated script tags'
+            ],
+            'severity' => 'critical'
+        ],
+
+        // Advanced Persistent Threats (APT)
+        'apt_patterns' => [
+            'patterns' => [
+                '/base64_decode\s*\([^)]*\)\s*\|\s*sh/i' => 'Command injection via encoded commands',
+                '/php:\/\/input/i' => 'PHP wrappers exploitation',
+                '/php:\/\/filter/i' => 'PHP wrappers exploitation',
+                '/curl\s+.*--data/i' => 'Data exfiltration attempts',
+                '/wget\s+.*--post/i' => 'Data exfiltration attempts'
+            ],
+            'severity' => 'critical'
+        ],
+
+        // Zero-Day & Emerging Threats
+        'zero_day' => [
+            'patterns' => [
+                '/\$\{[^}]+\}/i' => 'Log4j-style attacks (JNDI)',
+                '/\{\{.*\}\}/i' => 'Template injection',
+                '/\{\%.*\%\}/i' => 'Template injection',
+                '/\{\{.*config.*\}\}/i' => 'SSTI (Server-Side Template Injection)'
+            ],
+            'severity' => 'critical'
+        ],
+
+        // E-Mail-spezifische Patterns
+        'email_specific' => [
+            'patterns' => [
+                '/!{2,}/' => 'Mehrfachausrufezeichen',
+                '/[A-Z]{5,}/' => 'Großbuchstaben-Blöcke',
+                '/\b(\w+)\s+\1\b/i' => 'Wiederholte Wörter'
+            ],
+            'severity' => 'low'
         ]
     ];
 

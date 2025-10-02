@@ -213,6 +213,60 @@ MailSecurityFilter::addBadword('/[A-Z]{5,}/', 'low', true);
 MailSecurityFilter::addBadword('/\b(\w+)\s+\1\b/i', 'low', true);
 ```
 
+**8. Bogus Code & Obfuscation Patterns**
+```php
+// Base64-encoded JavaScript
+MailSecurityFilter::addBadword('/data\s*:\s*text\/javascript\s*;\s*base64\s*,/i', 'critical', true);
+
+// Base64-encoded HTML mit Script
+MailSecurityFilter::addBadword('/data\s*:\s*text\/html\s*;\s*base64\s*,/i', 'critical', true);
+
+// Hex-encoded JavaScript
+MailSecurityFilter::addBadword('/\\x[0-9a-f]{2}/i', 'high', true);
+
+// Unicode-Escapes in JavaScript
+MailSecurityFilter::addBadword('/\\u[0-9a-f]{4}/i', 'high', true);
+
+// Obfuscated eval statements
+MailSecurityFilter::addBadword('/eval\s*\(\s*atob\s*\(/i', 'critical', true);
+
+// String concatenation obfuscation
+MailSecurityFilter::addBadword('/["\']\s*\+\s*["\']/', 'medium', true);
+
+// Dynamic function creation
+MailSecurityFilter::addBadword('/new\s+Function\s*\(/i', 'high', true);
+
+// Obfuscated script tags
+MailSecurityFilter::addBadword('/<script[^>]*src\s*=\s*["\'][^"\']*["\'][^>]*>/i', 'high', true);
+```
+
+**9. Advanced Persistent Threats (APT)**
+```php
+// Command injection via encoded commands
+MailSecurityFilter::addBadword('/base64_decode\s*\([^)]*\)\s*\|\s*sh/i', 'critical', true);
+
+// PHP wrappers exploitation
+MailSecurityFilter::addBadword('/php:\/\/input/i', 'critical', true);
+MailSecurityFilter::addBadword('/php:\/\/filter/i', 'critical', true);
+
+// Data exfiltration attempts
+MailSecurityFilter::addBadword('/curl\s+.*--data/i', 'high', true);
+MailSecurityFilter::addBadword('/wget\s+.*--post/i', 'high', true);
+```
+
+**10. Zero-Day & Emerging Threats**
+```php
+// Log4j-style attacks (JNDI)
+MailSecurityFilter::addBadword('/\$\{[^}]+\}/', 'critical', true);
+
+// Template injection
+MailSecurityFilter::addBadword('/\{\{.*\}\}/', 'high', true);
+MailSecurityFilter::addBadword('/\{\%.*\%\}/', 'high', true);
+
+// SSTI (Server-Side Template Injection)
+MailSecurityFilter::addBadword('/\{\{.*config.*\}\}/i', 'critical', true);
+```
+
 ##### Erweiterte Regex-Techniken
 
 **Lookahead und Lookbehind**
