@@ -82,58 +82,17 @@ upkeep_domain_mapping_description_field = Description
 upkeep_domain_mapping_no_entries = No domain redirects exist
 
 # Multilanguage
-upkeep_multilanguage_settings = Multilanguage Settings
-upkeep_multilanguage_enabled = Enable Multilanguage
-upkeep_multilanguage_enabled_tooltip = Enables a multilingual maintenance page with a language switcher and customizable texts per language.
-upkeep_multilanguage_default = Default Language
-upkeep_multilanguage_default_tooltip = The language that is displayed by default if no other language is detected or selected.
-upkeep_multilanguage_texts = Language Texts
-upkeep_multilanguage_texts_tooltip = JSON configuration for multilingual texts. Format: {"language": {"title": "Title", "message": "Message"}}
-upkeep_allow_bypass_param = Allow URL parameter for bypass
-upkeep_allow_bypass_param_tooltip = Allows bypassing the maintenance form via a special URL parameter.
-upkeep_bypass_param_key = Bypass Parameter Key
-upkeep_bypass_param_key_tooltip = The URL parameter that can be used to bypass the maintenance form (e.g., 'maintenance_bypass').
-upkeep_bypass_param_key_notice = Example: With "bypass", the form can be bypassed with "?bypass=1".
 upkeep_language_switcher = Select Language
 upkeep_switch_language = Switch language to {0}
 
 # General Settings & Buttons
-upkeep_settings = Settings
-upkeep_general_settings = General Settings
-upkeep_access_settings = Access Permissions
-upkeep_http_settings = HTTP Settings
 upkeep_yrewrite_settings = YRewrite Settings
-upkeep_active = Active
-upkeep_inactive = Inactive
 upkeep_save = Save
-upkeep_yes = Yes
-upkeep_no = No
 
 # Frontend Settings
-upkeep_frontend_active = Frontend Maintenance Mode
-upkeep_page_title = Page Title
-upkeep_page_message = Maintenance Message
-upkeep_frontend_password = Access Password
-upkeep_frontend_password_notice = Leave empty to not show a password prompt, or enter a new password
-upkeep_bypass_logged_in = Exclude logged-in users
-upkeep_allowed_ips = Allowed IP Addresses
-upkeep_your_ip = Your IP Address
-upkeep_add_ip = Add this IP
 upkeep_allowed_domains = Allowed Domains
-upkeep_enter_password = Enter Password
-upkeep_wrong_password = Wrong Password
-upkeep_submit = Submit
 
 # Frontend Tooltips
-upkeep_frontend_active_tooltip = Activates/deactivates the maintenance mode for the frontend. When activated, visitors see a maintenance page.
-upkeep_page_title_tooltip = The title of the maintenance page, displayed in the browser tab and as the page heading.
-upkeep_page_message_tooltip = Message for visitors during maintenance. Can contain HTML. Explains the reason and expected duration.
-upkeep_frontend_password_tooltip = Optional: Password-protected access to the frontend during maintenance. Leave empty for a public maintenance page.
-upkeep_bypass_logged_in_tooltip = If enabled, logged-in REDAXO users can use the frontend normally despite maintenance mode.
-upkeep_allowed_ips_tooltip = Comma-separated list of IP addresses that can use the frontend despite maintenance mode. Supports CIDR notation (e.g., 192.168.1.0/24).
-upkeep_http_status_code_tooltip = HTTP status code for the maintenance page. 503 recommended for temporary maintenance, 403 for access restrictions.
-upkeep_retry_after_tooltip = Tells search engines and clients after how many seconds they should try again. 3600 = 1 hour.
-upkeep_api_token_tooltip = Token for API access for external control of the maintenance mode. Leave empty to disable the API completely.
 
 # Backend Settings
 upkeep_backend_active = Backend Maintenance Mode
@@ -231,7 +190,6 @@ upkeep_ips_edit_default_pattern = Edit Default Pattern
 upkeep_ips_custom_patterns = Custom Patterns
 upkeep_ips_default_patterns = Default Patterns
 upkeep_ips_default_patterns_info = Customizable default security patterns
-upkeep_ips_pattern = Pattern
 upkeep_ips_category = Category
 upkeep_ips_description = Description
 upkeep_ips_severity_low = Low
@@ -355,14 +313,12 @@ upkeep_maintenance_active = Maintenance Mode
 upkeep_domains_management = Domain Management
 upkeep_domains_notice = Here you can activate or deactivate the maintenance mode for individual YRewrite domains. This setting overrides the general frontend setting.
 upkeep_yrewrite_not_available = The YRewrite add-on is not installed or activated. Domain management is not available.
-upkeep_settings_saved = The settings have been saved.
 
 # Maintenance Pages
 upkeep_backend_maintenance = Backend Maintenance
 
 # Domain Mapping
 upkeep_domain_mapping = Domain Mapping
-upkeep_domain_mapping_description = Here you can redirect domains to URLs
 upkeep_source_domain = Source Domain
 upkeep_target_url = Target URL
 upkeep_redirect_code = HTTP Status Code
@@ -381,13 +337,7 @@ upkeep_contact_admin = Please contact the administrator for more information.
 upkeep_back_to_website = Back to Website
 
 # HTTP Settings
-upkeep_http_status_code = HTTP Status Code
-upkeep_http_503 = 503 Service Unavailable (with Cache-Control)
-upkeep_http_503_no_cache = 503 Service Unavailable (without Cache-Control)
-upkeep_http_403 = 403 Forbidden
 upkeep_http_307 = 307 Temporary Redirect
-upkeep_retry_after = Retry-After Header (seconds)
-upkeep_retry_after_notice = Specifies after how many seconds the client should try to load the page again. 0 = disabled. Recommended: 3600 (1 hour)
 
 # Console Commands
 upkeep_console_active = Maintenance mode for {0} has been activated.
@@ -396,15 +346,7 @@ upkeep_console_already_active = Maintenance mode for {0} is already active.
 upkeep_console_already_inactive = Maintenance mode for {0} is already inactive.
 
 # API Settings
-upkeep_api_settings = API Settings
-upkeep_api_token = API Token
-upkeep_api_token_notice = Token for API access. Leave empty to disable the API.
-upkeep_generate_token = Generate Token
 
-upkeep_your_ip = Your IP Address
-upkeep_add_ip = Add this IP
-upkeep_server_ip = Server IP Address
-upkeep_add_server_ip = Add Server IP
 
 # IPS Whitelist
 upkeep_ips_positivliste = Whitelist
@@ -420,7 +362,6 @@ upkeep_ips_no_positivliste_entries = No whitelist entries exist
 upkeep_ips_ip_address = IP Address
 upkeep_ips_ip_range = IP Range (CIDR)
 upkeep_ips_ip_range_notice = Optional: CIDR notation for IP ranges (e.g., 192.168.1.0/24)
-upkeep_ips_category = Category
 upkeep_ips_category_admin = Admin
 upkeep_ips_category_cdn = CDN
 upkeep_ips_category_monitoring = Monitoring
@@ -434,7 +375,6 @@ upkeep_ips_category_api_desc = API clients and automated services
 upkeep_ips_category_trusted_desc = Other trusted IP addresses
 
 upkeep_ips_confirm_remove = Are you sure you want to remove this entry?
-upkeep_ips_active = Active
 upkeep_ips_inactive = Inactive
 upkeep_ips_activate = Activate
 upkeep_ips_deactivate = Deactivate
@@ -497,13 +437,6 @@ upkeep_ips_cronjob_success = IPS data cleanup performed successfully
 upkeep_ips_cronjob_error = Error during IPS data cleanup
 
 # Dashboard Texts
-upkeep_dashboard_system_status = System Status & Notices
-upkeep_dashboard_maintenance_active = Maintenance mode active
-upkeep_dashboard_frontend_blocked = Frontend is blocked for visitors
-upkeep_dashboard_backend_admin_only = Backend is accessible only to admins
-upkeep_dashboard_allowed_ips = {0} IP{1} still have access
-upkeep_dashboard_system_normal = System is running normally
-upkeep_dashboard_frontend_public = Frontend is publicly accessible
 upkeep_dashboard_backend_available = Backend is available to all users
 upkeep_dashboard_security_active = Security active
 upkeep_dashboard_ips_running = Intrusion Prevention System is running
@@ -554,7 +487,6 @@ upkeep_domain_mapping_saved = Domain Mapping has been saved
 upkeep_domain_mapping_save_error = Error while saving
 upkeep_domain_mapping_deleted = Domain Mapping has been deleted
 upkeep_domain_mapping_delete_error = Error while deleting
-upkeep_domain_mapping_no_entries = No Domain Mappings exist
 upkeep_domain_mapping_help_text = Here you can redirect domains to URLs. The redirection only works if the domain actually points to this server. <strong>IDN domains are supported.</strong> When entering the domain, the redirection automatically applies to domain.tld and www.domain.tld.
 upkeep_domain_mapping_wildcard_note = Source Path must end with /*. Target URL can contain * for dynamic replacement.
 upkeep_domain_mapping_global_settings = Global Domain Mapping Settings
@@ -572,10 +504,6 @@ upkeep_ips_geo_update_success = GeoIP database updated successfully
 upkeep_ips_geo_update_error = Error updating GeoIP database
 upkeep_ips_captcha_trust_help = How long (in hours) an IP remains trusted after a successful CAPTCHA unblock (Default: 24 hours, Maximum: 168 hours/7 days)
 upkeep_ips_temp_whitelist_help = 24h temporary whitelist after successful unblock
-upkeep_ips_cleanup_success_detail = Cleanup successful: {0}
-upkeep_ips_cleanup_manual = Manual Cleanup
-upkeep_ips_cleanup_auto = Automatic Cleanup
-upkeep_ips_cleanup_found = Found {0} records that can be cleaned up.
 upkeep_ips_important_notes = Important Notes
 
 # Mail Security
@@ -608,13 +536,10 @@ upkeep_maintenance_help_title = Maintenance Documentation
 upkeep_status_active = Active
 upkeep_status_inactive = Inactive
 upkeep_configure = Configure
-upkeep_activate = Activate
-upkeep_deactivate = Deactivate
 
 # Frontend Maintenance
 upkeep_frontend_active_info = Frontend maintenance mode is activated. Visitors will see the maintenance page.
 upkeep_frontend_inactive_info = Frontend is normally accessible.
-upkeep_allowed_ips = allowed IP addresses
 upkeep_confirm_activate = Really activate maintenance mode?
 upkeep_confirm_deactivate = Really deactivate maintenance mode?
 
@@ -647,7 +572,6 @@ upkeep_frontend_activated = Frontend maintenance mode has been activated.
 upkeep_frontend_deactivated = Frontend maintenance mode has been deactivated.
 upkeep_frontend_activate_warning = After activation, visitors to your website will see a maintenance page.
 upkeep_frontend_deactivate_info = Normal website operation will be restored.
-upkeep_cancel = Cancel
 
 # Maintenance Overview
 upkeep_maintenance_overview = Overview
@@ -773,7 +697,6 @@ upkeep_mail_reporting_info_cronjob = Cronjob Command
 # Common Labels
 upkeep_enabled = Enabled
 upkeep_disabled = Disabled
-upkeep_save = Save
 
 # System Health
 upkeep_system_health_title = System Health
@@ -802,15 +725,11 @@ upkeep_reporting_description = Central overview of all reporting functions of th
 upkeep_reporting_overview = Reporting Overview
 upkeep_system_health_card_description = Monitors system integrity and provides health data via an API.
 upkeep_mail_reporting_card_description = Automatic reporting of system events and errors via email.
-upkeep_configure = Configure
-upkeep_enabled = Enabled
-upkeep_disabled = Disabled
 upkeep_system_health_api_status = API Status
 upkeep_mail_reporting_status = Status
 upkeep_mail_reporting_mode_label = Mode
 
 # Dashboard Translations
-upkeep_dashboard_system_status = System Status
 upkeep_dashboard_core_system_checks = Core System Checks
 upkeep_dashboard_security_checks = Security Checks
 upkeep_dashboard_security_assessment_monitoring = Security Assessment & Monitoring
