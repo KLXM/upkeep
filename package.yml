@@ -15,74 +15,74 @@ page:
     subpages:
         dashboard_admin:
             title: ''
-            icon: rex-icon fa fa-user
+            icon: 'rex-icon fa fa-user'
             perm: admin
         dashboard:
             title: 'Upkeep Dashboard'
-            icon: rex-icon fa fa-dashboard
+            icon: 'rex-icon fa fa-dashboard'
             perm: upkeep[]
         admin_settings:
             title: 'Admin Einstellungen'
-            icon: rex-icon fa fa-cog
+            icon: 'rex-icon fa fa-cog'
             perm: admin
             hidden: true
         ips:
             title: 'translate:upkeep_ips_title'
-            icon: rex-icon fa fa-shield
+            icon: 'rex-icon fa fa-shield'
             perm: upkeep[ips]
             subpages:
-                threats: {title: 'translate:upkeep_ips_threats', icon: rex-icon fa fa-exclamation-triangle}
-                blocked: {title: 'translate:upkeep_ips_blocked', icon: rex-icon fa fa-ban}
-                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: rex-icon fa fa-check-circle}
-                patterns: {title: 'translate:upkeep_ips_patterns', icon: rex-icon fa fa-code}
-                default_patterns: {title: 'translate:upkeep_ips_default_patterns', icon: rex-icon fa fa-cogs}
-                settings: {title: 'translate:upkeep_ips_settings', icon: rex-icon fa fa-cog}
-                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: rex-icon fa fa-trash}
+                threats: {title: 'translate:upkeep_ips_threats', icon: 'rex-icon fa fa-exclamation-triangle'}
+                blocked: {title: 'translate:upkeep_ips_blocked', icon: 'rex-icon fa fa-ban'}
+                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: 'rex-icon fa fa-check-circle'}
+                patterns: {title: 'translate:upkeep_ips_patterns', icon: 'rex-icon fa fa-code'}
+                default_patterns: {title: 'translate:upkeep_ips_default_patterns', icon: 'rex-icon fa fa-cogs'}
+                settings: {title: 'translate:upkeep_ips_settings', icon: 'rex-icon fa fa-cog'}
+                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: 'rex-icon fa fa-trash'}
         security_advisor:
             title: 'translate:upkeep_security_advisor_title'
-            icon: rex-icon fa fa-shield
+            icon: 'rex-icon fa fa-shield'
             perm: upkeep[advisor]
             subpages:
-                reports: {title: 'translate:upkeep_security_reports', icon: rex-icon fa fa-list}
-                help: {title: 'translate:upkeep_security_advisor_help_title', subPath: SECURITY_ADVISOR.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
+                reports: {title: 'translate:upkeep_security_reports', icon: 'rex-icon fa fa-list'}
+                help: {title: 'translate:upkeep_security_advisor_help_title', subPath: SECURITY_ADVISOR.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
         mail_security:
             title: 'Mail Security'
-            icon: rex-icon fa fa-envelope-o
+            icon: 'rex-icon fa fa-envelope-o'
             perm: upkeep[mail_security]
             subpages:
-                dashboard: {title: 'Dashboard', icon: rex-icon fa fa-dashboard}
-                threats: {title: 'Threat Log', icon: rex-icon fa fa-exclamation-triangle}
-                badwords: {title: 'Badwords', icon: rex-icon fa fa-filter}
-                blocklist: {title: 'Blocklist', icon: rex-icon fa fa-ban}
-                settings: {title: 'Settings', icon: rex-icon fa fa-cog}
-                cleanup: {title: 'Cleanup', icon: rex-icon fa fa-trash}
-                help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
+                dashboard: {title: 'Dashboard', icon: 'rex-icon fa fa-dashboard'}
+                threats: {title: 'Threat Log', icon: 'rex-icon fa fa-exclamation-triangle'}
+                badwords: {title: 'Badwords', icon: 'rex-icon fa fa-filter'}
+                blocklist: {title: 'Blocklist', icon: 'rex-icon fa fa-ban'}
+                settings: {title: 'Settings', icon: 'rex-icon fa fa-cog'}
+                cleanup: {title: 'Cleanup', icon: 'rex-icon fa fa-trash'}
+                help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
         reporting:
             title: 'translate:upkeep_reporting_title'
-            icon: rex-icon fa fa-bar-chart
+            icon: 'rex-icon fa fa-bar-chart'
             perm: upkeep[reporting]
             subpages:
-                overview: {title: 'translate:upkeep_reporting_overview', icon: rex-icon fa fa-dashboard}
-                system_health: {title: 'translate:upkeep_system_health_title', icon: rex-icon fa fa-heartbeat}
-                mail_reporting: {title: 'translate:upkeep_mail_reporting_title', icon: rex-icon fa fa-paper-plane}
+                overview: {title: 'translate:upkeep_reporting_overview', icon: 'rex-icon fa fa-dashboard'}
+                system_health: {title: 'translate:upkeep_system_health_title', icon: 'rex-icon fa fa-heartbeat'}
+                mail_reporting: {title: 'translate:upkeep_mail_reporting_title', icon: 'rex-icon fa fa-paper-plane'}
         maintenance:
             title: 'translate:upkeep_maintenance_title'
-            icon: rex-icon fa fa-wrench
+            icon: 'rex-icon fa fa-wrench'
             perm: upkeep[maintenance]
             subpages:
-                frontend: {title: 'translate:upkeep_frontend_title', icon: rex-icon fa fa-globe, perm: upkeep[maintenance]}
-                backend: {title: 'translate:upkeep_backend_title', icon: rex-icon fa fa-users, perm: admin[]}
-                domains: {title: 'translate:upkeep_domains_title', icon: rex-icon fa fa-sitemap, perm: upkeep[maintenance_domains]}
-                help: {title: 'translate:upkeep_maintenance_help_title', subPath: MAINTENANCE.md, itemClass: 'pull-right', icon: rex-icon fa fa-question-circle}
+                frontend: {title: 'translate:upkeep_frontend_title', icon: 'rex-icon fa fa-globe', perm: 'upkeep[maintenance]'}
+                backend: {title: 'translate:upkeep_backend_title', icon: 'rex-icon fa fa-users', perm: 'admin[]'}
+                domains: {title: 'translate:upkeep_domains_title', icon: 'rex-icon fa fa-sitemap', perm: 'upkeep[maintenance_domains]'}
+                help: {title: 'translate:upkeep_maintenance_help_title', subPath: MAINTENANCE.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
         domain_mapping:
             title: 'translate:upkeep_domain_mapping_title'
-            icon: rex-icon fa fa-share
+            icon: 'rex-icon fa fa-share'
             perm: upkeep[domain_mapping]
         help:
             title: 'translate:help'
             subPath: README.md
             itemClass: 'pull-right'
-            icon: rex-icon fa fa-question-circle
+            icon: 'rex-icon fa fa-question-circle'
             
 requires:
     redaxo: ^5.18.1
