@@ -1055,3 +1055,26 @@ upkeep_redaxo_version_current_final = REDAXO {0} ist aktuell
 # upkeep_mail_security_delete_badword_confirm = Badword wirklich löschen?
 # upkeep_mail_security_no_badwords_found = Keine Badwords gefunden
 # upkeep_mail_security_no_badwords_configured = Noch keine Badwords konfiguriert
+
+# Maintenance Frontend - Mehrsprachigkeits-Einstellungen (Hardcoded-Text-Ersetzungen)
+upkeep_language_code_label = Sprachcode (z.B. de, en, fr)
+upkeep_language_code_placeholder = de
+upkeep_language_name_label = Sprachname (z.B. Deutsch, English)
+upkeep_language_name_placeholder = Deutsch
+upkeep_page_title_label = Überschrift
+upkeep_page_title_placeholder = Wartungsarbeiten
+upkeep_page_message_label = Hauptnachricht
+upkeep_page_message_placeholder = Diese Website befindet sich derzeit im Wartungsmodus...
+upkeep_password_label_label = Passwort-Eingabe Bezeichnung
+upkeep_password_label_placeholder = Passwort eingeben
+upkeep_password_button_label = Anmelde-Button Text
+upkeep_password_button_placeholder = Anmelden
+upkeep_language_switch_label = Sprachwechsel Bezeichnung
+upkeep_language_switch_placeholder = Sprache wählen
+upkeep_add_language = Neue Sprache hinzufügen
+upkeep_save_language_texts = Sprachtexte speichern
+upkeep_remove_language = Sprache entfernen
+upkeep_new_language = Neue Sprache
+upkeep_language_singular = Sprache
+upkeep_alert_min_one_language = Mindestens eine Sprache muss vorhanden sein.
+upkeep_remove_language_title = Sprache entfernen

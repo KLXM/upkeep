@@ -76,15 +76,6 @@ if ($addon->getConfig('multilanguage_texts', '') === '') {
             'password_label' => 'Passwort eingeben',
             'password_button' => 'Anmelden',
             'language_switch' => 'Sprache wählen'
-        ],
-        [
-            'language_code' => 'en',
-            'language_name' => 'English',
-            'title' => 'Maintenance Mode',
-            'message' => 'This website is currently under maintenance. Please try again later.',
-            'password_label' => 'Enter Password',
-            'password_button' => 'Login',
-            'language_switch' => 'Choose Language'
         ]
     ];
     
@@ -233,11 +224,11 @@ if (empty($textsArray)) {
         [
             'language_code' => 'de',
             'language_name' => 'Deutsch',
-            'title' => 'Wartungsarbeiten',
-            'message' => 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.',
-            'password_label' => 'Passwort eingeben',
-            'password_button' => 'Anmelden',
-            'language_switch' => 'Sprache wählen'
+            'title' => $addon->i18n('upkeep_page_title_placeholder'),
+            'message' => $addon->i18n('upkeep_page_message_placeholder'),
+            'password_label' => $addon->i18n('upkeep_password_label_placeholder'),
+            'password_button' => $addon->i18n('upkeep_password_button_placeholder'),
+            'language_switch' => $addon->i18n('upkeep_language_switch_placeholder')
         ]
     ];
 }
@@ -257,9 +248,9 @@ foreach ($textsArray as $index => $text) {
         <div class="language-entry panel panel-default" data-index="' . $index . '">
             <div class="panel-heading">
                 <h4 class="panel-title">
-                    <span class="language-title">' . rex_escape($text['language_name'] ?? 'Sprache') . ' (' . rex_escape($text['language_code'] ?? '') . ')</span>
+                    <span class="language-title">' . rex_escape($text['language_name'] ?? $addon->i18n('upkeep_language_singular')) . ' (' . rex_escape($text['language_code'] ?? '') . ')</span>
                     <div class="pull-right">
-                        <button type="button" class="btn btn-xs btn-danger remove-language" title="Sprache entfernen">
+                        <button type="button" class="btn btn-xs btn-danger remove-language" title="' . rex_escape($addon->i18n('upkeep_remove_language_title')) . '">
                             <i class="rex-icon fa-trash"></i>
                         </button>
                     </div>
@@ -269,42 +260,42 @@ foreach ($textsArray as $index => $text) {
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>Sprachcode (z.B. de, en, fr)</label>
-                            <input type="text" class="form-control language-code" value="' . rex_escape($text['language_code'] ?? '') . '" placeholder="de">
+                            <label>' . rex_escape($addon->i18n('upkeep_language_code_label')) . '</label>
+                            <input type="text" class="form-control language-code" value="' . rex_escape($text['language_code'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_language_code_placeholder')) . '">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>Sprachname (z.B. Deutsch, English)</label>
-                            <input type="text" class="form-control language-name" value="' . rex_escape($text['language_name'] ?? '') . '" placeholder="Deutsch">
+                            <label>' . rex_escape($addon->i18n('upkeep_language_name_label')) . '</label>
+                            <input type="text" class="form-control language-name" value="' . rex_escape($text['language_name'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_language_name_placeholder')) . '">
                         </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Überschrift</label>
-                    <input type="text" class="form-control language-title-input" value="' . rex_escape($text['title'] ?? '') . '" placeholder="Wartungsarbeiten">
+                    <label>' . rex_escape($addon->i18n('upkeep_page_title_label')) . '</label>
+                    <input type="text" class="form-control language-title-input" value="' . rex_escape($text['title'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_page_title_placeholder')) . '">
                 </div>
                 <div class="form-group">
-                    <label>Hauptnachricht</label>
-                    <textarea class="form-control language-message" rows="3" placeholder="Diese Website befindet sich derzeit im Wartungsmodus...">' . rex_escape($text['message'] ?? '') . '</textarea>
+                    <label>' . rex_escape($addon->i18n('upkeep_page_message_label')) . '</label>
+                    <textarea class="form-control language-message" rows="3" placeholder="' . rex_escape($addon->i18n('upkeep_page_message_placeholder')) . '">' . rex_escape($text['message'] ?? '') . '</textarea>
                 </div>
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>Passwort-Eingabe Bezeichnung</label>
-                            <input type="text" class="form-control language-password-label" value="' . rex_escape($text['password_label'] ?? '') . '" placeholder="Passwort eingeben">
+                            <label>' . rex_escape($addon->i18n('upkeep_password_label_label')) . '</label>
+                            <input type="text" class="form-control language-password-label" value="' . rex_escape($text['password_label'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_password_label_placeholder')) . '">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>Anmelde-Button Text</label>
-                            <input type="text" class="form-control language-password-button" value="' . rex_escape($text['password_button'] ?? '') . '" placeholder="Anmelden">
+                            <label>' . rex_escape($addon->i18n('upkeep_password_button_label')) . '</label>
+                            <input type="text" class="form-control language-password-button" value="' . rex_escape($text['password_button'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_password_button_placeholder')) . '">
                         </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Sprachwechsel Bezeichnung</label>
-                    <input type="text" class="form-control language-switch" value="' . rex_escape($text['language_switch'] ?? '') . '" placeholder="Sprache wählen">
+                    <label>' . rex_escape($addon->i18n('upkeep_language_switch_label')) . '</label>
+                    <input type="text" class="form-control language-switch" value="' . rex_escape($text['language_switch'] ?? '') . '" placeholder="' . rex_escape($addon->i18n('upkeep_language_switch_placeholder')) . '">
                 </div>
             </div>
         </div>';
@@ -314,10 +305,10 @@ $languageForm .= '
             </div>
             <div class="form-group">
                 <button type="button" class="btn btn-success" id="add-language">
-                    <i class="rex-icon fa-plus"></i> Neue Sprache hinzufügen
+                    <i class="rex-icon fa-plus"></i> ' . $addon->i18n('upkeep_add_language') . '
                 </button>
                 <button type="submit" class="btn btn-save" name="config-submit" value="1">
-                    <i class="rex-icon rex-icon-save"></i> Sprachtexte speichern
+                    <i class="rex-icon rex-icon-save"></i> ' . $addon->i18n('upkeep_save_language_texts') . '
                 </button>
             </div>
         </div>
@@ -333,6 +324,27 @@ echo $languageFragment->parse('core/page/section.php');
 ?>
 <script type="text/javascript">
 $(document).on('rex:ready', function() {
+    // PHP translations for JavaScript
+    var i18n = {
+        languageCodeLabel: <?= json_encode($addon->i18n('upkeep_language_code_label')) ?>,
+        languageCodePlaceholder: <?= json_encode($addon->i18n('upkeep_language_code_placeholder')) ?>,
+        languageNameLabel: <?= json_encode($addon->i18n('upkeep_language_name_label')) ?>,
+        languageNamePlaceholder: <?= json_encode($addon->i18n('upkeep_language_name_placeholder')) ?>,
+        pageTitleLabel: <?= json_encode($addon->i18n('upkeep_page_title_label')) ?>,
+        pageTitlePlaceholder: <?= json_encode($addon->i18n('upkeep_page_title_placeholder')) ?>,
+        pageMessageLabel: <?= json_encode($addon->i18n('upkeep_page_message_label')) ?>,
+        pageMessagePlaceholder: <?= json_encode($addon->i18n('upkeep_page_message_placeholder')) ?>,
+        passwordLabelLabel: <?= json_encode($addon->i18n('upkeep_password_label_label')) ?>,
+        passwordLabelPlaceholder: <?= json_encode($addon->i18n('upkeep_password_label_placeholder')) ?>,
+        passwordButtonLabel: <?= json_encode($addon->i18n('upkeep_password_button_label')) ?>,
+        passwordButtonPlaceholder: <?= json_encode($addon->i18n('upkeep_password_button_placeholder')) ?>,
+        languageSwitchLabel: <?= json_encode($addon->i18n('upkeep_language_switch_label')) ?>,
+        languageSwitchPlaceholder: <?= json_encode($addon->i18n('upkeep_language_switch_placeholder')) ?>,
+        newLanguage: <?= json_encode($addon->i18n('upkeep_new_language')) ?>,
+        removeLanguageTitle: <?= json_encode($addon->i18n('upkeep_remove_language_title')) ?>,
+        alertMinOneLanguage: <?= json_encode($addon->i18n('upkeep_alert_min_one_language')) ?>
+    };
+    
     // Bootstrap-Tooltips aktivieren
     $('[data-toggle="tooltip"]').tooltip();
     
@@ -363,9 +375,9 @@ $(document).on('rex:ready', function() {
             <div class="language-entry panel panel-default" data-index="${newIndex}">
                 <div class="panel-heading">
                     <h4 class="panel-title">
-                        <span class="language-title">Neue Sprache</span>
+                        <span class="language-title">${i18n.newLanguage}</span>
                         <div class="pull-right">
-                            <button type="button" class="btn btn-xs btn-danger remove-language" title="Sprache entfernen">
+                            <button type="button" class="btn btn-xs btn-danger remove-language" title="${i18n.removeLanguageTitle}">
                                 <i class="rex-icon fa-trash"></i>
                             </button>
                         </div>
@@ -375,42 +387,42 @@ $(document).on('rex:ready', function() {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Sprachcode (z.B. de, en, fr)</label>
-                                <input type="text" class="form-control language-code" placeholder="en">
+                                <label>${i18n.languageCodeLabel}</label>
+                                <input type="text" class="form-control language-code" placeholder="${i18n.languageCodePlaceholder}">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Sprachname (z.B. Deutsch, English)</label>
-                                <input type="text" class="form-control language-name" placeholder="English">
+                                <label>${i18n.languageNameLabel}</label>
+                                <input type="text" class="form-control language-name" placeholder="${i18n.languageNamePlaceholder}">
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Überschrift</label>
-                        <input type="text" class="form-control language-title-input" placeholder="Maintenance Mode">
+                        <label>${i18n.pageTitleLabel}</label>
+                        <input type="text" class="form-control language-title-input" placeholder="${i18n.pageTitlePlaceholder}">
                     </div>
                     <div class="form-group">
-                        <label>Hauptnachricht</label>
-                        <textarea class="form-control language-message" rows="3" placeholder="This website is currently under maintenance..."></textarea>
+                        <label>${i18n.pageMessageLabel}</label>
+                        <textarea class="form-control language-message" rows="3" placeholder="${i18n.pageMessagePlaceholder}"></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Passwort-Eingabe Bezeichnung</label>
-                                <input type="text" class="form-control language-password-label" placeholder="Enter Password">
+                                <label>${i18n.passwordLabelLabel}</label>
+                                <input type="text" class="form-control language-password-label" placeholder="${i18n.passwordLabelPlaceholder}">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Anmelde-Button Text</label>
-                                <input type="text" class="form-control language-password-button" placeholder="Login">
+                                <label>${i18n.passwordButtonLabel}</label>
+                                <input type="text" class="form-control language-password-button" placeholder="${i18n.passwordButtonPlaceholder}">
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Sprachwechsel Bezeichnung</label>
-                        <input type="text" class="form-control language-switch" placeholder="Choose Language">
+                        <label>${i18n.languageSwitchLabel}</label>
+                        <input type="text" class="form-control language-switch" placeholder="${i18n.languageSwitchPlaceholder}">
                     </div>
                 </div>
             </div>
@@ -426,7 +438,7 @@ $(document).on('rex:ready', function() {
             $(this).closest('.language-entry').remove();
             updateLanguageTexts();
         } else {
-            alert('Mindestens eine Sprache muss vorhanden sein.');
+            alert(i18n.alertMinOneLanguage);
         }
     });
     
@@ -435,7 +447,7 @@ $(document).on('rex:ready', function() {
         var entry = $(this).closest('.language-entry');
         var code = entry.find('.language-code').val();
         var name = entry.find('.language-name').val();
-        var title = name ? name + (code ? ' (' + code + ')' : '') : (code ? code : 'Neue Sprache');
+        var title = name ? name + (code ? ' (' + code + ')' : '') : (code ? code : i18n.newLanguage);
         entry.find('.language-title').text(title);
         updateLanguageTexts();
     });
