@@ -37,6 +37,7 @@ upkeep_server_ip = Server-IP
 upkeep_add_ip = Hinzufügen
 upkeep_add_server_ip = Server-IP hinzufügen
 upkeep_http_settings = HTTP-Einstellungen
+upkeep_yrewrite_settings = YRewrite-Einstellungen
 upkeep_http_status_code = HTTP-Statuscode
 upkeep_http_status_code_tooltip = Der HTTP-Statuscode, der bei der Wartungsseite zurückgegeben wird
 upkeep_http_503 = 503 Service Unavailable (mit Cache-Control)
@@ -84,6 +85,10 @@ upkeep_domain_mapping_no_entries = Keine Domain-Redirects vorhanden
 # Mehrsprachigkeit
 upkeep_language_switcher = Sprache wählen
 upkeep_switch_language = Sprache wechseln zu {0}
+
+
+# Frontend-Einstellungen (fehlende Übersetzungen)
+upkeep_allowed_domains = Erlaubte Domains
 
 # Frontend-Tooltips
 
