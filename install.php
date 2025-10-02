@@ -659,3 +659,186 @@ if ($existingBadwords === 0) {
         }
     }
 }
+
+// Mail Default Patterns Tabelle erstellen - für anpassbare Standard-Patterns
+rex_sql_table::get(rex::getTable('upkeep_mail_default_patterns'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(100)', false))
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
+    ->ensureColumn(new rex_sql_column('description', 'text', true))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('is_default', 'tinyint(1)', false, '1')) // Kennzeichnet vorgegebene Patterns
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
+    ->ensureIndex(new rex_sql_index('status', ['status']))
+    ->ensure();
+
+// Mail Custom Patterns Tabelle erstellen - für benutzerdefinierte Patterns
+rex_sql_table::get(rex::getTable('upkeep_mail_custom_patterns'))
+    ->ensureColumn(new rex_sql_column('id', 'int(11)', false, null, 'auto_increment'))
+    ->ensureColumn(new rex_sql_column('pattern', 'varchar(500)', false))
+    ->ensureColumn(new rex_sql_column('description', 'text', true))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(100)', false, 'custom'))
+    ->ensureColumn(new rex_sql_column('severity', 'enum("low","medium","high","critical")', false, 'medium'))
+    ->ensureColumn(new rex_sql_column('is_regex', 'tinyint(1)', false, '0'))
+    ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
+    ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
+    ->ensureColumn(new rex_sql_column('updated_at', 'datetime', false))
+    ->setPrimaryKey('id')
+    ->ensureIndex(new rex_sql_index('category_status', ['category', 'status']))
+    ->ensureIndex(new rex_sql_index('status', ['status']))
+    ->ensure();
+
+// Standard Mail Patterns in die Datenbank migrieren, falls noch nicht vorhanden
+$sql = rex_sql::factory();
+$sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_mail_default_patterns'));
+$existingPatterns = (int) $sql->getValue('count');
+
+if ($existingPatterns === 0) {
+    // Code-Injection Patterns definieren - diese können später über das Backend angepasst werden
+    $defaultPatterns = [
+        // Kritische Code-Injection Patterns
+        'critical_injection' => [
+            'patterns' => [
+                '/<script[^>]*>/i' => 'JavaScript Script-Tag Injection',
+                '/<\/script>/i' => 'JavaScript Script-Tag Ende',
+                '/javascript:/i' => 'JavaScript Protocol Injection',
+                '/on(load|click|error|focus|blur|change|submit|mouseover)\s*=/i' => 'HTML Event Handler XSS',
+                '/eval\s*\(/i' => 'JavaScript eval() Ausführung',
+                '/alert\s*\(/i' => 'JavaScript alert() Test',
+                '/document\.(write|cookie|location)/i' => 'DOM Manipulation',
+                '/window\.(open|location)/i' => 'Window Manipulation',
+                '/<\?php/i' => 'PHP Code Injection Start',
+                '/<\?=/i' => 'PHP Short Tag Injection',
+                '/<\?\s/i' => 'PHP Code Block Start',
+                '/\?>/i' => 'PHP Code Block Ende',
+                '/exec\s*\(/i' => 'PHP exec() Ausführung',
+                '/system\s*\(/i' => 'PHP system() Ausführung',
+                '/shell_exec\s*\(/i' => 'PHP shell_exec() Ausführung',
+                '/passthru\s*\(/i' => 'PHP passthru() Ausführung',
+                '/file_get_contents\s*\(/i' => 'PHP File Access',
+                '/file_put_contents\s*\(/i' => 'PHP File Write',
+                '/fopen\s*\(/i' => 'PHP File Open',
+                '/include\s+/i' => 'PHP Include Injection',
+                '/require\s+/i' => 'PHP Require Injection',
+                '/union\s+select/i' => 'SQL UNION SELECT Injection',
+                '/drop\s+table/i' => 'SQL DROP TABLE Injection',
+                '/truncate\s+table/i' => 'SQL TRUNCATE TABLE Injection',
+                '/delete\s+from/i' => 'SQL DELETE FROM Injection',
+                '/insert\s+into/i' => 'SQL INSERT INTO Injection',
+                '/update\s+.*set/i' => 'SQL UPDATE SET Injection',
+                '/alter\s+table/i' => 'SQL ALTER TABLE Injection',
+                '/create\s+table/i' => 'SQL CREATE TABLE Injection',
+                '/<!--\s*#(exec|include|echo|config)/i' => 'SSI Server-Side Includes',
+                '/\|\s*(ls|cat|grep|find|wget|curl)/i' => 'Command Injection Unix Tools',
+                '/&&\s*(rm|mv|cp|chmod)/i' => 'Command Injection File Operations',
+                '/;\s*(whoami|id|uname)/i' => 'Command Injection System Info'
+            ],
+            'severity' => 'critical'
+        ],
+
+        // Hohe Risiko Patterns
+        'high_injection' => [
+            'patterns' => [
+                '/<iframe[^>]*>/i' => 'Iframe Injection',
+                '/<object[^>]*>/i' => 'Object Tag Injection',
+                '/<embed[^>]*>/i' => 'Embed Tag Injection',
+                '/<link[^>]*>/i' => 'Link Tag Injection',
+                '/<meta[^>]*>/i' => 'Meta Tag Injection',
+                '/<base[^>]*>/i' => 'Base Tag Injection',
+                '/<form[^>]*>/i' => 'Form Tag Injection',
+                '/data:\s*[^,]*,/i' => 'Data URI Injection',
+                '/setTimeout\s*\(/i' => 'JavaScript setTimeout',
+                '/setInterval\s*\(/i' => 'JavaScript setInterval',
+                '/Function\s*\(/i' => 'JavaScript Function Constructor'
+            ],
+            'severity' => 'high'
+        ],
+
+        // Mittlere Risiko Patterns (CSS und Style)
+        'medium_injection' => [
+            'patterns' => [
+                '/expression\s*\(/i' => 'CSS expression() JavaScript Ausführung',
+                '/behavior\s*:/i' => 'CSS behavior: Script Laden',
+                '/javascript\s*:/i' => 'CSS javascript: URLs',
+                '/vbscript\s*:/i' => 'CSS vbscript: URLs',
+                '/data\s*:\s*text\/html/i' => 'Data URL mit HTML',
+                '/data\s*:\s*text\/javascript\s*;\s*base64\s*,/i' => 'Base64 JavaScript Data URL',
+                '/data\s*:\s*application\/javascript\s*;\s*base64\s*,/i' => 'Base64 Application JavaScript',
+                '/style\s*=.*expression/i' => 'Style Attribute expression',
+                '/style\s*=.*javascript/i' => 'Style Attribute javascript',
+                '/style\s*=.*vbscript/i' => 'Style Attribute vbscript'
+            ],
+            'severity' => 'medium'
+        ],
+
+        // Spam Patterns - Hohes Risiko
+        'high_spam' => [
+            'patterns' => [
+                '/click here now/i' => 'Spam: Urgent Action Required',
+                '/urgent.{0,20}action.{0,20}required/i' => 'Spam: Urgent Action',
+                '/congratulations.{0,30}winner/i' => 'Spam: Lottery Winner',
+                '/claim.{0,20}prize/i' => 'Spam: Claim Prize',
+                '/limited.{0,20}time.{0,20}offer/i' => 'Spam: Limited Time Offer',
+                '/act.{0,20}now/i' => 'Spam: Act Now',
+                '/millions?.{0,20}dollars?/i' => 'Spam: Millions of Dollars',
+                '/nigerian.{0,20}prince/i' => 'Spam: Nigerian Prince',
+                '/inheritance.{0,30}fund/i' => 'Spam: Inheritance Fund',
+                '/covid.{0,20}vaccine.{0,20}scam/i' => 'Spam: COVID Vaccine Scam'
+            ],
+            'severity' => 'high'
+        ],
+
+        // Spam Patterns - Mittleres Risiko
+        'medium_spam' => [
+            'patterns' => [
+                '/free.{0,20}money/i' => 'Spam: Free Money',
+                '/work.{0,20}from.{0,20}home/i' => 'Spam: Work From Home',
+                '/make.{0,20}money.{0,20}fast/i' => 'Spam: Make Money Fast',
+                '/guaranteed.{0,20}income/i' => 'Spam: Guaranteed Income',
+                '/no.{0,20}investment/i' => 'Spam: No Investment',
+                '/100%.{0,20}free/i' => 'Spam: 100% Free',
+                '/risk.{0,20}free/i' => 'Spam: Risk Free',
+                '/satisfaction.{0,20}guaranteed/i' => 'Spam: Satisfaction Guaranteed'
+            ],
+            'severity' => 'medium'
+        ],
+
+        // Spam Patterns - Niedriges Risiko
+        'low_spam' => [
+            'patterns' => [
+                '/unsubscribe/i' => 'Spam: Unsubscribe Link',
+                '/special.{0,20}offer/i' => 'Spam: Special Offer',
+                '/discount/i' => 'Spam: Discount',
+                '/sale/i' => 'Spam: Sale'
+            ],
+            'severity' => 'low'
+        ]
+    ];
+
+    // Patterns in die Datenbank einfügen
+    $sql = rex_sql::factory();
+    $currentTime = date('Y-m-d H:i:s');
+
+    foreach ($defaultPatterns as $category => $data) {
+        $isRegex = isset($data['is_regex']) && $data['is_regex'] === true;
+
+        foreach ($data['patterns'] as $pattern => $description) {
+            $sql->setTable(rex::getTable('upkeep_mail_default_patterns'));
+            $sql->setValue('category', $category);
+            $sql->setValue('pattern', $pattern);
+            $sql->setValue('description', $description);
+            $sql->setValue('severity', $data['severity']);
+            $sql->setValue('is_regex', $isRegex ? 1 : 0);
+            $sql->setValue('status', 1); // Alle Standard-Patterns aktiviert
+            $sql->setValue('is_default', 1);
+            $sql->setValue('created_at', $currentTime);
+            $sql->setValue('updated_at', $currentTime);
+            $sql->insert();
+        }
+    }
+}

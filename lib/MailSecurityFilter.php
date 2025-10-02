@@ -23,125 +23,6 @@ use rex_extension_point;
  */
 class MailSecurityFilter
 {
-    private static ?rex_addon $addon = null;
-    
-    // Rate-Limiting für E-Mail-Versand (pro IP/Session)
-    private static array $mailRateLimits = [
-        'per_minute' => 10,  // Max 10 E-Mails pro Minute
-        'per_hour' => 50,    // Max 50 E-Mails pro Stunde  
-        'per_day' => 200     // Max 200 E-Mails pro Tag
-    ];
-    
-    // Verdächtige Patterns in E-Mail-Inhalten
-    private static array $spamPatterns = [
-        // Typische Spam-Indikatoren
-        'high_risk' => [
-            '/click here now/i',
-            '/urgent.{0,20}action.{0,20}required/i',
-            '/congratulations.{0,30}winner/i',
-            '/claim.{0,20}prize/i',
-            '/limited.{0,20}time.{0,20}offer/i',
-            '/act.{0,20}now/i',
-            '/millions?.{0,20}dollars?/i',
-            '/nigerian.{0,20}prince/i',
-            '/inheritance.{0,30}fund/i',
-            '/covid.{0,20}vaccine.{0,20}scam/i',
-        ],
-        'medium_risk' => [
-            '/free.{0,20}money/i',
-            '/work.{0,20}from.{0,20}home/i',
-            '/make.{0,20}money.{0,20}fast/i',
-            '/guaranteed.{0,20}income/i',
-            '/no.{0,20}investment/i',
-            '/100%.{0,20}free/i',
-            '/risk.{0,20}free/i',
-            '/satisfaction.{0,20}guaranteed/i',
-        ],
-        'low_risk' => [
-            '/unsubscribe/i',
-            '/special.{0,20}offer/i',
-            '/discount/i',
-            '/sale/i',
-        ]
-    ];
-    
-    // Code-Injection Patterns (kritische Sicherheitsbedrohungen)
-    private static array $codeInjectionPatterns = [
-        'critical' => [
-            // JavaScript Injection
-            '/<script[^>]*>/i',
-            '/<\/script>/i',
-            '/javascript:/i',
-            '/on(load|click|error|focus|blur|change|submit|mouseover)\s*=/i',
-            '/eval\s*\(/i',
-            '/alert\s*\(/i',
-            '/document\.(write|cookie|location)/i',
-            '/window\.(open|location)/i',
-            
-            // PHP Code Injection
-            '/<\?php/i',
-            '/<\?=/i',
-            '/<\?\s/i',
-            '/\?>/i',
-            '/exec\s*\(/i',
-            '/system\s*\(/i',
-            '/shell_exec\s*\(/i',
-            '/passthru\s*\(/i',
-            '/file_get_contents\s*\(/i',
-            '/file_put_contents\s*\(/i',
-            '/fopen\s*\(/i',
-            '/include\s+/i',
-            '/require\s+/i',
-            
-            // SQL Injection Patterns
-            '/union\s+select/i',
-            '/drop\s+table/i',
-            '/truncate\s+table/i',
-            '/delete\s+from/i',
-            '/insert\s+into/i',
-            '/update\s+.*set/i',
-            '/alter\s+table/i',
-            '/create\s+table/i',
-            
-            // Server-Side Includes
-            '/<!--\s*#(exec|include|echo|config)/i',
-            
-            // Command Injection
-            '/\|\s*(ls|cat|grep|find|wget|curl)/i',
-            '/&&\s*(rm|mv|cp|chmod)/i',
-            '/;\s*(whoami|id|uname)/i',
-        ],
-        'high' => [
-            // Potential XSS
-            '/<iframe[^>]*>/i',
-            '/<object[^>]*>/i',
-            '/<embed[^>]*>/i',
-            '/<link[^>]*>/i',
-            '/<meta[^>]*>/i',
-            '/<base[^>]*>/i',
-            '/<form[^>]*>/i',
-            
-            // Data URIs (can contain code)
-            '/data:\s*[^,]*,/i',
-            
-            // Suspicious functions
-            '/setTimeout\s*\(/i',
-            '/setInterval\s*\(/i',
-            '/Function\s*\(/i',
-        ],
-        'medium' => [
-            // Suspicious HTML tags
-            '/<style[^>]*>/i',
-            '/<\/style>/i',
-            '/expression\s*\(/i',
-            '/behavior\s*:/i',
-            
-            // Suspicious attributes
-            '/style\s*=.*expression/i',
-            '/style\s*=.*javascript/i',
-        ]
-    ];
-
     /**
      * Liefert die Addon-Instanz
      */
@@ -151,6 +32,62 @@ class MailSecurityFilter
             self::$addon = rex_addon::get('upkeep');
         }
         return self::$addon;
+    }
+    private static ?rex_addon $addon = null;
+
+    /**
+     * Holt Standard-Mail-Patterns aus der Datenbank
+     */
+    public static function getDefaultMailPatterns(): array
+    {
+        static $patterns = null;
+
+        if ($patterns === null) {
+            $patterns = [];
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_default_patterns') . " WHERE status = 1 ORDER BY category, severity DESC");
+
+            while ($sql->hasNext()) {
+                $category = $sql->getValue('category');
+                $pattern = $sql->getValue('pattern');
+                $severity = $sql->getValue('severity');
+
+                if (!isset($patterns[$category])) {
+                    $patterns[$category] = [];
+                }
+
+                $patterns[$category][] = $pattern;
+                $sql->next();
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Holt benutzerdefinierte Mail-Patterns aus der Datenbank
+     */
+    public static function getCustomMailPatterns(): array
+    {
+        static $patterns = null;
+
+        if ($patterns === null) {
+            $patterns = [];
+            $sql = rex_sql::factory();
+            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_custom_patterns') . " WHERE status = 1 ORDER BY severity DESC");
+
+            while ($sql->hasNext()) {
+                $patterns[] = [
+                    'pattern' => $sql->getValue('pattern'),
+                    'description' => $sql->getValue('description'),
+                    'severity' => $sql->getValue('severity'),
+                    'is_regex' => (bool) $sql->getValue('is_regex')
+                ];
+                $sql->next();
+            }
+        }
+
+        return $patterns;
     }
 
     /**
@@ -385,10 +322,10 @@ class MailSecurityFilter
         $sql = rex_sql::factory();
         $now = new DateTime();
         
-        // Limits aus Config laden
-        $perMinute = (int) self::getAddon()->getConfig('mail_rate_limit_per_minute', self::$mailRateLimits['per_minute']);
-        $perHour = (int) self::getAddon()->getConfig('mail_rate_limit_per_hour', self::$mailRateLimits['per_hour']);
-        $perDay = (int) self::getAddon()->getConfig('mail_rate_limit_per_day', self::$mailRateLimits['per_day']);
+        // Limits aus Config laden (mit Standardwerten)
+        $perMinute = (int) self::getAddon()->getConfig('mail_rate_limit_per_minute', 10);
+        $perHour = (int) self::getAddon()->getConfig('mail_rate_limit_per_hour', 50);
+        $perDay = (int) self::getAddon()->getConfig('mail_rate_limit_per_day', 200);
 
         // Prüfe verschiedene Zeitfenster
         $timeWindows = [
@@ -664,28 +601,34 @@ class MailSecurityFilter
     {
         $content = $mailer->Subject . ' ' . $mailer->Body . ' ' . $mailer->AltBody;
         $cleanContent = strip_tags(html_entity_decode($content));
-        
-        // Prüfe nach Risikolevel
-        foreach (self::$spamPatterns as $riskLevel => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (preg_match($pattern, $cleanContent)) {
-                    $severity = match($riskLevel) {
-                        'high_risk' => 'high',
-                        'medium_risk' => 'medium', 
-                        'low_risk' => 'low',
-                        default => 'medium'
-                    };
-                    
-                    return [
-                        'type' => 'spam_pattern',
-                        'severity' => $severity,
-                        'pattern' => $pattern,
-                        'risk_level' => $riskLevel
-                    ];
+
+        // Patterns aus Datenbank laden
+        $spamPatterns = self::getDefaultMailPatterns();
+
+        // Prüfe nach Kategorien
+        $categories = ['high_spam', 'medium_spam', 'low_spam'];
+        foreach ($categories as $category) {
+            if (isset($spamPatterns[$category])) {
+                foreach ($spamPatterns[$category] as $pattern) {
+                    if (preg_match($pattern, $cleanContent)) {
+                        $severity = match($category) {
+                            'high_spam' => 'high',
+                            'medium_spam' => 'medium',
+                            'low_spam' => 'low',
+                            default => 'medium'
+                        };
+
+                        return [
+                            'type' => 'spam_pattern',
+                            'severity' => $severity,
+                            'pattern' => $pattern,
+                            'category' => $category
+                        ];
+                    }
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -859,31 +802,44 @@ class MailSecurityFilter
     private static function scanForCodeInjection($mailer): ?array
     {
         $content = '';
-        
+
         // Alle Inhalte sammeln (auch Anhang-Namen falls verfügbar)
         $content .= $mailer->Subject . ' ';
         $content .= $mailer->Body . ' ';
         $content .= $mailer->AltBody . ' ';
-        
+
         // Auch Absender und Empfänger prüfen
         $content .= $mailer->From . ' ';
         $content .= $mailer->FromName . ' ';
-        
-        // Prüfe nach Risikolevel (kritisch zuerst)
-        foreach (self::$codeInjectionPatterns as $riskLevel => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (preg_match($pattern, $content, $matches)) {
-                    return [
-                        'type' => 'code_injection',
-                        'severity' => $riskLevel,  // critical, high, medium
-                        'pattern' => $pattern,
-                        'matched_content' => substr($matches[0], 0, 100), // Erste 100 Zeichen des Matches
-                        'injection_type' => self::getInjectionType($pattern)
-                    ];
+
+        // Patterns aus Datenbank laden
+        $injectionPatterns = self::getDefaultMailPatterns();
+
+        // Prüfe nach Kategorien (kritisch zuerst)
+        $categories = ['critical_injection', 'high_injection', 'medium_injection'];
+        foreach ($categories as $category) {
+            if (isset($injectionPatterns[$category])) {
+                foreach ($injectionPatterns[$category] as $pattern) {
+                    if (preg_match($pattern, $content, $matches)) {
+                        $severity = match($category) {
+                            'critical_injection' => 'critical',
+                            'high_injection' => 'high',
+                            'medium_injection' => 'medium',
+                            default => 'medium'
+                        };
+
+                        return [
+                            'type' => 'code_injection',
+                            'severity' => $severity,
+                            'pattern' => $pattern,
+                            'matched_content' => substr($matches[0], 0, 100), // Erste 100 Zeichen des Matches
+                            'injection_type' => self::getInjectionType($pattern)
+                        ];
+                    }
                 }
             }
         }
-        
+
         return null;
     }
 
