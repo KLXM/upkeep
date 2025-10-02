@@ -654,15 +654,23 @@ if ($existingBadwords === 0) {
     $sql = rex_sql::factory();
     $currentTime = date('Y-m-d H:i:s');
     
-    foreach ($defaultBadwords as $severity => $words) {
+    foreach ($defaultBadwords as $severityOrCategory => $words) {
         foreach ($words as $word => $description) {
             $sql->setTable(rex::getTable('upkeep_mail_badwords'));
             $sql->setValue('pattern', $word);
             $sql->setValue('description', $description);
-            $sql->setValue('category', $severity === 'low' ? 'profanity' : 'security');
-            $sql->setValue('severity', $severity);
+            
+            // German spam spezifisch behandeln
+            if ($severityOrCategory === 'german_spam') {
+                $sql->setValue('category', 'german_spam');
+                $sql->setValue('severity', 'medium'); // Mittlere Schwere für deutsche Spam-Formulierungen
+            } else {
+                $sql->setValue('category', $severityOrCategory === 'low' ? 'profanity' : 'security');
+                $sql->setValue('severity', $severityOrCategory);
+            }
+            
             $sql->setValue('is_regex', 0);
-            $sql->setValue('status', $severity === 'low' ? 0 : 1); // Profanity standardmäßig deaktiviert
+            $sql->setValue('status', $severityOrCategory === 'low' ? 0 : 1); // Profanity standardmäßig deaktiviert
             $sql->setValue('created_at', $currentTime);
             $sql->setValue('updated_at', $currentTime);
             $sql->insert();
