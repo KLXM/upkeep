@@ -189,15 +189,6 @@ if ($addon->getConfig('multilanguage_texts', '') === '') {
             'password_label' => 'Passwort eingeben',
             'password_button' => 'Anmelden',
             'language_switch' => 'Sprache wählen'
-        ],
-        [
-            'language_code' => 'en',
-            'language_name' => 'English',
-            'title' => 'Maintenance Mode',
-            'message' => 'This website is currently under maintenance. Please try again later.',
-            'password_label' => 'Enter Password',
-            'password_button' => 'Login',
-            'language_switch' => 'Choose Language'
         ]
     ];
     

@@ -1,4 +1,4 @@
-General Translations
+# General Translations
 upkeep_title = Upkeep
 upkeep_general_settings = General Settings
 upkeep_frontend_active = Frontend Maintenance Mode
@@ -62,13 +62,13 @@ upkeep_backend_title = Backend
 upkeep_domains_title = Domains
 upkeep_domain_mapping_title = Domain Redirect
 
-Status Indicators (Tooltips)
+# Status Indicators (Tooltips)
 upkeep_indicator_backend = Backend maintenance mode active
 upkeep_indicator_frontend = Frontend maintenance mode active
 upkeep_indicator_domains = Domain redirects active
 upkeep_indicator_security = Intrusion Prevention System active
 
-Domain Redirects (formerly Domain Mapping)
+# Domain Redirects (formerly Domain Mapping)
 upkeep_domain_mapping_description = Here you can redirect domains and URL paths to other URLs. Also supports wildcard redirects with dynamic path replacement.
 upkeep_domain_mapping_add = Add Domain Redirect
 upkeep_domain_mapping_edit = Edit Domain Redirect
@@ -81,65 +81,24 @@ upkeep_domain_mapping_status = Status
 upkeep_domain_mapping_description_field = Description
 upkeep_domain_mapping_no_entries = No domain redirects exist
 
-Multilanguage
-upkeep_multilanguage_settings = Multilanguage Settings
-upkeep_multilanguage_enabled = Enable Multilanguage
-upkeep_multilanguage_enabled_tooltip = Enables a multilingual maintenance page with a language switcher and customizable texts per language.
-upkeep_multilanguage_default = Default Language
-upkeep_multilanguage_default_tooltip = The language that is displayed by default if no other language is detected or selected.
-upkeep_multilanguage_texts = Language Texts
-upkeep_multilanguage_texts_tooltip = JSON configuration for multilingual texts. Format: {"language": {"title": "Title", "message": "Message"}}
-upkeep_allow_bypass_param = Allow URL parameter for bypass
-upkeep_allow_bypass_param_tooltip = Allows bypassing the maintenance form via a special URL parameter.
-upkeep_bypass_param_key = Bypass Parameter Key
-upkeep_bypass_param_key_tooltip = The URL parameter that can be used to bypass the maintenance form (e.g., 'maintenance_bypass').
-upkeep_bypass_param_key_notice = Example: With "bypass", the form can be bypassed with "?bypass=1".
+# Multilanguage
 upkeep_language_switcher = Select Language
 upkeep_switch_language = Switch language to {0}
 
-General Settings & Buttons
-upkeep_settings = Settings
-upkeep_general_settings = General Settings
-upkeep_access_settings = Access Permissions
-upkeep_http_settings = HTTP Settings
+# General Settings & Buttons
 upkeep_yrewrite_settings = YRewrite Settings
-upkeep_active = Active
-upkeep_inactive = Inactive
 upkeep_save = Save
-upkeep_yes = Yes
-upkeep_no = No
 
-Frontend Settings
-upkeep_frontend_active = Frontend Maintenance Mode
-upkeep_page_title = Page Title
-upkeep_page_message = Maintenance Message
-upkeep_frontend_password = Access Password
-upkeep_frontend_password_notice = Leave empty to not show a password prompt, or enter a new password
-upkeep_bypass_logged_in = Exclude logged-in users
-upkeep_allowed_ips = Allowed IP Addresses
-upkeep_your_ip = Your IP Address
-upkeep_add_ip = Add this IP
+# Frontend Settings
 upkeep_allowed_domains = Allowed Domains
-upkeep_enter_password = Enter Password
-upkeep_wrong_password = Wrong Password
-upkeep_submit = Submit
 
-Frontend Tooltips
-upkeep_frontend_active_tooltip = Activates/deactivates the maintenance mode for the frontend. When activated, visitors see a maintenance page.
-upkeep_page_title_tooltip = The title of the maintenance page, displayed in the browser tab and as the page heading.
-upkeep_page_message_tooltip = Message for visitors during maintenance. Can contain HTML. Explains the reason and expected duration.
-upkeep_frontend_password_tooltip = Optional: Password-protected access to the frontend during maintenance. Leave empty for a public maintenance page.
-upkeep_bypass_logged_in_tooltip = If enabled, logged-in REDAXO users can use the frontend normally despite maintenance mode.
-upkeep_allowed_ips_tooltip = Comma-separated list of IP addresses that can use the frontend despite maintenance mode. Supports CIDR notation (e.g., 192.168.1.0/24).
-upkeep_http_status_code_tooltip = HTTP status code for the maintenance page. 503 recommended for temporary maintenance, 403 for access restrictions.
-upkeep_retry_after_tooltip = Tells search engines and clients after how many seconds they should try again. 3600 = 1 hour.
-upkeep_api_token_tooltip = Token for API access for external control of the maintenance mode. Leave empty to disable the API completely.
+# Frontend Tooltips
 
-Backend Settings
+# Backend Settings
 upkeep_backend_active = Backend Maintenance Mode
 upkeep_backend_settings = Backend Settings
 
-Dashboard Translations
+# Dashboard Translations
 upkeep_dashboard_no_user = No valid user found
 upkeep_dashboard_maintenance_toggle = Toggle Maintenance Mode
 upkeep_dashboard_frontend_activate = Activate Frontend
@@ -173,7 +132,7 @@ upkeep_dashboard_domain_redirects_toggled = Domain redirects {0}
 upkeep_dashboard_activated = activated
 upkeep_dashboard_deactivated = deactivated
 
-Additional Dashboard Translations
+# Additional Dashboard Translations
 upkeep_dashboard_blocked_ips = Blocked IPs
 upkeep_dashboard_active_blocks = Active Blocks
 upkeep_dashboard_threats = Threats
@@ -182,10 +141,10 @@ upkeep_dashboard_allowed_ips_title = Allowed IPs
 upkeep_dashboard_maintenance_mode = Maintenance Mode
 upkeep_dashboard_ram_usage = RAM Usage
 
-Domain Mapping new permissions
+# Domain Mapping new permissions
 upkeep_perm_domain_mapping = Manage Domain Mapping
 
-IPS (Intrusion Prevention System)
+# IPS (Intrusion Prevention System)
 upkeep_ips_title = Intrusion Prevention System
 upkeep_ips_overview = Overview
 upkeep_ips_threats = Threats
@@ -195,7 +154,7 @@ upkeep_ips_settings = Settings
 upkeep_ips_disable_system_logging = Disable System Logging
 upkeep_ips_disable_system_logging_help = Disables all IPS logs in the REDAXO system log. Threats will only be stored in the IPS database. Critical errors (exceptions) will still be logged.
 
-IPS Dashboard
+# IPS Dashboard
 upkeep_ips_blocked_count = Blocked IPs
 upkeep_ips_threats_today = Threats today
 upkeep_ips_threats_week = Threats this week
@@ -212,7 +171,7 @@ upkeep_ips_version = Version
 upkeep_ips_patterns_count = Custom Patterns
 upkeep_ips_last_update = Last Update
 
-IPS Threat Log
+# IPS Threat Log
 upkeep_ips_filter = Filter
 upkeep_ips_threat_log = Threat Log
 upkeep_ips_time = Time
@@ -224,14 +183,13 @@ upkeep_ips_action = Action
 upkeep_ips_no_threats = No threats found
 upkeep_ips_showing_results = Showing %d results (%d - %d)
 
-IPS Patterns
+# IPS Patterns
 upkeep_ips_add_pattern = Add Pattern
 upkeep_ips_edit_pattern = Edit Pattern
 upkeep_ips_edit_default_pattern = Edit Default Pattern
 upkeep_ips_custom_patterns = Custom Patterns
 upkeep_ips_default_patterns = Default Patterns
 upkeep_ips_default_patterns_info = Customizable default security patterns
-upkeep_ips_pattern = Pattern
 upkeep_ips_category = Category
 upkeep_ips_description = Description
 upkeep_ips_severity_low = Low
@@ -257,7 +215,7 @@ upkeep_ips_delete_confirm = Are you sure you want to delete this pattern?
 upkeep_ips_no_patterns = No custom patterns exist
 upkeep_ips_no_default_patterns = No default patterns exist
 
-Default Pattern Categories and Help
+# Default Pattern Categories and Help
 upkeep_ips_default_patterns_help = Default Pattern Help
 upkeep_ips_what_are_default_patterns = What are default patterns?
 upkeep_ips_default_patterns_explanation = Default patterns are predefined security rules that detect common attack vectors. These can be individually customized, activated, or deactivated.
@@ -275,7 +233,7 @@ upkeep_ips_editing_warning_1 = Be careful when editing default patterns - incorr
 upkeep_ips_editing_warning_2 = Only disable patterns if you are sure they are not needed
 upkeep_ips_editing_warning_3 = Changes immediately affect security checks
 
-Tooltips for Pattern Forms
+# Tooltips for Pattern Forms
 upkeep_ips_pattern_tooltip = URL path or RegEx pattern for threat detection. Examples: /evil.php, ../../../, /union\s+select/i
 upkeep_ips_description_tooltip = Optional description to document the pattern (e.g., 'SQL Injection Protection')
 upkeep_ips_severity_tooltip = LOW: Logging only | MEDIUM: 15min block | HIGH: 1h block | CRITICAL: Permanent block
@@ -284,20 +242,20 @@ upkeep_ips_severity_medium_tooltip = 15 minutes temporary block
 upkeep_ips_severity_high_tooltip = 1 hour temporary block
 upkeep_ips_severity_critical_tooltip = Permanent block
 upkeep_ips_severity_help = Determines the consequence of a pattern match
-upkeep_ips_is_regex_tooltip = Enables regular expressions. Without: simple string search (e.g., 'exploit'). With: RegEx pattern (e.g., '/.(php|asp)$/i')
+upkeep_ips_is_regex_tooltip = Enables regular expressions. Without: simple string search (e.g., 'exploit'). With: RegEx pattern (e.g., '/\.(php|asp)$/i')
 upkeep_ips_pattern_status_tooltip = Activates/deactivates this pattern. Disabled patterns are not checked.
 upkeep_ips_pattern_examples = Pattern Examples
 upkeep_ips_string_patterns = String Patterns
 upkeep_ips_regex_patterns = RegEx Patterns
 upkeep_ips_pattern_help = URL path or RegEx pattern
 
-IPS Blocked IPs
+# IPS Blocked IPs
 upkeep_ips_reason = Reason
 upkeep_ips_expires = Expires
 upkeep_ips_active = IPS activated
 upkeep_settings_saved = Settings saved
 
-Manual IP Blocking
+# Manual IP Blocking
 upkeep_ips_blocked_add = Manually block IP
 upkeep_ips_blocked_add_info = Manual IP Blocking
 upkeep_ips_blocked_help = Here you can manually block IP addresses. This is useful for known attackers or suspected abuse.
@@ -318,7 +276,7 @@ upkeep_ips_confirm_unblock = Are you sure you want to unblock this IP?
 upkeep_ips_error_blocking = Error blocking the IP address
 upkeep_ips_error_unblocking = Error unblocking the IP address
 
-Actions
+# Actions
 upkeep_actions = Actions
 upkeep_add = Add
 upkeep_edit = Edit
@@ -326,7 +284,7 @@ upkeep_update = Update
 upkeep_cancel = Cancel
 upkeep_delete = Delete
 
-Quick Toggle Buttons
+# Quick Toggle Buttons
 upkeep_quick_toggle_frontend = Toggle Frontend Maintenance
 upkeep_quick_toggle_backend = Toggle Backend Maintenance
 upkeep_quick_toggle_domain_mapping = Toggle Domain Redirects
@@ -339,7 +297,7 @@ upkeep_toggle_no_permission = No permission for this action
 upkeep_activate = Activate
 upkeep_deactivate = Deactivate
 
-Permissions
+# Permissions
 upkeep[] = Upkeep Base
 upkeep[frontend] = Frontend Maintenance
 upkeep[domains] = Domain Management
@@ -348,21 +306,19 @@ upkeep[security] = IPS & Security
 upkeep_backend_notice = The backend maintenance mode locks all users except administrators out of the REDAXO backend.
 upkeep_no_permission = You do not have permission to view this page.
 
-Domain Management
+# Domain Management
 upkeep_domain = Domain
 upkeep_lock_all_domains = Lock all domains
 upkeep_maintenance_active = Maintenance Mode
 upkeep_domains_management = Domain Management
 upkeep_domains_notice = Here you can activate or deactivate the maintenance mode for individual YRewrite domains. This setting overrides the general frontend setting.
 upkeep_yrewrite_not_available = The YRewrite add-on is not installed or activated. Domain management is not available.
-upkeep_settings_saved = The settings have been saved.
 
-Maintenance Pages
+# Maintenance Pages
 upkeep_backend_maintenance = Backend Maintenance
 
-Domain Mapping
+# Domain Mapping
 upkeep_domain_mapping = Domain Mapping
-upkeep_domain_mapping_description = Here you can redirect domains to URLs
 upkeep_source_domain = Source Domain
 upkeep_target_url = Target URL
 upkeep_redirect_code = HTTP Status Code
@@ -380,33 +336,19 @@ upkeep_backend_maintenance_message = The REDAXO backend is in maintenance mode a
 upkeep_contact_admin = Please contact the administrator for more information.
 upkeep_back_to_website = Back to Website
 
-HTTP Settings
-upkeep_http_status_code = HTTP Status Code
-upkeep_http_503 = 503 Service Unavailable (with Cache-Control)
-upkeep_http_503_no_cache = 503 Service Unavailable (without Cache-Control)
-upkeep_http_403 = 403 Forbidden
+# HTTP Settings
 upkeep_http_307 = 307 Temporary Redirect
-upkeep_retry_after = Retry-After Header (seconds)
-upkeep_retry_after_notice = Specifies after how many seconds the client should try to load the page again. 0 = disabled. Recommended: 3600 (1 hour)
 
-Console Commands
+# Console Commands
 upkeep_console_active = Maintenance mode for {0} has been activated.
 upkeep_console_inactive = Maintenance mode for {0} has been deactivated.
 upkeep_console_already_active = Maintenance mode for {0} is already active.
 upkeep_console_already_inactive = Maintenance mode for {0} is already inactive.
 
-API Settings
-upkeep_api_settings = API Settings
-upkeep_api_token = API Token
-upkeep_api_token_notice = Token for API access. Leave empty to disable the API.
-upkeep_generate_token = Generate Token
+# API Settings
 
-upkeep_your_ip = Your IP Address
-upkeep_add_ip = Add this IP
-upkeep_server_ip = Server IP Address
-upkeep_add_server_ip = Add Server IP
 
-IPS Whitelist
+# IPS Whitelist
 upkeep_ips_positivliste = Whitelist
 upkeep_ips_positivliste_add = Add IP to Whitelist
 upkeep_ips_positivliste_info = Whitelist Information
@@ -420,7 +362,6 @@ upkeep_ips_no_positivliste_entries = No whitelist entries exist
 upkeep_ips_ip_address = IP Address
 upkeep_ips_ip_range = IP Range (CIDR)
 upkeep_ips_ip_range_notice = Optional: CIDR notation for IP ranges (e.g., 192.168.1.0/24)
-upkeep_ips_category = Category
 upkeep_ips_category_admin = Admin
 upkeep_ips_category_cdn = CDN
 upkeep_ips_category_monitoring = Monitoring
@@ -434,7 +375,6 @@ upkeep_ips_category_api_desc = API clients and automated services
 upkeep_ips_category_trusted_desc = Other trusted IP addresses
 
 upkeep_ips_confirm_remove = Are you sure you want to remove this entry?
-upkeep_ips_active = Active
 upkeep_ips_inactive = Inactive
 upkeep_ips_activate = Activate
 upkeep_ips_deactivate = Deactivate
@@ -443,7 +383,7 @@ upkeep_ips_error_adding = Error adding to whitelist
 upkeep_ips_error_removing = Error removing from whitelist
 upkeep_ips_error_updating = Error updating status
 
-IPS Cleanup
+# IPS Cleanup
 upkeep_ips_cleanup = Data Cleanup
 upkeep_ips_cleanup_info = Cleanup of old IPS data
 upkeep_ips_cleanup_help = Removes expired IP blocks and old logs to optimize database performance
@@ -457,7 +397,7 @@ upkeep_ips_cleanup_recommended = Cleanup recommended!
 upkeep_ips_cleanup_database_clean = Database is clean!
 upkeep_ips_cleanup_no_cleanup_needed = No cleanup necessary.
 
-Pattern Help and Notes
+# Pattern Help and Notes
 upkeep_ips_pattern_notes_title = Important Notes on Pattern Editing
 upkeep_ips_pattern_note_regex = RegEx patterns begin and end with slashes: /pattern/flags
 upkeep_ips_pattern_note_string = String patterns are simple text searches without slashes
@@ -465,45 +405,38 @@ upkeep_ips_pattern_note_test = Testing before activation is recommended - incorr
 upkeep_ips_pattern_note_critical = CRITICAL severity should only be used for unambiguous attacks
 upkeep_ips_pattern_help_link = Detailed documentation in the README
 
-Further help texts - shortened for UI, details in README
+# Further help texts - shortened for UI, details in README
 upkeep_help_see_readme = Detailed information in the README file
 upkeep_help_documentation = Documentation
 upkeep_help_more_info = More Information
 
-Validation Domain Mapping
+# Validation Domain Mapping
 upkeep_domain_mapping_invalid_domain = Invalid domain (RFC-compliant required)
 upkeep_domain_mapping_invalid_idn_domain = Invalid IDN domain (Internationalized domain cannot be processed)
 upkeep_domain_mapping_invalid_wildcard_url = Invalid wildcard URL (format with * must result in a valid URL)
 upkeep_domain_mapping_invalid_target_url = Invalid Target URL
 upkeep_domain_mapping_url_schema_required = Target URL must start with http:// or https://
 
-Severity and Filter
+# Severity and Filter
 upkeep_severity_explanation_title = Severity Levels and their Effects
 upkeep_filter_all_severities = All Severities
 upkeep_severity_filter_label = Severity
 
-General UI Texts
+# General UI Texts
 upkeep_global_settings = Global Settings
 upkeep_enable_globally = Enable Globally
 upkeep_disable_help = If disabled, all settings are ignored
 upkeep_cleanup_recommended_title = Cleanup Recommended!
 upkeep_database_clean_title = Database is Clean!
 
-Cronjob Texts
+# Cronjob Texts
 upkeep_ips_cronjob_name = Upkeep IPS: Cleanup of outdated security data
 upkeep_ips_cronjob_description = Automatically removes expired IP blocks, old threat logs, outdated rate-limiting entries, and CAPTCHA trust entries
 upkeep_ips_cronjob_retention_label = Threat Log Retention (days)
 upkeep_ips_cronjob_success = IPS data cleanup performed successfully
 upkeep_ips_cronjob_error = Error during IPS data cleanup
 
-Dashboard Texts
-upkeep_dashboard_system_status = System Status & Notices
-upkeep_dashboard_maintenance_active = Maintenance mode active
-upkeep_dashboard_frontend_blocked = Frontend is blocked for visitors
-upkeep_dashboard_backend_admin_only = Backend is accessible only to admins
-upkeep_dashboard_allowed_ips = {0} IP{1} still have access
-upkeep_dashboard_system_normal = System is running normally
-upkeep_dashboard_frontend_public = Frontend is publicly accessible
+# Dashboard Texts
 upkeep_dashboard_backend_available = Backend is available to all users
 upkeep_dashboard_security_active = Security active
 upkeep_dashboard_ips_running = Intrusion Prevention System is running
@@ -543,7 +476,7 @@ upkeep_dashboard_no_blocked_ips = No blocked IPs
 upkeep_dashboard_no_blocked_or_geo = Currently, no IPs are blocked or the GeoIP database is not available.
 upkeep_dashboard_install_geo = Install GeoIP Database
 
-Domain Mapping Error Messages
+# Domain Mapping Error Messages
 upkeep_domain_mapping_source_required = Source Domain is required
 upkeep_domain_mapping_source_path_required = Source Path is required for wildcard redirects
 upkeep_domain_mapping_path_security = Paths must not contain ".." or backslashes
@@ -554,13 +487,12 @@ upkeep_domain_mapping_saved = Domain Mapping has been saved
 upkeep_domain_mapping_save_error = Error while saving
 upkeep_domain_mapping_deleted = Domain Mapping has been deleted
 upkeep_domain_mapping_delete_error = Error while deleting
-upkeep_domain_mapping_no_entries = No Domain Mappings exist
 upkeep_domain_mapping_help_text = Here you can redirect domains to URLs. The redirection only works if the domain actually points to this server. <strong>IDN domains are supported.</strong> When entering the domain, the redirection automatically applies to domain.tld and www.domain.tld.
 upkeep_domain_mapping_wildcard_note = Source Path must end with /*. Target URL can contain * for dynamic replacement.
 upkeep_domain_mapping_global_settings = Global Domain Mapping Settings
 upkeep_domain_mapping_disabled_help = If disabled, all domain mappings are ignored, even if they are marked as "Active".
 
-IPS Error Messages and Status
+# IPS Error Messages and Status
 upkeep_ips_table_missing = Default pattern table is missing
 upkeep_ips_table_missing_text = The default pattern table has not been created yet.
 upkeep_ips_reinstall_required = Please reinstall the Upkeep AddOn via the backend: AddOns → Upkeep → Reinstall
@@ -572,13 +504,9 @@ upkeep_ips_geo_update_success = GeoIP database updated successfully
 upkeep_ips_geo_update_error = Error updating GeoIP database
 upkeep_ips_captcha_trust_help = How long (in hours) an IP remains trusted after a successful CAPTCHA unblock (Default: 24 hours, Maximum: 168 hours/7 days)
 upkeep_ips_temp_whitelist_help = 24h temporary whitelist after successful unblock
-upkeep_ips_cleanup_success_detail = Cleanup successful: {0}
-upkeep_ips_cleanup_manual = Manual Cleanup
-upkeep_ips_cleanup_auto = Automatic Cleanup
-upkeep_ips_cleanup_found = Found {0} records that can be cleaned up.
 upkeep_ips_important_notes = Important Notes
 
-Mail Security
+# Mail Security
 upkeep_mail_security = Mail Security
 upkeep_mail_security_dashboard = Mail Security Dashboard
 upkeep_mail_security_badwords = Badwords
@@ -598,33 +526,30 @@ upkeep_mail_security_protection = Protection active
 upkeep_mail_security_email_protection = E-Mail Security & Spam Protection
 upkeep_dashboard_website_security = Website Security & Attack Detection
 
-Help/Documentation
+# Help/Documentation
 help = Help & Documentation
 upkeep_mail_security_help_title = Mail Security Documentation
 upkeep_maintenance_title = Maintenance
 upkeep_maintenance_help_title = Maintenance Documentation
 
-Maintenance Status
+# Maintenance Status
 upkeep_status_active = Active
 upkeep_status_inactive = Inactive
 upkeep_configure = Configure
-upkeep_activate = Activate
-upkeep_deactivate = Deactivate
 
-Frontend Maintenance
+# Frontend Maintenance
 upkeep_frontend_active_info = Frontend maintenance mode is activated. Visitors will see the maintenance page.
 upkeep_frontend_inactive_info = Frontend is normally accessible.
-upkeep_allowed_ips = allowed IP addresses
 upkeep_confirm_activate = Really activate maintenance mode?
 upkeep_confirm_deactivate = Really deactivate maintenance mode?
 
-Backend Maintenance
+# Backend Maintenance
 upkeep_backend_active_info = Backend maintenance mode active. Only administrators have access.
 upkeep_backend_inactive_info = Backend is accessible to all users.
 upkeep_confirm_activate_backend = Really activate backend maintenance mode? Normal users will be locked out!
 upkeep_confirm_deactivate_backend = Really deactivate backend maintenance mode?
 
-Domain Maintenance
+# Domain Maintenance
 upkeep_all_domains_locked = All domains locked
 upkeep_domains_locked = Domains locked
 upkeep_no_domains_locked = No domains locked
@@ -636,24 +561,23 @@ upkeep_unlock_all = Unlock all
 upkeep_confirm_lock_all_domains = Really lock all domains?
 upkeep_confirm_unlock_all_domains = Really unlock all domains?
 
-Maintenance Notices
+# Maintenance Notices
 upkeep_maintenance_active_notice = Maintenance mode active
 upkeep_maintenance_active_description = One or more maintenance modes are active. Ensure all planned work is completed.
 upkeep_emergency_access = Emergency Access
 upkeep_emergency_access_description = In case of critical issues, all maintenance modes can be deactivated via this file.
 
-Frontend Maintenance Extended
+# Frontend Maintenance Extended
 upkeep_frontend_activated = Frontend maintenance mode has been activated.
 upkeep_frontend_deactivated = Frontend maintenance mode has been deactivated.
 upkeep_frontend_activate_warning = After activation, visitors to your website will see a maintenance page.
 upkeep_frontend_deactivate_info = Normal website operation will be restored.
-upkeep_cancel = Cancel
 
-Maintenance Overview
+# Maintenance Overview
 upkeep_maintenance_overview = Overview
 upkeep_all_domains_forced_locked = Global domain lock is active (can be changed in domain management)
 
-Security Advisor
+# Security Advisor
 upkeep_security_advisor_title = Security Advisor
 upkeep_security_advisor_help_title = Security Advisor Documentation
 upkeep_security_reports = Detailed Reports
@@ -674,7 +598,7 @@ upkeep_top_recommendations = Top Recommendations
 upkeep_no_critical_recommendations = No critical recommendations! Your security is good.
 upkeep_security_scan_completed = Security scan completed.
 
-Live-Mode Activation
+# Live-Mode Activation
 upkeep_enable_live_mode = Enable Live Mode
 upkeep_live_mode_warning = Warning: Deactivation only possible via config.yml!
 upkeep_live_mode_confirm = Live mode can only be deactivated by manually editing config.yml. Continue?
@@ -682,7 +606,7 @@ upkeep_live_mode_success = Live mode successfully activated. Debug mode deactiva
 upkeep_live_mode_error = Error activating live mode
 upkeep_quick_action = Quick Action
 
-CSP Activation
+# CSP Activation
 upkeep_enable_csp = Enable CSP
 upkeep_csp_warning = CSP can affect layout and JavaScript!
 upkeep_csp_success = Content Security Policy has been activated. Check your website for functionality.
@@ -691,7 +615,7 @@ upkeep_disable_csp = Deactivate Backend CSP
 upkeep_csp_disable_success = Backend Content Security Policy has been deactivated.
 upkeep_csp_disable_error = Error deactivating CSP
 
-Security Reports
+# Security Reports
 upkeep_security_reports_title = Security Advisor - Detailed Reports
 upkeep_filter_all = All
 upkeep_filter_critical = Critical
@@ -709,7 +633,7 @@ upkeep_details = Details
 upkeep_recommendations = Recommendations
 upkeep_no_checks_found_for_filter = No checks found for this filter.
 
-Mail Reporting
+# Mail Reporting
 upkeep_mail_reporting_title = Mail Reporting
 upkeep_mail_reporting_info = The Mail Reporting system sends automatic email reports on all Upkeep activities. It can send immediately or collect reports and send them in bundles.
 upkeep_mail_reporting_enabled = Mail Reporting enabled
@@ -725,7 +649,7 @@ upkeep_mail_reporting_mode_note = Immediate: Each report is sent immediately. Bu
 upkeep_mail_reporting_settings = Mail Reporting Settings
 upkeep_mail_reporting_settings_updated = Mail Reporting settings have been updated
 
-Report Types
+# Report Types
 upkeep_mail_reporting_types = Report Types
 upkeep_mail_reporting_security_advisor = Security Advisor Reports
 upkeep_mail_reporting_ips_threats = IPS Threat Messages
@@ -737,7 +661,7 @@ upkeep_mail_reporting_status_reports_note = Regular system status overviews
 upkeep_mail_reporting_bundle_interval = Bundle Interval (seconds)
 upkeep_mail_reporting_bundle_interval_note = How often bundle reports are sent (300-86400 seconds)
 
-Actions
+# Actions
 upkeep_mail_reporting_actions = Actions
 upkeep_mail_reporting_test = Test Email
 upkeep_mail_reporting_send_test = Send Test Email
@@ -752,7 +676,7 @@ upkeep_mail_reporting_send_bundle_note = Sends all collected reports for the spe
 upkeep_mail_reporting_bundle_sent = Bundle report was sent successfully
 upkeep_mail_reporting_bundle_failed = Bundle report could not be sent
 
-Log Management
+# Log Management
 upkeep_mail_reporting_log_management = Log Management
 upkeep_mail_reporting_logs = Report Logs
 upkeep_mail_reporting_logs_info = {0} report files in {1}
@@ -762,7 +686,7 @@ upkeep_mail_reporting_delete_logs_confirm = Are you sure you want to delete all 
 upkeep_mail_reporting_logs_deleted = Log files have been deleted
 upkeep_mail_reporting_path_not_exists = Log directory does not exist: {0}
 
-Information
+# Information
 upkeep_mail_reporting_info_title = Mail Reporting Information
 upkeep_mail_reporting_info_immediate = Immediate Mode
 upkeep_mail_reporting_info_immediate_desc = Each report is sent immediately via email
@@ -770,12 +694,11 @@ upkeep_mail_reporting_info_bundle = Bundle Mode
 upkeep_mail_reporting_info_bundle_desc = Reports are collected and sent regularly as a package
 upkeep_mail_reporting_info_cronjob = Cronjob Command
 
-Common Labels
+# Common Labels
 upkeep_enabled = Enabled
 upkeep_disabled = Disabled
-upkeep_save = Save
 
-System Health
+# System Health
 upkeep_system_health_title = System Health
 upkeep_system_health_info = The System Health API allows retrieving the system status via a URL. Ideal for monitoring tools and external surveillance.
 upkeep_system_health_enabled = System Health API enabled
@@ -789,28 +712,24 @@ upkeep_system_health_api_usage = API Usage
 upkeep_system_health_info_title = System Health Information
 upkeep_system_health_info_desc = The System Health API provides information about REDAXO, Upkeep modules, security status, and system configuration.
 
-Status Report Actions
+# Status Report Actions
 upkeep_mail_reporting_status_report = Status Report
 upkeep_mail_reporting_send_status = Send Status Report
 upkeep_mail_reporting_send_status_note = Sends a detailed status report with all Upkeep system data
 upkeep_mail_reporting_status_sent = Status report was sent successfully
 upkeep_mail_reporting_status_failed = Status report could not be sent
 
-Reporting
+# Reporting
 upkeep_reporting_title = Reporting
 upkeep_reporting_description = Central overview of all reporting functions of the Upkeep AddOn.
 upkeep_reporting_overview = Reporting Overview
 upkeep_system_health_card_description = Monitors system integrity and provides health data via an API.
 upkeep_mail_reporting_card_description = Automatic reporting of system events and errors via email.
-upkeep_configure = Configure
-upkeep_enabled = Enabled
-upkeep_disabled = Disabled
 upkeep_system_health_api_status = API Status
 upkeep_mail_reporting_status = Status
 upkeep_mail_reporting_mode_label = Mode
 
-Dashboard Translations
-upkeep_dashboard_system_status = System Status
+# Dashboard Translations
 upkeep_dashboard_core_system_checks = Core System Checks
 upkeep_dashboard_security_checks = Security Checks
 upkeep_dashboard_security_assessment_monitoring = Security Assessment & Monitoring
@@ -853,7 +772,7 @@ upkeep_dashboard_addons_checked = Addons checked
 upkeep_dashboard_in_days = in {0} days
 upkeep_dashboard_days_ago = {0} days ago
 
-Admin Dashboard
+# Admin Dashboard
 upkeep_admin_dashboard_title = Administrator Settings
 upkeep_admin_dashboard_subtitle = Manage Maintenance Releases
 upkeep_admin_dashboard_admin_releases = Admin Releases
@@ -869,7 +788,7 @@ upkeep_admin_dashboard_maintenance = Maintenance
 upkeep_admin_dashboard_online = Online
 upkeep_admin_dashboard_analyze = Analyze
 
-REDAXO Version and System Status
+# REDAXO Version and System Status
 upkeep_redaxo_version_current = REDAXO version is current
 upkeep_redaxo_version_outdated = REDAXO version outdated
 upkeep_redaxo_version_critical = REDAXO version critically outdated
@@ -888,19 +807,19 @@ upkeep_email_needs_configuration = E-mail configuration required
 upkeep_security_headers_active = Security settings active
 upkeep_security_headers_missing = Security settings missing
 
-SecurityAdvisor System Messages
+# SecurityAdvisor System Messages
 upkeep_system_optimal = System is running optimally
 upkeep_high_memory_usage = High memory usage: {0}%
 upkeep_low_disk_space = Low free disk space available
 upkeep_outdated_php_version = Outdated PHP Version: {0}
 
-SecurityAdvisor Database Messages
+# SecurityAdvisor Database Messages
 upkeep_database_active = Database connection active
 upkeep_database_version_unsupported = Database version no longer supported - Update required
 upkeep_database_version_deprecated = Database version outdated - Update recommended
 upkeep_database_connection_failed = Database connection failed - Contact technical support
 
-SecurityAdvisor REDAXO Version Messages
+# SecurityAdvisor REDAXO Version Messages
 upkeep_redaxo_version_up_to_date = REDAXO version is up to date
 upkeep_installer_unavailable = Installer add-on not available - Version check limited
 upkeep_installer_activate = Activate Installer add-on for automatic update check
@@ -921,88 +840,209 @@ upkeep_update_timely = Perform update in a timely manner
 upkeep_patch_available = REDAXO update available: {0} → {1}
 upkeep_security_fixes = Update recommended for current security fixes
 upkeep_version_current = REDAXO {0} is current
+upkeep_version_check_error = Error during version check: {0}
 
-# Missing translations for blocklist functionality
-upkeep_filter_search = Filter & Search
+# PHPMailer Configuration Messages
+upkeep_phpmailer_addon_unavailable = PHPMailer add-on not available
+upkeep_phpmailer_unsafe_mail_function = PHPMailer uses unsafe mail() function - SMTP recommended
+upkeep_phpmailer_smtp_fully_configured = PHPMailer SMTP fully configured
+upkeep_phpmailer_smtp_partially_configured = PHPMailer SMTP partially configured
+upkeep_phpmailer_smtp_not_configured = PHPMailer SMTP not configured
+upkeep_phpmailer_configured = PHPMailer configured ({0})
+upkeep_phpmailer_check_failed = PHPMailer check failed: {0}
+upkeep_security_headers_set = Security headers set
+
+# Server Header Checks
+upkeep_server_header_version_disclosed = Server version is being disclosed: {0}
+upkeep_server_header_x_powered_by = X-Powered-By header reveals PHP version: {0}
+upkeep_server_header_missing_security = Missing security header: {0}
+upkeep_server_header_description = Server should not disclose sensitive information and should set security headers.
+
+# PHP Configuration Checks
+upkeep_php_config_display_errors = Error messages are displayed (information leakage)
+upkeep_php_config_expose_php = PHP version is being disclosed (Information Disclosure)
+upkeep_php_config_allow_url_fopen = Remote URL includes are allowed (SSRF risk)
+upkeep_php_config_allow_url_include = Remote URL includes are allowed (RCE risk)
+upkeep_php_config_register_globals = Register Globals enabled (deprecated/unsafe)
+upkeep_php_config_error_reporting_production = Error Reporting active in production (information leakage)
+upkeep_php_config_memory_limit_high = Memory limit very high ({0}) - DoS risk
+upkeep_php_config_upload_max_high = Upload max filesize very high ({0})
+upkeep_php_config_post_max_high = Post max size very high ({0})
+upkeep_php_config_open_basedir_unset = Open Basedir not set - PHP can access entire disk
+upkeep_php_config_unlimited_memory = Memory limit unlimited (-1) - severe DoS risk
+upkeep_php_config_eval_enabled = Critically unsafe function enabled: eval (should be disabled)
+upkeep_php_config_dangerous_function = Potentially unsafe function enabled: {0} (only disable if not needed)
+upkeep_php_config_php_version_unsupported = PHP version no longer supported - security risk
+upkeep_php_config_php_version_deprecated = PHP version deprecated - update recommended
+upkeep_php_config_php_update_required = Urgent PHP version update required
+upkeep_php_config_error_logging_disabled = Error logging disabled - errors are not logged
+upkeep_php_config_ssl_expired = Certificate expires in less than 7 days
+upkeep_php_config_ssl_expiring = Certificate expiring soon
+upkeep_php_config_no_ssl_cert = No SSL certificate found
+upkeep_php_config_ssl_connection_failed = SSL connection failed: {0}
+upkeep_php_config_php_optimal = PHP optimally configured
+
+# SecurityAdvisor Dashboard Messages
+upkeep_mail_security_active = Mail Security active
+upkeep_mail_security_inactive = Mail Security inactive
+
+# File Permissions
+upkeep_file_permissions_too_open = Directory {0} has overly permissive permissions: {1} (recommended: {2})
+upkeep_file_permissions_description = Directories should have minimal necessary permissions.
+upkeep_file_permissions_critical_too_open = File {0} has overly permissive permissions: {1} (recommended: {2})
+upkeep_file_permissions_critical_description = Critical files should have restrictive permissions.
+
+# Database Security
+upkeep_db_password_too_short = Database password is too short (< 8 characters)
+upkeep_db_standard_username = Standard username used for database
+upkeep_db_external_connection = Database not running on localhost - additional network security required
+upkeep_db_description = Database credentials should be securely configured.
+
+# Email Security
+upkeep_email_phpmailer_unavailable = PHPMailer add-on not available - email functionality limited
+upkeep_email_unsafe_mail_function = PHPMailer uses unsafe mail() function
+upkeep_email_header_injection_risk = mail() function is vulnerable to header injection attacks
+upkeep_email_smtp_recommended = Switch to SMTP for better security and deliverability
+upkeep_email_smtp_encryption_missing = SMTP configured without encryption (Port: {0})
+upkeep_email_passwords_unencrypted = Email passwords and content transmitted unencrypted
+upkeep_email_smtp_auth_missing = SMTP authentication not enabled
+upkeep_email_auto_tls_warning = AutoTLS enabled on port {0} - manual TLS/SSL configuration recommended
+upkeep_email_auto_tls_unsecure = AutoTLS can fall back to unencrypted if TLS fails
+upkeep_email_secure_provider = Trusted email provider {0} with AutoTLS
+upkeep_email_microsoft365_optimal = Microsoft 365 Graph API - most modern email transmission with OAuth2
+upkeep_email_microsoft365_secure = Highest security through encrypted API connection
+upkeep_email_sendmail_warning = Sendmail used - SMTP with TLS recommended for better security
+upkeep_email_sendmail_no_encryption = No transmission encryption with Sendmail
+upkeep_email_php_mail_unsafe = PHP mail() function used - unsafe and unreliable
+upkeep_email_php_mail_no_security = No encryption, no authentication
+upkeep_email_spam_risk = Emails often end up in spam
+upkeep_email_unknown_method = Unknown mailer method: {0}
+upkeep_email_secure_configured = Email transmission is securely configured
+upkeep_email_description = Email transmission should be encrypted (SMTP with TLS/SSL).
+
+# REDAXO Version Checks
+upkeep_redaxo_installer_unavailable = Installer add-on not available - version check limited
+upkeep_redaxo_installer_activate = Activate Installer add-on for automatic update check
+upkeep_redaxo_check_updates_manually = Check for updates manually under System → Core Update
+upkeep_redaxo_development_version = Development version in use: {0}
+upkeep_redaxo_development_not_production = Development versions are not suitable for production servers
+upkeep_redaxo_switch_stable_version = Switch to stable REDAXO version
+upkeep_redaxo_critical_update = Critical REDAXO update available: {0} → {1}
+upkeep_redaxo_major_security_updates = Major updates contain important security updates
+upkeep_redaxo_immediate_update = Immediate update to the latest version recommended
+upkeep_redaxo_severely_outdated = REDAXO severely outdated: {0} → {1} ({2} subversions behind)
+upkeep_redaxo_version_too_old = Version is too old and should be updated urgently
+upkeep_redaxo_immediate_required = Immediate update required
+upkeep_redaxo_update_available = REDAXO update available: {0} → {1} ({2} subversion{3} behind)
+upkeep_redaxo_updates_contain_fixes = Updates contain security fixes and bug fixes
+upkeep_redaxo_update_timely = Perform update in a timely manner
+upkeep_redaxo_patch_available = REDAXO update available: {0} → {1}
+upkeep_redaxo_security_fixes = Update recommended for current security fixes
+upkeep_redaxo_version_current_final = REDAXO {0} is current
+
+# Maintenance Frontend - Multilanguage Settings (Hardcoded Text Replacements)
+upkeep_language_code_label = Language code (e.g., de, en, fr)
+upkeep_language_code_placeholder = en
+upkeep_language_name_label = Language name (e.g., Deutsch, English)
+upkeep_language_name_placeholder = English
+upkeep_page_title_label = Title
+upkeep_page_title_placeholder = Maintenance Mode
+upkeep_page_message_label = Main message
+upkeep_page_message_placeholder = This website is currently under maintenance...
+upkeep_password_label_label = Password input label
+upkeep_password_label_placeholder = Enter Password
+upkeep_password_button_label = Login button text
+upkeep_password_button_placeholder = Login
+upkeep_language_switch_label = Language switcher label
+upkeep_language_switch_placeholder = Choose Language
+upkeep_add_language = Add new language
+upkeep_save_language_texts = Save language texts
+upkeep_remove_language = Remove language
+upkeep_new_language = New Language
+upkeep_language_singular = Language
+upkeep_alert_min_one_language = At least one language must be available.
+upkeep_remove_language_title = Remove language
+
+# Mail Security - Additional Translations
+upkeep_mail_security_current_config = Current Configuration
+upkeep_mail_security_rate_limiting = Rate Limiting
+upkeep_mail_security_debug_logging = Debug Logging
+upkeep_mail_security_debug_logging_desc = Enables detailed debug logging
+upkeep_mail_security_detailed_logging = Detailed Logging
+upkeep_mail_security_detailed_logging_desc = Enables extended logging
+upkeep_mail_security_rate_limits = Rate Limits
+upkeep_mail_security_sender_restriction = Sender Restriction
+upkeep_mail_security_all_domains_allowed = All domains allowed
+upkeep_mail_security_allowed_domains = Allowed Domains
+upkeep_mail_security_more_domains = more domains
+upkeep_mail_security_emails_today = Emails Today
+upkeep_mail_security_threats_today = Threats Today
+upkeep_mail_security_details = Details
+upkeep_mail_security_top_threats = Top Threats
+upkeep_mail_security_threat_type = Threat Type
+upkeep_mail_security_count = Count
+upkeep_mail_security_system_info = System Information
+upkeep_mail_security_badwords_configured = Badwords configured
+upkeep_mail_security_manage = Manage
+upkeep_mail_security_activate = Activate
+upkeep_mail_security_deactivate = Deactivate
+upkeep_mail_security_all_threats = All Threats
+
+# Security Advisor - Check Names
+upkeep_check_live_mode = Live Mode Check
+upkeep_check_system_versions = System Versions Check
+upkeep_check_server_headers = Server Headers Check
+upkeep_check_ssl_certificates = SSL Certificates Check
+upkeep_check_database_security = Database Security
+upkeep_check_php_configuration = PHP Configuration
+upkeep_check_email_security = Email Security
+upkeep_check_https_hsts = HTTPS & HSTS
+upkeep_check_production_mode = Production Mode
+upkeep_check_webserver_version = Webserver Version
+upkeep_check_redaxo_version = REDAXO Version
+upkeep_check_maintenance_status = Maintenance Status
+upkeep_check_content_security_policy = Content Security Policy
+upkeep_check_password_policies = Password Policies
+upkeep_check_session_security = Session Security
+upkeep_check_file_permissions = File Permissions
+upkeep_check_directory_permissions = Directory Permissions
+
+# HTTPS/HSTS Texts
+upkeep_https_step3_hsts_ready = HSTS is ready for activation
+upkeep_hsts_step3_activate = Activate HSTS
+upkeep_hsts_browser_force = Browsers will enforce HTTPS automatically
+upkeep_hsts_irreversible_warning = HSTS activation is irreversible
+upkeep_hsts_config_example = Example configuration in .htaccess or Apache configuration
+upkeep_https_hsts_general_info = HTTPS protects data transmission, HSTS prevents downgrade attacks
+upkeep_https_ssl_provider_help = Use trusted SSL certificates from Let's Encrypt or commercial providers
+upkeep_hsts_warning_activation = HSTS activation cannot be undone!
+
+# Badwords and Blocklist
+upkeep_badwords = Badwords
+upkeep_badwords_processed = badwords processed
+upkeep_activated = activated
+upkeep_deactivated = deactivated
+upkeep_modified = modified
+upkeep_deleted = deleted
 upkeep_add_to_blocklist = Add to Blocklist
-upkeep_type = Type
-upkeep_email_address = Email Address
-upkeep_valid_until = Valid Until
-upkeep_empty_permanent = Empty = permanent
-upkeep_reason = Reason
-upkeep_no_blocklist_entries_found = No blocklist entries found
-upkeep_no_blocklist_entries_configured = No blocklist entries configured yet
-
-# Additional missing translations for blocklist functionality
-upkeep_all_types = All Types
-upkeep_type_email = Email
-upkeep_type_domain = Domain
-upkeep_type_ip = IP Address
-upkeep_type_pattern = Pattern
+upkeep_all_categories = All Categories
 upkeep_all_severities = All Severities
-upkeep_severity_low = Low
-upkeep_severity_medium = Medium
-upkeep_severity_high = High
-upkeep_severity_critical = Critical
 upkeep_all_status = All Status
-upkeep_status_active = Active
-upkeep_status_inactive = Inactive
-upkeep_status_expired = Expired
-upkeep_search_blocklist = Search in email/domain/pattern/reason
-upkeep_filter = Filter
-upkeep_reset = Reset
-upkeep_email_placeholder = spam@example.com
-upkeep_domain_placeholder = spam.com
-upkeep_ip_placeholder = 192.168.1.100 or 192.168.*
-upkeep_ip_help = Wildcards allowed: 192.168.* or 10.0.0.*
-upkeep_pattern_placeholder = *.spam.com
-upkeep_blocklist_reason_placeholder = Reason for blocking (e.g. spam, phishing, etc.)
-upkeep_found = found
+upkeep_all_types = All Types
+upkeep_badword_description_placeholder = Optional description of the badword
+upkeep_blocklist_reason_placeholder = Reason for blocking (e.g., spam, phishing, etc.)
+upkeep_bulk_action_error = Error in bulk action
 upkeep_bulk_action_select = Choose bulk action...
 upkeep_bulk_activate_all = Activate all
 upkeep_bulk_deactivate_all = Deactivate all
 upkeep_bulk_delete_all = Delete all
-upkeep_execute = Execute
-upkeep_bulk_confirm = Execute bulk action?
-upkeep_select_all = Select all
-upkeep_deselect_all = Select none
-upkeep_email_domain_pattern = Email/Domain/Pattern
-upkeep_created = Created
-upkeep_delete_blocklist_confirm = Delete blocklist entry?
-upkeep_bulk_deleted = entries deleted
 upkeep_bulk_activated = entries activated
 upkeep_bulk_deactivated = entries deactivated
+upkeep_bulk_deleted = entries deleted
 upkeep_bulk_modified = entries modified
-upkeep_bulk_action_error = Error in bulk action
-upkeep_mail_security_blocklist_entries_processed = blocklist entries processed
+upkeep_bulk_confirm = Execute bulk action?
 
-# Additional missing translations
-upkeep_severity = Severity
-upkeep_status = Status
-
-# Missing translations for Badwords functionality
-upkeep_mail_security_invalid_regex = Invalid RegEx syntax in pattern
-upkeep_mail_security_badword_added = Badword added successfully
-upkeep_mail_security_badword_add_error = Error adding badword
-upkeep_mail_security_pattern_required = Pattern cannot be empty
-upkeep_mail_security_badword_removed = Badword removed successfully
-upkeep_mail_security_badword_remove_error = Error removing badword
-upkeep_mail_security_badword_status_changed = Badword status changed successfully
-upkeep_mail_security_status_change_error = Error changing status
-upkeep_deleted = deleted
-upkeep_activated = activated
-upkeep_deactivated = deactivated
-upkeep_badwords_processed = badwords processed
-upkeep_modified = modified
-upkeep_mail_security_badwords_imported = Badwords imported successfully
-upkeep_mail_security_errors_occurred = errors occurred
-upkeep_mail_security_no_badwords_imported = No badwords imported
-upkeep_mail_security_import_data_empty = Import data cannot be empty
-upkeep_all_categories = All Categories
-upkeep_search_pattern_description = Search in pattern/description
-upkeep_mail_security_add_badword = Add new badword
-upkeep_pattern = Pattern
-upkeep_pattern_example = e.g. viagra or /spam.{0,20}mail/i
+# Categories
 upkeep_category = Category
 upkeep_category_general = General
 upkeep_category_profanity = Profanity
@@ -1011,244 +1051,294 @@ upkeep_category_financial_fraud = Financial Fraud
 upkeep_category_security = Security
 upkeep_category_spam = Spam
 upkeep_category_phishing = Phishing
-upkeep_regex = RegEx
-upkeep_description = Description
-upkeep_badword_description_placeholder = Optional description of the badword
-upkeep_mail_security_import_badwords = Import badwords
-upkeep_import_data_label = Import data
-upkeep_import_placeholder = One pattern per line
-upkeep_import_with_details = or with details
-upkeep_import_format = Format: pattern|severity|category|description
-upkeep_import_help = One badword per line. Comments with # or // are skipped.
-upkeep_default_severity = Default severity
-upkeep_default_category = Default category
-upkeep_import = Import
-upkeep_badwords = Badwords
-upkeep_type_regex = RegEx
-upkeep_type_text = Text
-upkeep_delete_badword_confirm = Delete badword?
-upkeep_no_badwords_found = No badwords found
-upkeep_no_badwords_configured = No badwords configured yet
 
-# Additional missing translation
-upkeep_mail_security_add_to_blocklist = Add to Blocklist
-
-# Missing translations for Threats functionality
-upkeep_mail_security_threat_details = Threat Details
-upkeep_ips_threat_id = Threat ID
-upkeep_ips_ip_address = IP Address
-upkeep_mail_security_threat_type = Threat Type
-upkeep_ips_category = Category
-upkeep_ips_severity = Severity
-upkeep_ips_pattern = Pattern
-upkeep_ips_action = Action
-upkeep_ips_request_uri = Request URI
-upkeep_ips_user_agent = User Agent
-upkeep_ips_created_at = Created At
-upkeep_close = Close
-upkeep_mail_security_load_error = Error loading threat details
-upkeep_date = Date
-upkeep_error_loading_threats = Error loading threats
-upkeep_statistics = Statistics
-upkeep_total_threats = Total Threats
-upkeep_total = total
-upkeep_page = Page
-upkeep_details = Details
-upkeep_previous = Previous
-upkeep_next = Next
-upkeep_showing = Showing
-upkeep_of = of
-upkeep_threats = threats
-upkeep_no_threats_found = No threats found
-upkeep_no_threats_message = No Mail Security threats found or your filters returned no results.
-
-# Mail Security Settings Translations
-upkeep_mail_security_basic_settings = Basic Settings
-upkeep_mail_security_activate_system = Activate Mail Security System
-upkeep_mail_security_activate_system_desc = Enables the Mail Security System for email filtering and spam protection
-upkeep_mail_security_activate_rate_limiting = Enable Rate Limiting
-upkeep_mail_security_rate_limiting_desc = Limits the number of emails per time period to prevent spam
-upkeep_mail_security_debug_logging = Enable Debug Logging
-upkeep_mail_security_debug_logging_desc = Enables detailed debug logs for troubleshooting
-upkeep_mail_security_detailed_logging = Enable Detailed Logging
-upkeep_mail_security_detailed_logging_desc = Enables extended logs for all Mail Security activities
-upkeep_mail_security_rate_limiting_config = Rate Limiting Configuration
-upkeep_mail_security_emails_per_minute = Emails per Minute
-upkeep_mail_security_emails_per_hour = Emails per Hour
-upkeep_mail_security_emails_per_day = Emails per Day
-upkeep_mail_security_advanced_settings = Advanced Security Settings
-upkeep_mail_security_block_suspicious = Block Suspicious Emails
-upkeep_mail_security_block_suspicious_desc = Automatically blocks emails with suspicious patterns
-upkeep_mail_security_temp_block_duration = Temporary Block Duration (Minutes)
-upkeep_mail_security_temp_block_duration_desc = How long an IP is blocked after spam attempts
-upkeep_mail_security_max_spam_attempts = Maximum Spam Attempts
-upkeep_mail_security_max_spam_attempts_desc = Number of allowed spam attempts before temporary block is activated
-upkeep_mail_security_content_filter = Content Filter
-upkeep_mail_security_check_areas = Areas to Check
-upkeep_mail_security_check_subject = Check Subject
-upkeep_mail_security_check_body = Check Email Content
-upkeep_mail_security_check_sender = Check Sender
-upkeep_mail_security_sanitize_content = Sanitize Content
-upkeep_mail_security_sanitize_content_desc = Removes dangerous HTML tags and scripts from email content
-upkeep_mail_security_sender_restrictions = Sender Restrictions
-upkeep_mail_security_allowed_sender_domains = Allowed Sender Domains
-upkeep_mail_security_allowed_sender_domains_desc = Only emails from these domains will be accepted (one domain per line)
-upkeep_mail_security_allowed_sender_ips = Allowed Sender IPs
-upkeep_mail_security_allowed_sender_ips_desc = Only emails from these IP addresses will be accepted (one IP per line)
-upkeep_mail_security_admin_notifications = Admin Notifications
-upkeep_mail_security_activate_notifications = Enable Notifications
-upkeep_mail_security_activate_notifications_desc = Sends email notifications for security events
-upkeep_mail_security_admin_email = Admin Email Address
-upkeep_mail_security_notification_threshold = Notification Threshold
-upkeep_mail_security_threshold_low = Low
-upkeep_mail_security_threshold_medium = Medium
-upkeep_mail_security_threshold_high = High
-upkeep_mail_security_threshold_critical = Critical
-upkeep_mail_security_test_system = Test System
-upkeep_mail_security_test_email_address = Test Email Address
-upkeep_mail_security_test_type = Test Type
-upkeep_mail_security_test_clean = Clean Email
-upkeep_mail_security_test_badword = Badword Test
-upkeep_mail_security_test_injection = Code Injection Test
-upkeep_mail_security_test_spam = Spam Test
-upkeep_mail_security_run_test = Run Test
-upkeep_mail_security_test_hint_title = Test Hint
-upkeep_mail_security_test_hint_desc = This test simulates different email types to verify filter functions. Use a test email address.
-upkeep_mail_security_test_passed = Test completed successfully
-upkeep_mail_security_test_skipped = Test skipped - Mail Security is not active
-upkeep_mail_security_test_blocked = Test blocked: {0}
-upkeep_mail_security_invalid_test_email = Invalid test email address
-upkeep_mail_security_invalid_admin_email = Invalid admin email address
-
-# Mail Security Cleanup Translations
-upkeep_cleanup_rate_limit_deleted = Rate limit entries older than {0} days deleted
-upkeep_cleanup_threat_log_deleted = Threat log entries older than {0} days deleted
-upkeep_cleanup_detailed_log_deleted = Detailed log entries older than {0} days deleted
-upkeep_cleanup_expired_blocklist_deleted = Expired blocklist entries deleted
-upkeep_cleanup_all_mail_data_deleted = All mail security data older than {0} days deleted
-upkeep_cleanup_unknown_action = Unknown cleanup action
-upkeep_cleanup_error = Cleanup error
-upkeep_cleanup_tables_optimized = Database tables optimized
-upkeep_cleanup_optimization_error = Database optimization error
-upkeep_cleanup_database_statistics = Database Statistics
-upkeep_entries = entries
-upkeep_oldest = Oldest
-upkeep_newest = Newest
-upkeep_cleanup_rate_limit_data = Rate Limit Data
-upkeep_cleanup_threat_logs = Threat Logs
-upkeep_cleanup_mail_threats = Mail Threats
+# Cleanup
+upkeep_cleanup_automation = Automation
 upkeep_cleanup_blocklist = Blocklist
-upkeep_cleanup_rate_limit_cleanup = Rate Limit Cleanup
-upkeep_cleanup_rate_limit_description = Removes old rate limit entries that are older than the specified number of days
-upkeep_cleanup_data_older_than_days = Data older than (days)
-upkeep_cleanup_confirm_rate_limit = Really clean up rate limit data?
-upkeep_cleanup_threat_log_cleanup = Threat Log Cleanup
-upkeep_cleanup_threat_log_description = Removes old threat log entries for mail security that are older than the specified number of days
-upkeep_cleanup_confirm_threat_log = Really clean up threat logs?
-upkeep_cleanup_expired_blocklist_entries = Expired Blocklist Entries
-upkeep_cleanup_expired_blocklist_description = Removes all expired blocklist entries
-upkeep_cleanup_expired_entries_found = expired entries found
-upkeep_cleanup_confirm_expired_blocklist = Really delete expired blocklist entries?
-upkeep_cleanup_delete_expired_entries = Delete Expired Entries
-upkeep_cleanup_detailed_mail_logs = Detailed Mail Logs
-upkeep_cleanup_detailed_logs_description = Removes detailed mail log entries that are older than the specified number of days
 upkeep_cleanup_confirm_detailed_logs = Really clean up detailed logs?
-upkeep_cleanup_detailed_logs_cleanup = Clean Up Detailed Logs
-upkeep_cleanup_full_cleanup = Full Cleanup
-upkeep_cleanup_full_cleanup_warning = This action removes ALL mail security data that is older than the specified number of days
-upkeep_cleanup_full_cleanup_note = This includes rate limit data, threat logs and detailed logs. This action cannot be undone!
+upkeep_cleanup_confirm_expired_blocklist = Really delete expired blocklist entries?
 upkeep_cleanup_confirm_full_cleanup = Really perform full cleanup?
+upkeep_cleanup_confirm_rate_limit = Really clean up rate limit data?
+upkeep_cleanup_confirm_threat_log = Really clean up threat logs?
+upkeep_cleanup_data_older_than_days = Data older than (days)
+upkeep_cleanup_delete_expired_entries = Delete Expired Entries
+upkeep_cleanup_detailed_logs = Detailed Mail Logs
+upkeep_cleanup_detailed_logs_cleanup = Clean Up Detailed Logs
+upkeep_cleanup_detailed_logs_description = Removes detailed mail log entries older than the specified number of days
+upkeep_cleanup_detailed_mail_logs = Detailed Mail Logs
+upkeep_cleanup_entries = entries
+upkeep_cleanup_error = Cleanup error
+upkeep_cleanup_expired_blocklist_deleted = Expired blocklist entries deleted
+upkeep_cleanup_expired_blocklist_description = Removes all expired blocklist entries
+upkeep_cleanup_expired_blocklist_entries = Expired Blocklist Entries
+upkeep_cleanup_expired_entries_found = expired entries found
+upkeep_cleanup_full_cleanup = Full Cleanup
+upkeep_cleanup_full_cleanup_note = This includes rate limit data, threat logs, and detailed logs. This action cannot be undone!
+upkeep_cleanup_full_cleanup_warning = This action removes ALL mail security data older than the specified number of days
+upkeep_cleanup_mail_threats = Mail Threats
 upkeep_cleanup_optimize_database = Optimize Database
 upkeep_cleanup_optimize_description = Optimizes all mail security database tables for better performance
 upkeep_cleanup_optimize_note = This action is safe and can be repeated at any time
 upkeep_cleanup_optimize_tables = Optimize Tables
+upkeep_cleanup_optimization = Database Optimization
+upkeep_cleanup_optimization_error = Database optimization error
 upkeep_cleanup_options = Cleanup Options
-upkeep_cleanup_recommendations = Recommendations
-upkeep_cleanup_recommendation_rate_limit = Regularly clean up old rate limit data (recommended: every 7 days)
-upkeep_cleanup_recommendation_threat_logs = Clean up threat logs after 30 days to save storage space
+upkeep_cleanup_rate_limit_cleanup = Rate Limit Cleanup
+upkeep_cleanup_rate_limit_data = Rate Limit Data
+upkeep_cleanup_rate_limit_deleted = Rate limit entries older than {0} days deleted
+upkeep_cleanup_rate_limit_description = Removes old rate limit entries older than the specified number of days
+upkeep_cleanup_recommendation_automation = Set up automatic cleanup via cronjob for continuous maintenance
 upkeep_cleanup_recommendation_blocklist = Regularly remove expired blocklist entries
 upkeep_cleanup_recommendation_optimization = Optimize database tables monthly for better performance
-upkeep_cleanup_recommendation_automation = Set up automatic cleanup via cronjob for continuous maintenance
-upkeep_cleanup_automation = Automation
-upkeep_cleanup_optimization = Database Optimization
+upkeep_cleanup_recommendation_rate_limit = Regularly clean up old rate limit data (recommended: every 7 days)
+upkeep_cleanup_recommendation_threat_logs = Clean up threat logs after 30 days to save storage space
+upkeep_cleanup_recommendations = Recommendations
+upkeep_cleanup_tables_optimized = Database tables optimized
+upkeep_cleanup_threat_log_cleanup = Threat Log Cleanup
+upkeep_cleanup_threat_log_deleted = Threat log entries older than {0} days deleted
+upkeep_cleanup_threat_log_description = Removes old threat log entries for mail security older than the specified number of days
+upkeep_cleanup_threat_logs = Threat Logs
+upkeep_cleanup_all_mail_data_deleted = All mail security data older than {0} days deleted
+upkeep_cleanup_database_statistics = Database Statistics
+upkeep_cleanup_unknown_action = Unknown cleanup action
 
-# Security Advisor Translations
-upkeep_check_live_mode = Live Mode Check
-upkeep_check_ssl_certificates = SSL Certificate Check
-upkeep_check_server_headers = Server Header Check
-upkeep_check_database_security = Database Security
-upkeep_ssl_valid = valid
-upkeep_ssl_invalid = invalid
-upkeep_ssl_expires = Expires
-upkeep_ssl_days_remaining = days remaining
-upkeep_ssl_issuer = Issuer
+# Additional Missing Translations
+upkeep_close = Close
+upkeep_created = Created
+upkeep_csp_active_label = Csp Active Label
+upkeep_csp_backend_only_warning = Csp Backend Only Warning
+upkeep_csp_currently_active = Csp Currently Active
+upkeep_csp_info_label = Csp Info Label
 upkeep_current_headers = Current Headers
-upkeep_header_issues = Header Issues
+upkeep_date = Date
+upkeep_debug_mode_production_info_leak = Debug Mode Production Info Leak
+upkeep_default_admin_exists_rename = Default Admin Exists Rename
+upkeep_default_admin_password_used = Default Admin Password Used
+upkeep_default_category = Default Category
+upkeep_default_severity = Default Severity
+upkeep_delete_badword_confirm = Delete badword?
+upkeep_delete_blocklist_confirm = Delete blocklist entry?
+upkeep_deselect_all = Select none
+upkeep_disable_backend_csp = Disable Backend Csp
+upkeep_domain_placeholder = spam.com
+upkeep_email_address = Email Address
+upkeep_email_domain_pattern = Email/Domain/Pattern
+upkeep_email_placeholder = spam@example.com
+upkeep_empty_permanent = Empty = permanent
+upkeep_enable_backend_csp = Enable Backend Csp
+upkeep_enable_https_backend = Enable Https Backend
+upkeep_enable_https_both = Enable Https Both
+upkeep_enable_https_frontend = Enable Https Frontend
+upkeep_enable_session_security = Enable Session Security
+upkeep_entries = entries
+upkeep_error_loading_threats = Error loading threats
+upkeep_execute = Execute
 upkeep_export_error = Export Error
-
-# Additional Security Advisor Checks
-upkeep_check_php_configuration = PHP Configuration
-upkeep_check_system_versions = System Versions
-upkeep_check_webserver_version = Webserver Version
-upkeep_check_production_mode = Production Mode
-upkeep_check_directory_permissions = Directory Permissions
-upkeep_check_email_security = Email Security
-upkeep_check_redaxo_version = REDAXO Version
-upkeep_check_maintenance_status = Maintenance Status
-upkeep_check_content_security_policy = Content Security Policy
-upkeep_check_password_policies = Password Policies
-upkeep_check_session_security = Session Security
-upkeep_check_file_permissions = File Permissions
-upkeep_check_https_hsts = HTTPS & HSTS
-
-# Additional Security Advisor Descriptions and Messages
-upkeep_live_mode_description = Checks if live mode is correctly activated and debug modes are disabled
-upkeep_php_config_description = Checks PHP configuration for security vulnerabilities and optimal settings
-upkeep_system_versions_description = Checks system versions (PHP, database) for currency and security
-upkeep_webserver_version_description = Checks webserver version and its security settings
-upkeep_server_header_discloses_version = Server version is being disclosed
-upkeep_production_mode_description = Checks if the system is correctly configured for production use
-upkeep_live_mode_not_active = Live mode is not active
-upkeep_redaxo_version_description = Checks REDAXO version for currency and security updates
-upkeep_maintenance_not_required = Maintenance is not required - system is running optimally
-upkeep_csp_info_label = CSP Information
-upkeep_csp_backend_only_warning = CSP applies only to backend and protects against XSS attacks
-upkeep_session_security_description = Checks session security settings
-upkeep_session_security_already_configured = Session security is already optimally configured
-upkeep_https_hsts_description = Checks HTTPS configuration and HSTS security headers
-upkeep_hsts_step3_activate = Activate HSTS
-upkeep_hsts_browser_force = Browsers will automatically redirect to HTTPS
-upkeep_hsts_irreversible_warning = HSTS activation is irreversible - browsers cache the policy
-upkeep_hsts_config_example = Example configuration in .htaccess or Apache configuration
-upkeep_https_hsts_general_info = HTTPS protects data transmission, HSTS prevents downgrade attacks
-upkeep_https_ssl_provider_help = Use trusted SSL certificates from Let's Encrypt or commercial providers
-upkeep_https_step3_hsts_ready = HSTS is ready for activation
-upkeep_hsts_warning_activation = HSTS activation cannot be undone!
-
-# Mail Security Dashboard Translations
-upkeep_mail_security_rate_limiting = Rate Limiting
-upkeep_mail_security_emails_today = Emails Today
-upkeep_mail_security_threats_today = Threats Today
-upkeep_mail_security_details = Details
-upkeep_mail_security_top_threats = Top Threats
-upkeep_mail_security_threat_type = Threat Type
-upkeep_mail_security_count = Count
-upkeep_mail_security_quick_actions = Quick Actions
-upkeep_mail_security_badwords_configured = Badwords configured
-upkeep_mail_security_manage = Manage
-upkeep_mail_security_blocklist_entries = Blocklist entries
-upkeep_mail_security_activate = Activate
-upkeep_mail_security_deactivate = Deactivate
-upkeep_mail_security_all_threats = All Threats
-upkeep_mail_security_system_info = System Information
-upkeep_mail_security_current_config = Current Configuration
-upkeep_mail_security_rate_limits = Rate Limits
-upkeep_mail_security_sender_restriction = Sender Restriction
-upkeep_mail_security_all_domains_allowed = All domains allowed
-upkeep_mail_security_allowed_domains = allowed domains
-upkeep_mail_security_more_domains = more domains
-
-# Maintenance Status Translations
-upkeep_maintenance_status_description = Maintenance status check for the system
-upkeep_dashboard_maintenance_required = Maintenance Required
-upkeep_dashboard_contact_technical_maintainer = Please inform your technical maintainer or the responsible agency about required system maintenance
+upkeep_filter = Filter
+upkeep_filter_search = Filter & Search
+upkeep_found = found
+upkeep_header_issues = Header Issues
+upkeep_hsts_activate_recommended = Hsts Activate Recommended
+upkeep_hsts_config_error = Hsts Config Error
+upkeep_hsts_deactivated = Hsts Deactivated
+upkeep_hsts_disable_warning = Hsts Disable Warning
+upkeep_hsts_disabled = Hsts Disabled
+upkeep_hsts_enabled = Hsts Enabled
+upkeep_hsts_increase_max_age = Hsts Increase Max Age
+upkeep_hsts_longer_cache_better = Hsts Longer Cache Better
+upkeep_hsts_max_age_years = Hsts Max Age Years
+upkeep_hsts_warning = Hsts Warning
+upkeep_hsts_warning_deactivation = Hsts Warning Deactivation
+upkeep_https_backend_config = Https Backend Config
+upkeep_https_backend_enabled = Https Backend Enabled
+upkeep_https_both_enabled = Https Both Enabled
+upkeep_https_cache_clear = Https Cache Clear
+upkeep_https_config_error = Https Config Error
+upkeep_https_frontend_config = Https Frontend Config
+upkeep_https_frontend_enabled = Https Frontend Enabled
+upkeep_https_hsts_activated = Https Hsts Activated
+upkeep_https_hsts_description = Https Hsts Description
+upkeep_https_hsts_optimal = Https Hsts Optimal
+upkeep_https_modern_requirement = Https Modern Requirement
+upkeep_https_ssl_certificate = Https Ssl Certificate
+upkeep_https_ssl_required = Https Ssl Required
+upkeep_https_step1_activate = Https Step1 Activate
+upkeep_https_step1_currently_http = Https Step1 Currently Http
+upkeep_https_step2_activate_redaxo = Https Step2 Activate Redaxo
+upkeep_https_step2_redaxo_config = Https Step2 Redaxo Config
+upkeep_import = Import
+upkeep_import_data_label = Import Data
+upkeep_import_format = Format: pattern|severity|category|description
+upkeep_import_help = One badword per line. Comments with # or // are skipped.
+upkeep_import_placeholder = One pattern per line
+upkeep_import_with_details = or with details
+upkeep_ip_address = IP Address
+upkeep_ip_help = Wildcards allowed: 192.168.* or 10.0.0.*
+upkeep_ip_placeholder = 192.168.1.100 or 192.168.*
+upkeep_ips_actions = Ips Actions
+upkeep_ips_error = Ips Error
+upkeep_ips_ip_required = Ips Ip Required
+upkeep_ips_no_whitelist_entries = Ips No Whitelist Entries
+upkeep_ips_remove = Ips Remove
+upkeep_ips_request_uri = Ips Request Uri
+upkeep_ips_threat_id = Ips Threat Id
+upkeep_ips_user_agent = Ips User Agent
+upkeep_ips_whitelist_add = Ips Whitelist Add
+upkeep_ips_whitelist_added = Ips Whitelist Added
+upkeep_ips_whitelist_entries = Ips Whitelist Entries
+upkeep_ips_whitelist_help = Ips Whitelist Help
+upkeep_ips_whitelist_info = Ips Whitelist Info
+upkeep_ips_whitelist_ip_required = Ips Whitelist Ip Required
+upkeep_ips_whitelist_removed = Ips Whitelist Removed
+upkeep_live_mode_already_active = Live Mode Already Active
+upkeep_live_mode_description = Live Mode Description
+upkeep_live_mode_not_active = Live Mode Not Active
+upkeep_mail_security_activate_notifications = Activate Notifications
+upkeep_mail_security_activate_notifications_desc = Sends email notifications for security events
+upkeep_mail_security_activate_rate_limiting = Enable Rate Limiting
+upkeep_mail_security_activate_system = Activate Mail Security System
+upkeep_mail_security_activate_system_desc = Enables the Mail Security System for email filtering and spam protection
+upkeep_mail_security_add_badword = Add new badword
+upkeep_mail_security_add_to_blocklist = Add to Blocklist
+upkeep_mail_security_admin_email = Admin Email Address
+upkeep_mail_security_admin_notifications = Admin Notifications
+upkeep_mail_security_advanced_settings = Advanced Security Settings
+upkeep_mail_security_allowed_sender_domains = Allowed Sender Domains
+upkeep_mail_security_allowed_sender_domains_desc = Only emails from these domains will be accepted (one domain per line)
+upkeep_mail_security_allowed_sender_ips = Allowed Sender IPs
+upkeep_mail_security_allowed_sender_ips_desc = Only emails from these IP addresses will be accepted (one IP per line)
+upkeep_mail_security_badword_add_error = Error adding badword
+upkeep_mail_security_badword_added = Badword added successfully
+upkeep_mail_security_badword_remove_error = Error removing badword
+upkeep_mail_security_badword_removed = Badword removed successfully
+upkeep_mail_security_badword_status_changed = Badword status changed successfully
+upkeep_mail_security_badword_update_error = Mail Security Badword Update Error
+upkeep_mail_security_badword_updated = Mail Security Badword Updated
+upkeep_mail_security_badwords_imported = Badwords imported successfully
+upkeep_mail_security_basic_settings = Basic Settings
+upkeep_mail_security_block_suspicious = Block Suspicious Emails
+upkeep_mail_security_block_suspicious_desc = Automatically blocks emails with suspicious patterns
+upkeep_mail_security_blocklist_entries_processed = blocklist entries processed
+upkeep_mail_security_blocklist_entry_added = Mail Security Blocklist Entry Added
+upkeep_mail_security_blocklist_entry_removed = Mail Security Blocklist Entry Removed
+upkeep_mail_security_blocklist_status_changed = Mail Security Blocklist Status Changed
+upkeep_mail_security_check_areas = Areas to Check
+upkeep_mail_security_check_body = Check Email Content
+upkeep_mail_security_check_sender = Check Sender
+upkeep_mail_security_check_subject = Check Subject
+upkeep_mail_security_content_filter = Content Filter
+upkeep_mail_security_edit_badword = Mail Security Edit Badword
+upkeep_mail_security_emails_per_day = Emails per Day
+upkeep_mail_security_emails_per_hour = Emails per Hour
+upkeep_mail_security_emails_per_minute = Emails per Minute
+upkeep_mail_security_error_adding = Mail Security Error Adding
+upkeep_mail_security_error_changing_status = Mail Security Error Changing Status
+upkeep_mail_security_error_removing = Mail Security Error Removing
+upkeep_mail_security_errors_occurred = errors occurred
+upkeep_mail_security_import_badwords = Import badwords
+upkeep_mail_security_import_data_empty = Import data cannot be empty
+upkeep_mail_security_invalid_admin_email = Invalid admin email address
+upkeep_mail_security_invalid_domain = Mail Security Invalid Domain
+upkeep_mail_security_invalid_email = Mail Security Invalid Email
+upkeep_mail_security_invalid_ip = Mail Security Invalid Ip
+upkeep_mail_security_invalid_regex = Invalid RegEx syntax in pattern
+upkeep_mail_security_invalid_test_email = Invalid test email address
+upkeep_mail_security_load_error = Error loading threat details
+upkeep_mail_security_max_spam_attempts = Maximum Spam Attempts
+upkeep_mail_security_max_spam_attempts_desc = Number of allowed spam attempts before temporary block is activated
+upkeep_mail_security_no_badwords_imported = No badwords imported
+upkeep_mail_security_notification_threshold = Notification Threshold
+upkeep_mail_security_pattern_empty = Mail Security Pattern Empty
+upkeep_mail_security_pattern_required = Pattern cannot be empty
+upkeep_mail_security_rate_limiting_config = Rate Limiting Configuration
+upkeep_mail_security_rate_limiting_desc = Mail Security Rate Limiting Desc
+upkeep_mail_security_run_test = Mail Security Run Test
+upkeep_mail_security_sanitize_content = Sanitize Content
+upkeep_mail_security_sanitize_content_desc = Removes dangerous HTML tags and scripts from email content
+upkeep_mail_security_sender_restrictions = Sender Restrictions
+upkeep_mail_security_status_change_error = Error changing status
+upkeep_mail_security_temp_block_duration = Temporary Block Duration (Minutes)
+upkeep_mail_security_temp_block_duration_desc = How long an IP is blocked after spam attempts
+upkeep_mail_security_test_badword = Mail Security Test Badword
+upkeep_mail_security_test_clean = Clean Email
+upkeep_mail_security_test_email_address = Test Email Address
+upkeep_mail_security_test_hint_desc = This test simulates different email types to verify filter functions. Use a test email address.
+upkeep_mail_security_test_hint_title = Test Hint
+upkeep_mail_security_test_injection = Code Injection Test
+upkeep_mail_security_test_skipped = Test skipped - Mail Security is not active
+upkeep_mail_security_test_spam = Spam Test
+upkeep_mail_security_test_system = Test System
+upkeep_mail_security_test_type = Test Type
+upkeep_mail_security_threat_details = Mail Security Threat Details
+upkeep_mail_security_threshold_critical = Critical
+upkeep_mail_security_threshold_high = High
+upkeep_mail_security_threshold_low = Low
+upkeep_mail_security_threshold_medium = Medium
+upkeep_maintenance_message = Maintenance Message
+upkeep_maintenance_not_required = Maintenance Not Required
+upkeep_maintenance_status_description = Maintenance Status Description
+upkeep_maintenance_system_unavailable = Maintenance System Unavailable
+upkeep_newest = Newest
+upkeep_next = Next
+upkeep_no_badwords_configured = No Badwords Configured
+upkeep_no_badwords_found = No Badwords Found
+upkeep_no_blocklist_entries_configured = No Blocklist Entries Configured
+upkeep_no_blocklist_entries_found = No Blocklist Entries Found
+upkeep_no_password_policy_configured = No Password Policy Configured
+upkeep_no_threats_found = No threats found
+upkeep_no_threats_message = No Mail Security threats found or your filters returned no results.
+upkeep_of = of
+upkeep_oldest = Oldest
+upkeep_page = Page
+upkeep_pattern = Pattern
+upkeep_pattern_example = e.g. viagra or /spam.{0,20}mail/i
+upkeep_pattern_placeholder = e.g. viagra or /spam.{0,20}mail/i
+upkeep_php_config_already_secure = Php Config Already Secure
+upkeep_php_config_description = Php Config Description
+upkeep_previous = Previous
+upkeep_production_config_secure = Production Config Secure
+upkeep_production_mode_description = Production Mode Description
+upkeep_reason = Reason
+upkeep_redaxo_version_description = Redaxo Version Description
+upkeep_regex = RegEx
+upkeep_reset = Reset
+upkeep_search_blocklist = Search in email/domain/pattern/reason
+upkeep_search_pattern_description = Search in pattern/description
+upkeep_select_all = Select all
+upkeep_session_security_already_configured = Session Security Already Configured
+upkeep_session_security_config_warning = Session Security Config Warning
+upkeep_session_security_description = Session Security Description
+upkeep_session_security_enabled = Session Security Enabled
+upkeep_session_security_info = Session Security Info
+upkeep_session_security_secure_false = Session Security Secure False
+upkeep_session_security_secure_true = Session Security Secure True
+upkeep_setup_mode_active_security_risk = Setup Mode Active Security Risk
+upkeep_severity = Severity
+upkeep_severity_critical = Severity Critical
+upkeep_severity_high = Severity High
+upkeep_severity_low = Severity Low
+upkeep_severity_medium = Severity Medium
+upkeep_showing = Showing
+upkeep_ssl_days_remaining = Ssl Days Remaining
+upkeep_ssl_expires = Ssl Expires
+upkeep_ssl_invalid = Ssl Invalid
+upkeep_ssl_issuer = Ssl Issuer
+upkeep_ssl_valid = Ssl Valid
+upkeep_statistics = Statistics
+upkeep_status = Status
+upkeep_status_expired = Expired
+upkeep_system_versions_current_supported = System Versions Current Supported
+upkeep_system_versions_description = System Versions Description
+upkeep_threats = threats
+upkeep_total = total
+upkeep_total_threats = Total Threats
+upkeep_type = Type
+upkeep_type_domain = Domain
+upkeep_type_email = Email
+upkeep_type_ip = IP Address
+upkeep_type_pattern = Pattern
+upkeep_type_regex = RegEx
+upkeep_type_text = Text
+upkeep_valid_until = Valid Until
+upkeep_webserver_config_secure = Webserver Config Secure
+upkeep_webserver_version_description = Webserver Version Description
