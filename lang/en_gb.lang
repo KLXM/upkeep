@@ -851,8 +851,6 @@ upkeep_phpmailer_smtp_not_configured = PHPMailer SMTP not configured
 upkeep_phpmailer_configured = PHPMailer configured ({0})
 upkeep_phpmailer_check_failed = PHPMailer check failed: {0}
 upkeep_security_headers_set = Security headers set
-upkeep_security_headers_missing = Security headers missing
-upkeep_addons_installed = {0} Addons installed
 
 # Server Header Checks
 upkeep_server_header_version_disclosed = Server version is being disclosed: {0}
