@@ -106,6 +106,234 @@ foreach ($badwords as $badword) {
 }
 ```
 
+### Eigene Patterns erstellen
+
+Das Mail Security System unterstützt sowohl einfache Text-Patterns als auch komplexe reguläre Ausdrücke (Regex) für die Erkennung von unerwünschten Inhalten.
+
+#### Einfache Text-Patterns
+
+Einfache Text-Patterns werden exakt oder als Teilstring gesucht:
+
+```php
+// Exakte Übereinstimmung
+MailSecurityFilter::addBadword('casino', 'medium');
+
+// Teilstring-Suche (case-insensitive)
+MailSecurityFilter::addBadword('lottery', 'low');
+```
+
+**Hinweis**: Einfache Patterns sind case-insensitive und finden auch Teilübereinstimmungen.
+
+#### Reguläre Ausdrücke (Regex)
+
+Für komplexere Muster verwenden Sie reguläre Ausdrücke. Diese müssen mit `/` beginnen und enden:
+
+```php
+// Grundsyntax für Regex-Patterns
+MailSecurityFilter::addBadword('/pattern/modifiers', 'severity', true);
+```
+
+##### Regex-Modifier
+
+| Modifier | Bedeutung | Beispiel |
+|----------|-----------|----------|
+| `i` | Case-insensitive | `/spam/i` findet "Spam", "SPAM", "spam" |
+| `m` | Multi-line | `/^Subject:/m` findet Zeilenanfänge |
+| `s` | DOTALL (`.` matcht auch \n) | `/begin.*end/s` über mehrere Zeilen |
+| `x` | Ignoriert Leerzeichen | `/spam word/x` ignoriert Leerzeichen im Pattern |
+
+##### Häufige Regex-Patterns
+
+**1. Wortgrenzen (Whole Words Only)**
+```php
+// Findet nur das exakte Wort "win", nicht "winner" oder "twin"
+MailSecurityFilter::addBadword('/\bwin\b/i', 'low', true);
+
+// Mehrere Varianten
+MailSecurityFilter::addBadword('/\b(win|winner|winning)\b/i', 'medium', true);
+```
+
+**2. Zahlen und Beträge**
+```php
+// Verdächtige Preisangaben
+MailSecurityFilter::addBadword('/\$\d{1,3}(,\d{3})*(\.\d{2})?/', 'medium', true);
+
+// Prozentangaben
+MailSecurityFilter::addBadword('/\d{1,3}%/', 'low', true);
+```
+
+**3. URLs und Domains**
+```php
+// Verdächtige Domains
+MailSecurityFilter::addBadword('/\.xyz$|\.top$|\.win$/i', 'high', true);
+
+// URL-Schemata
+MailSecurityFilter::addBadword('/https?:\/\/[^\s]+/', 'medium', true);
+```
+
+**4. Telefonnummern**
+```php
+// US-Telefonnummern
+MailSecurityFilter::addBadword('/\b\d{3}-\d{3}-\d{4}\b/', 'medium', true);
+
+// Internationale Nummern
+MailSecurityFilter::addBadword('/\+\d{1,3}\s?\d{1,4}[\s\-\.]?\d{1,4}[\s\-\.]?\d{1,4}/', 'medium', true);
+```
+
+**5. Datumsmuster**
+```php
+// Datumsangaben
+MailSecurityFilter::addBadword('/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/', 'low', true);
+
+// Uhrzeiten
+MailSecurityFilter::addBadword('/\b\d{1,2}:\d{2}\s?(am|pm)?\b/i', 'low', true);
+```
+
+**6. Spam-typische Phrasen**
+```php
+// Dringlichkeit signalisieren
+MailSecurityFilter::addBadword('/urgent|immediate|asap|emergency/i', 'medium', true);
+
+// Geldbezogene Begriffe
+MailSecurityFilter::addBadword('/million|thousand|billion|fortune/i', 'medium', true);
+
+// Handlungsaufforderungen
+MailSecurityFilter::addBadword('/click here|call now|contact us/i', 'low', true);
+```
+
+**7. E-Mail-spezifische Patterns**
+```php
+// Mehrfachausrufezeichen
+MailSecurityFilter::addBadword('/!{2,}/', 'low', true);
+
+// Großbuchstaben-Blöcke
+MailSecurityFilter::addBadword('/[A-Z]{5,}/', 'low', true);
+
+// Wiederholte Wörter
+MailSecurityFilter::addBadword('/\b(\w+)\s+\1\b/i', 'low', true);
+```
+
+##### Erweiterte Regex-Techniken
+
+**Lookahead und Lookbehind**
+```php
+// Positive Lookahead: Wort gefolgt von bestimmten Zeichen
+MailSecurityFilter::addBadword('/password(?=\s*[:=]\s*)/i', 'high', true);
+
+// Negative Lookbehind: Nicht nach bestimmten Zeichen
+MailSecurityFilter::addBadword('/(?<!(?:re|un))subscribe/i', 'low', true);
+```
+
+**Quantifier**
+```php
+// Optionale Teile
+MailSecurityFilter::addBadword('/free(?:dom)?(?:dom)?/i', 'medium', true);
+
+// Wiederholungen
+MailSecurityFilter::addBadword('/ha{1,3}/i', 'low', true); // ha, haa, haaa
+```
+
+**Character Classes**
+```php
+// Beliebige Ziffern
+MailSecurityFilter::addBadword('/[0-9]+/', 'low', true);
+
+// Wortzeichen
+MailSecurityFilter::addBadword('/\w+/', 'low', true);
+
+// Leerzeichen
+MailSecurityFilter::addBadword('/\s+/', 'low', true);
+```
+
+#### Regex-Testing und Debugging
+
+**1. Online-Tools**
+- [Regex101](https://regex101.com) - Interaktiver Regex-Tester
+- [RegExr](https://regexr.com) - Visual Regex Builder
+- [Regex Tester](https://www.regextester.com) - Einfacher Tester
+
+**2. Test-Strategien**
+```php
+// Test-Email erstellen
+$testEmail = "Subject: WIN BIG CASH PRIZE!\n\nDear user,\n\nYou have won $1,000,000!";
+
+// Pattern testen
+$pattern = '/\bwin\b.*\b(cash|prize|money)\b/i';
+if (preg_match($pattern, $testEmail)) {
+    echo "Pattern matched!";
+}
+```
+
+**3. Häufige Fehler vermeiden**
+```php
+// ❌ Falsch: Zu gierig
+MailSecurityFilter::addBadword('/<.*>/', 'medium', true); // Findet zu viel
+
+// ✅ Richtig: Nicht-gierig
+MailSecurityFilter::addBadword('/<.*?>/', 'medium', true); // Findet einzelne Tags
+
+// ❌ Falsch: Performance-Problem
+MailSecurityFilter::addBadword('/a.*b.*c.*d/', 'medium', true); // Zu viele .* 
+
+// ✅ Richtig: Spezifischer
+MailSecurityFilter::addBadword('/a[^b]*b[^c]*c[^d]*d/', 'medium', true);
+```
+
+#### Pattern-Priorisierung
+
+**Severity-Level definieren**
+```php
+// Kritische Patterns (sofort blockieren)
+MailSecurityFilter::addBadword('/password.*hack/i', 'critical', true);
+MailSecurityFilter::addBadword('/bank.*account.*steal/i', 'critical', true);
+
+// Hohe Priorität (wahrscheinlich Spam)
+MailSecurityFilter::addBadword('/lottery.*winner/i', 'high', true);
+MailSecurityFilter::addBadword('/inheritance.*fund/i', 'high', true);
+
+// Mittlere Priorität (verdächtig)
+MailSecurityFilter::addBadword('/free.*money/i', 'medium', true);
+MailSecurityFilter::addBadword('/urgent.*action/i', 'medium', true);
+
+// Niedrige Priorität (nur loggen)
+MailSecurityFilter::addBadword('/special.*offer/i', 'low', true);
+MailSecurityFilter::addBadword('/discount/i', 'low', true);
+```
+
+#### Kategorisierung von Patterns
+
+Verwenden Sie Kategorien, um Patterns zu organisieren:
+
+```php
+$patterns = [
+    // Finanzbetrug
+    ['word' => '/\b(win|won|winner)\b.*\$\d+/i', 'severity' => 'high', 'category' => 'financial_fraud', 'is_regex' => true],
+    ['word' => '/lottery.*prize/i', 'severity' => 'high', 'category' => 'financial_fraud', 'is_regex' => true],
+    
+    // Phishing
+    ['word' => '/verify.*account/i', 'severity' => 'high', 'category' => 'phishing', 'is_regex' => true],
+    ['word' => '/suspended.*account/i', 'severity' => 'high', 'category' => 'phishing', 'is_regex' => true],
+    
+    // Malware
+    ['word' => '/download.*exe/i', 'severity' => 'medium', 'category' => 'malware', 'is_regex' => true],
+    ['word' => '/infected.*file/i', 'severity' => 'medium', 'category' => 'malware', 'is_regex' => true],
+    
+    // Spam
+    ['word' => '/free.*gift/i', 'severity' => 'low', 'category' => 'spam', 'is_regex' => true],
+    ['word' => '/guaranteed.*income/i', 'severity' => 'low', 'category' => 'spam', 'is_regex' => true],
+];
+
+// Massenimport
+foreach ($patterns as $pattern) {
+    MailSecurityFilter::addBadword(
+        $pattern['word'],
+        $pattern['severity'],
+        $pattern['is_regex'],
+        $pattern['category']
+    );
+}
+```
+
 ### Badword-Kategorien
 
 | Kategorie | Beschreibung | Beispiele |
@@ -114,6 +342,7 @@ foreach ($badwords as $badword) {
 | **Adult** | Nicht jugendfreie Inhalte | adult, xxx, sex |
 | **Phishing** | Betrügerische Begriffe | urgent, verify account, suspended |
 | **Malware** | Schädliche Begriffe | download now, infected, virus |
+| **Financial** | Finanzbetrug | wire transfer, bitcoin scam |
 | **Custom** | Benutzerdefiniert | Projektspezifische Begriffe |
 
 ## IP/Domain Blocklist
