@@ -21,22 +21,31 @@ if (!rex_backend_login::hasSession()) {
     rex_login::startSession();
 }
 
+// Frontend-Wartungsmodus-Prüfung DIREKT ausführen (nicht in Extension Point)
+// Dies muss sofort geschehen, bevor andere Addons laden
+if (rex::isFrontend()) {
+    Upkeep::checkFrontend();
+}
+
+// Backend-Wartungsmodus-Prüfung DIREKT ausführen (nicht in Extension Point)
+// Muss früh geschehen, aber nach Session-Initialisierung
+if (rex::isBackend()) {
+    // Benutzer erstellen falls noch nicht vorhanden
+    rex_backend_login::createUser();
+    
+    // Backend-Sperre prüfen wenn Benutzer existiert
+    if (rex::getUser()) {
+        Upkeep::checkBackend();
+    }
+}
+
 // Register Extension Point nach dem Laden aller Packages
 rex_extension::register('PACKAGES_INCLUDED', static function () {
     // Mail Reporting System initialisieren
     MailReporting::init();
     
-    // Frontend-Wartungsmodus-Prüfung ZUERST
-    if (rex::isFrontend()) {
-        Upkeep::checkFrontend();
-    }
-    
-    // Backend-Wartungsmodus-Prüfung
+    // Backend-spezifische Initialisierungen
     if (rex::isBackend()) {
-        if (rex::getUser()) {
-            Upkeep::checkBackend();
-        }
-        
         // Statusindikator im Backend-Menü setzen
         Upkeep::setStatusIndicator();
         
