@@ -1,12 +1,12 @@
 <?php
 
-use KLXM\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
 
 // GeoIP-Datenbank aktualisieren
 if (rex_post('update_geo', 'bool')) {
-    if (class_exists('KLXM\Upkeep\GeoIP')) {
+    if (class_exists('FriendsOfRedaxo\Upkeep\GeoIP')) {
         if (IntrusionPrevention::updateGeoDatabase()) {
             echo rex_view::success($addon->i18n('upkeep_ips_geo_update_success'));
         } else {
@@ -214,7 +214,7 @@ echo '<i class="fa fa-globe"></i> GeoIP-Datenbank';
 echo '</div>';
 echo '<div class="panel-body">';
 
-if (class_exists('KLXM\Upkeep\GeoIP')) {
+if (class_exists('FriendsOfRedaxo\Upkeep\GeoIP')) {
     $geoStatus = IntrusionPrevention::getGeoDatabaseStatus();
     
     echo '<div class="row">';

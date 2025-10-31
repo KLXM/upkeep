@@ -3,7 +3,7 @@
  * Admin Settings für Wartungsfreigaben
  */
 
-use KLXM\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
 
 $addon = rex_addon::get('upkeep');
 $user = rex::getUser();

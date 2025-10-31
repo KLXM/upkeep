@@ -6,7 +6,7 @@
  * @version 1.8.1
  */
 
-use KLXM\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
 
 $addon = rex_addon::get('upkeep');
 $securityAdvisor = new SecurityAdvisor();

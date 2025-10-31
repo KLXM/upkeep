@@ -6,9 +6,9 @@
  * @version 1.9.0
  */
 
-use KLXM\Upkeep\MailReporting;
-use KLXM\Upkeep\SecurityAdvisor;
-use KLXM\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\MailReporting;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
 
 class rex_api_upkeep_system_health extends rex_api_function
 {
@@ -67,7 +67,7 @@ class rex_api_upkeep_system_health extends rex_api_function
                         'backend' => (bool) rex_config::get('upkeep', 'backend_maintenance_active', false)
                     ],
                     'security_advisor' => [
-                        'enabled' => class_exists('KLXM\Upkeep\SecurityAdvisor'),
+                        'enabled' => class_exists('FriendsOfRedaxo\Upkeep\SecurityAdvisor'),
                         'last_scan' => rex_config::get('upkeep', 'security_advisor_last_check', 0),
                         'score' => rex_config::get('upkeep', 'security_advisor_score', 0),
                         'grade' => rex_config::get('upkeep', 'security_advisor_grade', 'F'),
@@ -75,7 +75,7 @@ class rex_api_upkeep_system_health extends rex_api_function
                         'warning_issues' => rex_config::get('upkeep', 'security_advisor_warning_issues', 0)
                     ],
                     'ips' => [
-                        'enabled' => class_exists('KLXM\Upkeep\IntrusionPrevention'),
+                        'enabled' => class_exists('FriendsOfRedaxo\Upkeep\IntrusionPrevention'),
                         'active' => (bool) rex_config::get('upkeep', 'ips_active', false),
                         'monitor_only' => (bool) rex_config::get('upkeep', 'ips_monitor_only', false),
                         'blocked_ips_count' => 0, // Placeholder for IPS blocked IPs count
@@ -86,7 +86,7 @@ class rex_api_upkeep_system_health extends rex_api_function
                         'mode' => (int) $addon->getConfig('mail_reporting_mode', 1) === 0 ? 'immediate' : 'bundle',
                         'email' => !empty($addon->getConfig('mail_reporting_email', '')) ? 
                             $addon->getConfig('mail_reporting_email', '') : rex::getErrorEmail(),
-                        'log_files_count' => method_exists('KLXM\Upkeep\MailReporting', 'getLogFiles') ? 
+                        'log_files_count' => method_exists('FriendsOfRedaxo\Upkeep\MailReporting', 'getLogFiles') ? 
                             count(MailReporting::getLogFiles()) : 0
                     ]
                 ],
@@ -124,7 +124,7 @@ class rex_api_upkeep_system_health extends rex_api_function
                 ];
 
                 // Add Security Advisor details if available
-                if (class_exists('KLXM\Upkeep\SecurityAdvisor') && method_exists('KLXM\Upkeep\SecurityAdvisor', 'getDashboardStats')) {
+                if (class_exists('FriendsOfRedaxo\Upkeep\SecurityAdvisor') && method_exists('FriendsOfRedaxo\Upkeep\SecurityAdvisor', 'getDashboardStats')) {
                     try {
                         $securityAdvisor = new SecurityAdvisor();
                         $healthData['detailed']['security_advisor'] = $securityAdvisor->getDashboardStats();

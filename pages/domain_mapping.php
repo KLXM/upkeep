@@ -5,7 +5,7 @@
  * Einfache Domain-zu-URL-Zuordnung mit HTTP Status Codes
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 $func = rex_request('func', 'string');

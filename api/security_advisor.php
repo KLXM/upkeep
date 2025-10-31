@@ -6,7 +6,7 @@
  * @version 1.8.1
  */
 
-use KLXM\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
 
 header('Content-Type: application/json');
 

@@ -1,6 +1,6 @@
 <?php
 
-use KLXM\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
 
@@ -419,7 +419,7 @@ if ($sql->getRows() > 0) {
         
         // Länder-Information ermitteln (nur wenn GeoIP verfügbar)
         $countryInfo = null;
-        if (class_exists('KLXM\Upkeep\IntrusionPrevention')) {
+        if (class_exists('FriendsOfRedaxo\Upkeep\IntrusionPrevention')) {
             try {
                 $countryInfo = IntrusionPrevention::getCountryByIp($ip);
             } catch (Exception $e) {

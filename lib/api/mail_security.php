@@ -10,7 +10,7 @@
  * @version 1.8.1
  */
 
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 class rex_api_upkeep_mail_security extends rex_api_function
 {

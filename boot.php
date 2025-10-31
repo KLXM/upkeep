@@ -3,10 +3,10 @@
  * Boot-Datei für das Upkeep AddOn
  */
 
-use KLXM\Upkeep\Upkeep;
-use KLXM\Upkeep\IntrusionPrevention;
-use KLXM\Upkeep\MailSecurityFilter;
-use KLXM\Upkeep\MailReporting;
+use FriendsOfRedaxo\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailReporting;
 
 // Falls Setup aktiv ist, nichts tun
 if (rex::isSetup()) {

@@ -15,7 +15,7 @@
  * @version 1.9.0
  */
 
-namespace KLXM\Upkeep;
+namespace FriendsOfRedaxo\Upkeep;
 
 use Exception;
 use rex;

@@ -3,7 +3,7 @@
  * Backend-Wartungsseite
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 ?>

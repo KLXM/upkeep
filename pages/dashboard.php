@@ -1,8 +1,8 @@
 <?php
 
-use KLXM\Upkeep\SecurityAdvisor;
-use KLXM\Upkeep\IntrusionPrevention;
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 $addon = rex_addon::get('upkeep');
 $advisor = new SecurityAdvisor();

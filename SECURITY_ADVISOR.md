@@ -298,7 +298,7 @@ curl -X GET "https://ihre-domain.de/api/upkeep/security/reports" \
 ### PHP-Integration
 
 ```php
-use KLXM\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
 
 $advisor = new SecurityAdvisor();
 

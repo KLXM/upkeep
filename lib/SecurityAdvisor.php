@@ -6,7 +6,7 @@
  * @version 1.8.1
  */
 
-namespace KLXM\Upkeep;
+namespace FriendsOfRedaxo\Upkeep;
 
 use rex;
 use rex_addon;

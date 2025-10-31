@@ -275,7 +275,7 @@ The add-on creates these tables:
 
 ---
 
-**Maintainer**: KLXM Crossmedia  
+**Maintainer**: FriendsOfREDAXO  
 **License**: MIT
 
 🛡️ **Upkeep** - Your reliable partner for REDAXO maintenance and security!### Extension Points
@@ -492,7 +492,7 @@ curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=status"
 
 ---
 
-**Maintainer**: KLXM  
+**Maintainer**: FriendsOfREDAXO  
 **License**: MIT
 
 ```
@@ -516,7 +516,7 @@ curl "example.com/index.php?rex-api-call=upkeep&token=TOKEN&action=status"
 
 ---
 
-**Maintainer**: KLXM  
+**Maintainer**: FriendsOfREDAXO  
 **License**: MIT
 $redirect = DomainMapping::getRedirectForUrl('https://old-site.com/blog/article-1');
 if ($redirect) {
@@ -528,7 +528,7 @@ $mappedUrl = DomainMapping::mapWildcardUrl('/blog/category/tech', '/blog/*', '/a
 // Ergebnis: '/articles/category/tech'
 ```
 
-### KLXM\Upkeep\MaintenanceView
+### FriendsOfRedaxo\Upkeep\MaintenanceView
 
 Template-System für Wartungsseiten.
 
@@ -575,7 +575,7 @@ MIT License
 
 ## 👥 Autor
 
-**Thomas Skerbis** - KLXM Crossmedia
+**Thomas Skerbis** - FriendsOfREDAXO
 
 ---
 
@@ -869,7 +869,7 @@ MIT License
 
 ## 👥 Autor
 
-**Thomas Skerbis** - KLXM Crossmedia
+**Thomas Skerbis** - FriendsOfREDAXO
 
 ---
 

@@ -1,6 +1,6 @@
 <?php
 
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 $addon = rex_addon::get('upkeep');
 

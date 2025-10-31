@@ -3,8 +3,8 @@
  * Interaktives Dashboard für das Upkeep AddOn
  */
 
-use KLXM\Upkeep\IntrusionPrevention;
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 $addon = rex_addon::get('upkeep');
 $user = rex::getUser();
@@ -156,7 +156,7 @@ function getSecurityThreatsByType() {
 function getThreatsByCountry() {
     try {
         // Prüfe ob GeoIP verfügbar ist
-        if (!class_exists('KLXM\Upkeep\GeoIP')) {
+        if (!class_exists('FriendsOfRedaxo\Upkeep\GeoIP')) {
             rex_logger::factory()->log('debug', 'Dashboard: GeoIP-Klasse nicht verfügbar');
             return [];
         }
@@ -185,7 +185,7 @@ function getThreatsByCountry() {
             $ip = $result['ip_address'];
             
             
-            $country = \KLXM\Upkeep\IntrusionPrevention::getCountryByIp($ip);
+            $country = \FriendsOfRedaxo\Upkeep\IntrusionPrevention::getCountryByIp($ip);
             $countryCode = $country['code'];
             
             if (!isset($countries[$countryCode])) {
@@ -636,7 +636,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         <div class="col-md-12">
             <?php
             // REDAXO-Versionsprüfung durchführen
-            use KLXM\Upkeep\SecurityAdvisor;
+            use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
             $securityAdvisor = new SecurityAdvisor();
             $versionCheckResults = null;
             $showVersionAlert = false;
@@ -975,8 +975,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             <i class="rex-icon fa-check-circle" style="font-size: 48px; color: #5cb85c;"></i>
                             <h4><?= $addon->i18n('upkeep_dashboard_no_blocked_ips') ?></h4>
                             <p><?= $addon->i18n('upkeep_dashboard_no_blocked_or_geo') ?></p>
-                            <?php if (class_exists('KLXM\Upkeep\GeoIP')): ?>
-                                <?php $geoStatus = KLXM\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
+                            <?php if (class_exists('FriendsOfRedaxo\Upkeep\GeoIP')): ?>
+                                <?php $geoStatus = FriendsOfRedaxo\Upkeep\IntrusionPrevention::getGeoDatabaseStatus(); ?>
                                 <?php if (!$geoStatus['available']): ?>
                                     <a href="<?= rex_url::backendPage('upkeep/ips/settings', ['action' => 'update_geo']) ?>" class="btn btn-sm btn-primary">
                                         <i class="rex-icon fa-download"></i> <?= $addon->i18n('upkeep_dashboard_install_geo') ?>

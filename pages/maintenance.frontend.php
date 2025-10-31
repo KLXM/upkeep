@@ -3,7 +3,7 @@
  * Frontend-Einstellungen für das Upkeep AddOn
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 

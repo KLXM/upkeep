@@ -3,7 +3,7 @@
  * Hauptseite des Upkeep AddOns
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 echo rex_view::title($addon->i18n('title'));

@@ -8,7 +8,7 @@
  * @version 1.9.0
  */
 
-use KLXM\Upkeep\MailReporting;
+use FriendsOfRedaxo\Upkeep\MailReporting;
 
 $addon = rex_addon::get('upkeep');
 

@@ -3,7 +3,7 @@
  * Frontend-Wartungsseite mit Mehrsprachigkeitsunterstützung
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 $addon = Upkeep::getAddon();
 

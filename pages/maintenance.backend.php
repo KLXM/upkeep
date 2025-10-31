@@ -3,7 +3,7 @@
  * Backend-Einstellungen für das Upkeep AddOn
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 // Nur für Administratoren zugänglich
 if (!rex::getUser()->isAdmin()) {

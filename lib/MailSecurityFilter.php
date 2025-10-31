@@ -1,6 +1,6 @@
 <?php
 
-namespace KLXM\Upkeep;
+namespace FriendsOfRedaxo\Upkeep;
 
 use DateTime;
 use Exception;
@@ -1234,9 +1234,9 @@ class MailSecurityFilter
     private static function redirectToBlockedPage(string $reason, string $ip): void
     {
         // Importiere IntrusionPrevention Klasse
-        if (class_exists('\KLXM\Upkeep\IntrusionPrevention')) {
+        if (class_exists('\FriendsOfRedaxo\Upkeep\IntrusionPrevention')) {
             // Verwende die öffentliche showBlockedPage Methode des IPS-Systems
-            \KLXM\Upkeep\IntrusionPrevention::showBlockedPage($reason, $ip);
+            \FriendsOfRedaxo\Upkeep\IntrusionPrevention::showBlockedPage($reason, $ip);
         } else {
             // Fallback: Exception werfen wenn IPS nicht verfügbar
             throw new \Exception('Mail blockiert: ' . $reason);

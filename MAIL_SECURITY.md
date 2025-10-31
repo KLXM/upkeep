@@ -85,7 +85,7 @@ $addon->setConfig('script_tag_detection', true);
 
 **Programmatisch**:
 ```php
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 // Einzelnes Badword hinzufügen
 MailSecurityFilter::addBadword('spam', 'high');
@@ -407,7 +407,7 @@ foreach ($patterns as $pattern) {
 
 **Programmatisch**:
 ```php
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 // IP-Adresse sperren
 MailSecurityFilter::addToBlocklist('192.168.1.100', 'ip', 'Spam-Quelle');
@@ -476,7 +476,7 @@ mail_security:
 ### Rate Limiting Status prüfen
 
 ```php
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 $ip = '192.168.1.100';
 $isBlocked = MailSecurityFilter::isRateLimitExceeded($ip);
@@ -660,7 +660,7 @@ GET /api/upkeep/mail-security/threats?limit=100&severity=high&from_date=2024-01-
 #### MailSecurityFilter Klasse
 
 ```php
-use KLXM\Upkeep\MailSecurityFilter;
+use FriendsOfRedaxo\Upkeep\MailSecurityFilter;
 
 // Mail-Filterung (wird automatisch von PHPMailer aufgerufen)
 $result = MailSecurityFilter::filterMail($phpmailer);

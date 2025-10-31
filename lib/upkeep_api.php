@@ -4,7 +4,7 @@
  * Diese Klasse muss im globalen Namespace definiert sein
  */
 
-use KLXM\Upkeep\Upkeep;
+use FriendsOfRedaxo\Upkeep\Upkeep;
 
 class rex_api_upkeep extends rex_api_function
 {

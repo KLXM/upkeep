@@ -6,7 +6,7 @@
  * @version 1.8.1
  */
 
-use KLXM\Upkeep\SecurityAdvisor;
+use FriendsOfRedaxo\Upkeep\SecurityAdvisor;
 use rex_console_command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;

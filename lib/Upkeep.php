@@ -1,6 +1,6 @@
 <?php
 
-namespace KLXM\Upkeep;
+namespace FriendsOfRedaxo\Upkeep;
 
 use rex;
 use rex_addon;

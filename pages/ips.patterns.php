@@ -1,6 +1,6 @@
 <?php
 
-use KLXM\Upkeep\IntrusionPrevention;
+use FriendsOfRedaxo\Upkeep\IntrusionPrevention;
 
 $addon = rex_addon::get('upkeep');
 

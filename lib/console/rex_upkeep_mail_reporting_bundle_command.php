@@ -6,7 +6,7 @@
  * @version 1.9.0
  */
 
-use KLXM\Upkeep\MailReporting;
+use FriendsOfRedaxo\Upkeep\MailReporting;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
