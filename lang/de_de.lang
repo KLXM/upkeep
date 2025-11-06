@@ -46,6 +46,10 @@ upkeep_http_403 = 403 Forbidden
 upkeep_retry_after = Retry-After Header (Sekunden)
 upkeep_retry_after_tooltip = Teilt Clients mit, nach wie vielen Sekunden sie es erneut versuchen sollen
 upkeep_retry_after_notice = 0 = kein Header, empfohlen: 3600 (1 Stunde)
+
+upkeep_silent_mode_label = Silent Mode (Staging/Development)
+upkeep_silent_mode_enable = Nur HTTP-Status senden, keine Inhalte anzeigen
+upkeep_silent_mode_notice = Ideal für Staging-Umgebungen: Sendet nur den HTTP-Status-Code ohne HTML-Inhalt. Verhindert Rückschlüsse auf das verwendete CMS und zeigt keine Wartungsmeldungen an.
 upkeep_api_settings = API-Einstellungen
 upkeep_api_token = API-Token
 upkeep_api_token_tooltip = Token für die API-Authentifizierung

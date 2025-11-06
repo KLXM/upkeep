@@ -190,9 +190,6 @@ public static function checkFrontend(): void
         }
     }
 
-    // Wartungsseite anzeigen
-    $fragment = new rex_fragment();
-    
     // HTTP Response Code setzen (aus Konfiguration)
     $httpStatusCode = self::getConfig('http_status_code', rex_response::HTTP_SERVICE_UNAVAILABLE);
     rex_response::setStatus($httpStatusCode);
@@ -205,6 +202,15 @@ public static function checkFrontend(): void
     
     // Cache-Header setzen, damit die Seite nicht gecacht wird
     rex_response::sendCacheControl();
+    
+    // Silent mode check: Only send HTTP status, no further processing
+    $silentMode = (bool) self::getConfig('silent_mode', false);
+    if ($silentMode) {
+        exit;
+    }
+
+    // Wartungsseite anzeigen
+    $fragment = new rex_fragment();
     
     // Wartungsseite ausgeben und Script beenden
     exit($fragment->parse('upkeep/frontend.php'));
