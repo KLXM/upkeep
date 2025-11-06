@@ -60,12 +60,13 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
 
-// Impersonate-Warnung über OUTPUT_FILTER als JavaScript-Modal
+// Impersonate-Warnung über OUTPUT_FILTER: Inline-Info im Backend (einmal pro Session)
 if (rex::isBackend()) {
     rex_extension::register('OUTPUT_FILTER', static function (rex_extension_point $ep) {
-        // Nur im Backend und nur wenn alle Bedingungen erfüllt sind
         $addon = rex_addon::get('upkeep');
-        if (!rex::isBackend() || !$addon->getConfig('backend_active', false)) {
+
+        // Nur wenn Backend-Wartungsmodus aktiv ist
+        if (!$addon->getConfig('backend_active', false)) {
             return $ep->getSubject();
         }
 
@@ -81,36 +82,73 @@ if (rex::isBackend()) {
             return $ep->getSubject();
         }
 
-        // Warnung anzeigen
-        $userName = $currentUser instanceof rex_user ? 
-            ($currentUser->getName() ?: $currentUser->getLogin()) : 
-            'Unknown User';
-        
+        // Anzeige vorbereiten (sichere Übergabe der Texte an JS mittels json_encode)
         $title = $addon->i18n('upkeep_impersonate_warning_title');
+        $userName = $currentUser instanceof rex_user ? ($currentUser->getName() ?: $currentUser->getLogin()) : 'Unknown User';
         $message = $addon->i18n('upkeep_impersonate_warning_message', $userName);
+
+        // JSON-sichere Strings für JS (vermeidet manuelles Escaping)
+        $titleJson = json_encode($title, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
+        $messageJson = json_encode($message, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
+
         $content = $ep->getSubject();
+
+        // Bootstrap 3 Modal für elegante Anzeige der Warnung
+        // Anzeige erfolgt nur einmal pro Browser-Session (sessionStorage).
+        $modalId = 'upkeep-impersonate-modal-' . uniqid();
         
-        // JavaScript für Modal und permanente Warnung hinzufügen
-        // Eigenes JavaScript-Escaping für saubere Anzeige
-        $titleJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $title);
-        $messageJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $message);
+        $modalHtml = '
+        <!-- Upkeep Impersonate Warning Modal -->
+        <div class="modal fade" id="' . $modalId . '" tabindex="-1" role="dialog" aria-labelledby="' . $modalId . '-label">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header" style="background-color: #f0ad4e; color: white;">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title" id="' . $modalId . '-label">
+                            <i class="rex-icon rex-icon-warning"></i> ' . rex_escape($title) . '
+                        </h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>' . rex_escape($message) . '</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Verstanden</button>
+                    </div>
+                </div>
+            </div>
+        </div>';
         
         $warningScript = '
         <script type="text/javascript" nonce="' . rex_response::getNonce() . '">
-        jQuery(document).ready(function($) {
-            // Modal beim ersten Laden anzeigen
-            if (!sessionStorage.getItem("upkeep_impersonate_warning_shown")) {
-                alert("⚠️ ' . $titleJs . '\\n\\n' . $messageJs . '");
-                sessionStorage.setItem("upkeep_impersonate_warning_shown", "1");
+        (function(){
+            try {
+                if (!sessionStorage.getItem("upkeep_impersonate_warning_shown")) {
+                    jQuery(function($){
+                        // Modal beim Laden der Seite anzeigen
+                        $("#' . $modalId . '").modal({
+                            backdrop: "static",
+                            keyboard: false
+                        });
+                        
+                        // Session-Flag setzen wenn Modal geschlossen wird
+                        $("#' . $modalId . '").on("hidden.bs.modal", function() {
+                            sessionStorage.setItem("upkeep_impersonate_warning_shown", "1");
+                        });
+                    });
+                }
+            } catch(e) {
+                // Fallback: nichts tun
             }
-        });
+        })();
         </script>';
-        
-        // Script vor dem schließenden body-Tag einfügen
+
+        // Modal HTML und Script vor dem schließenden body-Tag einfügen
         if (strpos($content, '</body>') !== false) {
-            $content = str_replace('</body>', $warningScript . '</body>', $content);
+            $content = str_replace('</body>', $modalHtml . $warningScript . '</body>', $content);
         }
-        
+
         return $content;
     }, rex_extension::LATE);
 }
