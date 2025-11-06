@@ -119,7 +119,16 @@ $addon = Upkeep::getAddon();
             <p><?= $addon->i18n('upkeep_contact_admin') ?></p>
         </div>
         
-        <a href="<?= rex_url::frontend() ?>" class="maintenance-button"><?= $addon->i18n('upkeep_back_to_website') ?></a>
+        <div style="margin-top: 2rem;">
+            <?php
+            $logoutUrl = rex_url::backendController([
+                'rex_logout' => 1,
+                '_csrf_token' => rex_csrf_token::factory('backend_logout')->getValue()
+            ]);
+            ?>
+            <a href="<?= $logoutUrl ?>" class="maintenance-button" style="margin-right: 1rem;"><?= $addon->i18n('upkeep_logout') ?></a>
+            <a href="<?= rex_url::frontend() ?>" class="maintenance-button"><?= $addon->i18n('upkeep_back_to_website') ?></a>
+        </div>
     </div>
 </body>
 </html>

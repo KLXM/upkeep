@@ -332,6 +332,7 @@ upkeep_invalid_url = Ungültige URL
 upkeep_backend_maintenance_message = Das REDAXO-Backend befindet sich im Wartungsmodus und ist vorübergehend nicht verfügbar.
 upkeep_contact_admin = Bitte kontaktieren Sie den Administrator für weitere Informationen.
 upkeep_back_to_website = Zurück zur Website
+upkeep_logout = Abmelden
 
 # HTTP-Einstellungen
 upkeep_http_307 = 307 Temporary Redirect
