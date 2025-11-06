@@ -44,23 +44,76 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
     // Mail Reporting System initialisieren
     MailReporting::init();
     
-    // Backend-spezifische Initialisierungen
-    if (rex::isBackend()) {
-        // Statusindikator im Backend-Menü setzen
-        Upkeep::setStatusIndicator();
-        
-        // CSS für das Backend laden
-        rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
-        
-        // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
-        if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
-            rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
-        }
-    }
-    
-    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
+        // Backend-spezifische Initialisierungen
+        if (rex::isBackend()) {
+            // Statusindikator im Backend-Menü setzen
+            Upkeep::setStatusIndicator();
+            
+            // CSS für das Backend laden
+            rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
+            
+            // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
+            if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
+                rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
+            }
+        }    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
+
+// Impersonate-Warnung über OUTPUT_FILTER als JavaScript-Modal
+if (rex::isBackend()) {
+    rex_extension::register('OUTPUT_FILTER', static function (rex_extension_point $ep) {
+        // Nur im Backend und nur wenn alle Bedingungen erfüllt sind
+        $addon = rex_addon::get('upkeep');
+        if (!rex::isBackend() || !$addon->getConfig('backend_active', false)) {
+            return $ep->getSubject();
+        }
+
+        // Prüfen ob wir im Impersonate-Modus sind
+        $impersonator = rex::getImpersonator();
+        if (!$impersonator instanceof rex_user) {
+            return $ep->getSubject();
+        }
+
+        // Warnung nur anzeigen wenn der aktuelle Benutzer kein Admin ist
+        $currentUser = rex::getUser();
+        if ($currentUser instanceof rex_user && $currentUser->isAdmin()) {
+            return $ep->getSubject();
+        }
+
+        // Warnung anzeigen
+        $userName = $currentUser instanceof rex_user ? 
+            ($currentUser->getName() ?: $currentUser->getLogin()) : 
+            'Unknown User';
+        
+        $title = $addon->i18n('upkeep_impersonate_warning_title');
+        $message = $addon->i18n('upkeep_impersonate_warning_message', $userName);
+        $content = $ep->getSubject();
+        
+        // JavaScript für Modal und permanente Warnung hinzufügen
+        // Eigenes JavaScript-Escaping für saubere Anzeige
+        $titleJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $title);
+        $messageJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $message);
+        
+        $warningScript = '
+        <script type="text/javascript" nonce="' . rex_response::getNonce() . '">
+        jQuery(document).ready(function($) {
+            // Modal beim ersten Laden anzeigen
+            if (!sessionStorage.getItem("upkeep_impersonate_warning_shown")) {
+                alert("⚠️ ' . $titleJs . '\\n\\n' . $messageJs . '");
+                sessionStorage.setItem("upkeep_impersonate_warning_shown", "1");
+            }
+        });
+        </script>';
+        
+        // Script vor dem schließenden body-Tag einfügen
+        if (strpos($content, '</body>') !== false) {
+            $content = str_replace('</body>', $warningScript . '</body>', $content);
+        }
+        
+        return $content;
+    }, rex_extension::LATE);
+}
 
 // Mail Security Filter für PHPMailer registrieren
 // Nur registrieren wenn PHPMailer-AddOn verfügbar ist

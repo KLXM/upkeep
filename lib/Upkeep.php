@@ -245,6 +245,8 @@ public static function checkFrontend(): void
         exit($fragment->parse('upkeep/backend.php'));
     }
 
+
+
     /**
      * Setzt Statusindikator im Backend-Menü
      */
