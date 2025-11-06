@@ -246,6 +246,63 @@ public static function checkFrontend(): void
     }
 
     /**
+     * Prüft und zeigt Warnung im Impersonate-Modus bei aktivem Backend-Wartungsmodus
+     */
+    public static function checkImpersonateWarning(): void
+    {
+        // Nur prüfen wenn Backend-Wartungsmodus aktiv ist
+        if (!self::getConfig('backend_active', false)) {
+            return;
+        }
+
+        // Nur prüfen wenn wir im Impersonate-Modus sind
+        $impersonator = rex::getImpersonator();
+        if (!$impersonator instanceof rex_user) {
+            return;
+        }
+
+        // Warnung nur anzeigen wenn der aktuelle Benutzer kein Admin ist
+        $currentUser = rex::getUser();
+        if ($currentUser instanceof rex_user && $currentUser->isAdmin()) {
+            return;
+        }
+
+        // Warnung anzeigen
+        $userName = $currentUser instanceof rex_user ? 
+            ($currentUser->getName() ?: $currentUser->getLogin()) : 
+            'Unknown User';
+        
+        $addon = self::getAddon();
+        $message = $addon->i18n('upkeep_impersonate_warning_message', $userName);
+        
+        rex_extension::register('OUTPUT_FILTER', function(rex_extension_point $ep) use ($addon, $message) {
+            $content = $ep->getSubject();
+            
+            // Warnung nur im Backend anzeigen
+            if (!rex::isBackend()) {
+                return $content;
+            }
+            
+            $warningHtml = '
+            <div class="alert alert-warning" style="margin: 15px;">
+                <h4><i class="rex-icon rex-icon-warning"></i> ' . rex_escape($addon->i18n('upkeep_impersonate_warning_title')) . '</h4>
+                <p>' . rex_escape($message) . '</p>
+            </div>';
+            
+            // Warnung nach dem Hauptmenü einfügen
+            if (strpos($content, '<div id="rex-page-main">') !== false) {
+                $content = str_replace(
+                    '<div id="rex-page-main">',
+                    '<div id="rex-page-main">' . $warningHtml,
+                    $content
+                );
+            }
+            
+            return $content;
+        }, rex_extension::LATE);
+    }
+
+    /**
      * Setzt Statusindikator im Backend-Menü
      */
     public static function setStatusIndicator(): void
