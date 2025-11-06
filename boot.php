@@ -63,45 +63,22 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
 // Impersonate-Warnung über OUTPUT_FILTER als JavaScript-Modal
 if (rex::isBackend()) {
     rex_extension::register('OUTPUT_FILTER', static function (rex_extension_point $ep) {
-        // Debug-Informationen sammeln
-        $addon = rex_addon::get('upkeep');
-        $debugInfo = [
-            'isBackend' => rex::isBackend(),
-            'backendActive' => $addon->getConfig('backend_active', false),
-            'hasImpersonator' => rex::getImpersonator() instanceof rex_user,
-            'currentUserIsAdmin' => rex::getUser() instanceof rex_user && rex::getUser()->isAdmin(),
-            'impersonatorName' => rex::getImpersonator() ? rex::getImpersonator()->getLogin() : 'none',
-            'currentUserName' => rex::getUser() ? rex::getUser()->getLogin() : 'none'
-        ];
-        
-        // Debug-Script immer einfügen wenn im Backend
-        if (rex::isBackend()) {
-            $content = $ep->getSubject();
-            $debugScript = '
-            <script type="text/javascript" nonce="' . rex_response::getNonce() . '">
-            console.log("Upkeep Debug Info:", ' . json_encode($debugInfo) . ');
-            </script>';
-            
-            if (strpos($content, '</body>') !== false) {
-                $content = str_replace('</body>', $debugScript . '</body>', $content);
-            }
-        }
-        
         // Nur im Backend und nur wenn alle Bedingungen erfüllt sind
+        $addon = rex_addon::get('upkeep');
         if (!rex::isBackend() || !$addon->getConfig('backend_active', false)) {
-            return isset($content) ? $content : $ep->getSubject();
+            return $ep->getSubject();
         }
 
         // Prüfen ob wir im Impersonate-Modus sind
         $impersonator = rex::getImpersonator();
         if (!$impersonator instanceof rex_user) {
-            return isset($content) ? $content : $ep->getSubject();
+            return $ep->getSubject();
         }
 
         // Warnung nur anzeigen wenn der aktuelle Benutzer kein Admin ist
         $currentUser = rex::getUser();
         if ($currentUser instanceof rex_user && $currentUser->isAdmin()) {
-            return isset($content) ? $content : $ep->getSubject();
+            return $ep->getSubject();
         }
 
         // Warnung anzeigen
@@ -111,31 +88,20 @@ if (rex::isBackend()) {
         
         $title = $addon->i18n('upkeep_impersonate_warning_title');
         $message = $addon->i18n('upkeep_impersonate_warning_message', $userName);
-        if (!isset($content)) {
-            $content = $ep->getSubject();
-        }
+        $content = $ep->getSubject();
         
         // JavaScript für Modal und permanente Warnung hinzufügen
+        // Eigenes JavaScript-Escaping für saubere Anzeige
+        $titleJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $title);
+        $messageJs = str_replace(['\\', '"', "'", "\n", "\r"], ['\\\\', '\\"', "\\'", '\\n', '\\r'], $message);
+        
         $warningScript = '
         <script type="text/javascript" nonce="' . rex_response::getNonce() . '">
         jQuery(document).ready(function($) {
             // Modal beim ersten Laden anzeigen
             if (!sessionStorage.getItem("upkeep_impersonate_warning_shown")) {
-                alert("⚠️ ' . rex_escape($title, 'js') . '\\n\\n' . rex_escape($message, 'js') . '");
+                alert("⚠️ ' . $titleJs . '\\n\\n' . $messageJs . '");
                 sessionStorage.setItem("upkeep_impersonate_warning_shown", "1");
-            }
-            
-            // Permanente Warnung am Seitenanfang hinzufügen
-            var warningHtml = \'<div id="upkeep-impersonate-warning" style="background-color: #fcf8e3; border: 1px solid #faebcc; color: #8a6d3b; padding: 15px; margin: 15px; border-radius: 4px; position: relative; z-index: 1050;">\' +
-                \'<h4 style="margin-top: 0;"><i class="rex-icon rex-icon-warning"></i> ' . rex_escape($title) . '</h4>\' +
-                \'<p style="margin-bottom: 0;">' . rex_escape($message) . '</p>\' +
-                \'</div>\';
-            
-            // Warnung nach dem Header einfügen
-            if ($("#rex-page-main").length) {
-                $("#rex-page-main").prepend(warningHtml);
-            } else if ($("body").length) {
-                $("body").prepend(warningHtml);
             }
         });
         </script>';
