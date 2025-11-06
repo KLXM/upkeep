@@ -1,5 +1,5 @@
 package: upkeep
-version: '2.0.0-beta3'
+version: '2.0.0'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
