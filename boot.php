@@ -114,7 +114,7 @@ if (rex::isBackend()) {
                         <p>' . rex_escape($message) . '</p>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Verstanden</button>
+                        <button type="button" class="btn btn-primary" data-dismiss="modal">' . $addon->i18n('upkeep_impersonate_ok') . '</button>
                     </div>
                 </div>
             </div>
