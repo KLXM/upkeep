@@ -225,6 +225,12 @@ public static function checkFrontend(): void
             return;
         }
 
+        // Im Impersonate-Modus: Prüfen, ob der ursprüngliche Benutzer (Impersonator) ein Admin ist
+        $impersonator = rex::getImpersonator();
+        if ($impersonator instanceof rex_user && $impersonator->isAdmin()) {
+            return;
+        }
+
         // Backend-Benutzer sperren
         $fragment = new rex_fragment();
         
