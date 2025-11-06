@@ -569,7 +569,7 @@ upkeep_emergency_access_description = In case of critical issues, all maintenanc
 
 # Impersonate Mode Warnings
 upkeep_impersonate_warning_title = Maintenance mode active - User blocked
-upkeep_impersonate_warning_message = Backend maintenance mode is activated. The user "{0}" whose identity you have assumed would normally be locked out of the backend. You still have access as an administrator.
+upkeep_impersonate_warning_message = Backend maintenance mode is activated. The user {0} whose identity you have assumed would normally be locked out of the backend. You still have access as an administrator.
 
 # Frontend Maintenance Extended
 upkeep_frontend_activated = Frontend maintenance mode has been activated.

@@ -566,7 +566,7 @@ upkeep_emergency_access_description = Bei kritischen Problemen können alle Wart
 
 # Impersonate-Modus Warnungen
 upkeep_impersonate_warning_title = Wartungsmodus aktiv - Benutzer gesperrt
-upkeep_impersonate_warning_message = Der Backend-Wartungsmodus ist aktiviert. Der Benutzer "{0}", dessen Identität Sie angenommen haben, wäre normalerweise vom Backend ausgesperrt. Sie haben als Administrator weiterhin Zugang.
+upkeep_impersonate_warning_message = Der Backend-Wartungsmodus ist aktiviert. Der Benutzer {0}, dessen Identität Sie angenommen haben, wäre normalerweise vom Backend ausgesperrt. Sie haben als Administrator weiterhin Zugang.
 
 # Frontend Wartung erweitert
 upkeep_frontend_activated = Frontend-Wartungsmodus wurde aktiviert.
