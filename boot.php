@@ -41,22 +41,45 @@ if (rex::isBackend()) {
 
 // Register Extension Point nach dem Laden aller Packages
 rex_extension::register('PACKAGES_INCLUDED', static function () {
+    $addon = rex_addon::get('upkeep');
+    
+    // Backend-spezifische Initialisierungen
+    if (rex::isBackend()) {
+        // Hide menu items based on module settings
+        if (!$addon->getConfig('module_security_advisor_enabled', true)) {
+            $addon->setProperty('page', array_filter($addon->getProperty('page'), function($key) {
+                return $key !== 'security_advisor';
+            }, ARRAY_FILTER_USE_KEY));
+        }
+        
+        if (!$addon->getConfig('module_mail_security_enabled', true)) {
+            $addon->setProperty('page', array_filter($addon->getProperty('page'), function($key) {
+                return $key !== 'mail_security';
+            }, ARRAY_FILTER_USE_KEY));
+        }
+        
+        if (!$addon->getConfig('module_reporting_enabled', true)) {
+            $addon->setProperty('page', array_filter($addon->getProperty('page'), function($key) {
+                return $key !== 'reporting';
+            }, ARRAY_FILTER_USE_KEY));
+        }
+        
+        // Statusindikator im Backend-Menü setzen
+        Upkeep::setStatusIndicator();
+        
+        // CSS für das Backend laden
+        rex_view::addCssFile($addon->getAssetsUrl('css/upkeep.css'));
+        
+        // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
+        if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
+            rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
+        }
+    }
+    
     // Mail Reporting System initialisieren
     MailReporting::init();
     
-        // Backend-spezifische Initialisierungen
-        if (rex::isBackend()) {
-            // Statusindikator im Backend-Menü setzen
-            Upkeep::setStatusIndicator();
-            
-            // CSS für das Backend laden
-            rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
-            
-            // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
-            if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
-                rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
-            }
-        }    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
+    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
 

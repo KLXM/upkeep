@@ -7,6 +7,11 @@ use KLXM\Upkeep\MailSecurityFilter;
 $addon = rex_addon::get('upkeep');
 $advisor = new SecurityAdvisor();
 
+// Check which modules are enabled
+$securityAdvisorEnabled = $addon->getConfig('module_security_advisor_enabled', true);
+$mailSecurityEnabled = $addon->getConfig('module_mail_security_enabled', true);
+$reportingEnabled = $addon->getConfig('module_reporting_enabled', true);
+
 // IPS-Statistiken abrufen
 try {
     $ipsStats = IntrusionPrevention::getStatistics();
@@ -376,25 +381,27 @@ echo $fragment->parse('core/page/section.php');
 // Security Checks Section
 $securityContent = '<div class="row">';
 
-// Mail Security Card - ohne Links
-$mailSecurityStatus = $advisor->getMailSecurityStatus();
-$mailClass = $mailSecurityStatus['active'] ? 'success' : 'info';
-$mailIcon = $mailSecurityStatus['active'] ? 'fa-envelope-o' : 'fa-envelope';
+// Mail Security Card - nur wenn Mail Security aktiviert ist
+if ($mailSecurityEnabled) {
+    $mailSecurityStatus = $advisor->getMailSecurityStatus();
+    $mailClass = $mailSecurityStatus['active'] ? 'success' : 'info';
+    $mailIcon = $mailSecurityStatus['active'] ? 'fa-envelope-o' : 'fa-envelope';
 
-$mailMessage = $mailSecurityStatus['active'] ? $addon->i18n('upkeep_dashboard_email_protection_active') : $addon->i18n('upkeep_dashboard_email_protection_configure');
+    $mailMessage = $mailSecurityStatus['active'] ? $addon->i18n('upkeep_dashboard_email_protection_active') : $addon->i18n('upkeep_dashboard_email_protection_configure');
 
-$securityContent .= '<div class="col-lg-3 col-md-6">';
-$securityContent .= '<div class="panel panel-' . $mailClass . '">';
-$securityContent .= '<div class="panel-heading">';
-$securityContent .= '<div class="row">';
-$securityContent .= '<div class="col-xs-3"><i class="fa ' . $mailIcon . ' fa-5x"></i></div>';
-$securityContent .= '<div class="col-xs-9 text-right">';
-$securityContent .= '<div class="huge">' . ($mailSecurityStatus['active'] ? 'AKTIV' : 'SETUP') . '</div>';
-$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_mail_protection') . '</div>';
-$securityContent .= '</div></div></div>';
-$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $mailMessage . '</span>';
-$securityContent .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
-$securityContent .= '</div></div>';
+    $securityContent .= '<div class="col-lg-3 col-md-6">';
+    $securityContent .= '<div class="panel panel-' . $mailClass . '">';
+    $securityContent .= '<div class="panel-heading">';
+    $securityContent .= '<div class="row">';
+    $securityContent .= '<div class="col-xs-3"><i class="fa ' . $mailIcon . ' fa-5x"></i></div>';
+    $securityContent .= '<div class="col-xs-9 text-right">';
+    $securityContent .= '<div class="huge">' . ($mailSecurityStatus['active'] ? 'AKTIV' : 'SETUP') . '</div>';
+    $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_mail_protection') . '</div>';
+    $securityContent .= '</div></div></div>';
+    $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $mailMessage . '</span>';
+    $securityContent .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
+    $securityContent .= '</div></div>';
+}
 
 // E-Mail Konfiguration Card - Vereinfacht
 $phpmailerStatus = $advisor->checkPhpMailerConfig();
@@ -428,57 +435,59 @@ $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $emai
 $securityContent .= '<span class="pull-right"><i class="fa fa-cog"></i></span><div class="clearfix"></div></div>';
 $securityContent .= '</div></div>';
 
-// Sicherheits-Konfiguration Card - mit Admin-Freigabe-Prüfung
-$securityHeaders = $advisor->checkSecurityHeaders();
-$securityReleased = $advisor->isCheckReleased('security_settings');
+// Sicherheits-Konfiguration Card - mit Admin-Freigabe-Prüfung - nur wenn Security Advisor aktiviert
+if ($securityAdvisorEnabled) {
+    $securityHeaders = $advisor->checkSecurityHeaders();
+    $securityReleased = $advisor->isCheckReleased('security_settings');
 
-// Status basierend auf Sicherheitsstatus und Admin-Freigabe
-if ($securityHeaders['status'] === 'secure') {
-    // Alles OK - Grün
-    $headersClass = 'success';
-    $headersIcon = 'fa-shield';
-    $securityMessage = 'Sicherheitseinstellungen aktiv';
-} elseif ($securityReleased) {
-    // Admin hat Freigabe erteilt - Grün
-    $headersClass = 'success';
-    $headersIcon = 'fa-shield';
-    $securityMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
-} else {
-    // Probleme vorhanden - Orange/Rot
-    $headersClass = 'warning';
-    $headersIcon = 'fa-exclamation-triangle';
-    $securityMessage = 'Sicherheitseinstellungen überprüfen';
+    // Status basierend auf Sicherheitsstatus und Admin-Freigabe
+    if ($securityHeaders['status'] === 'secure') {
+        // Alles OK - Grün
+        $headersClass = 'success';
+        $headersIcon = 'fa-shield';
+        $securityMessage = 'Sicherheitseinstellungen aktiv';
+    } elseif ($securityReleased) {
+        // Admin hat Freigabe erteilt - Grün
+        $headersClass = 'success';
+        $headersIcon = 'fa-shield';
+        $securityMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
+    } else {
+        // Probleme vorhanden - Orange/Rot
+        $headersClass = 'warning';
+        $headersIcon = 'fa-exclamation-triangle';
+        $securityMessage = 'Sicherheitseinstellungen überprüfen';
+    }
+
+    $securityContent .= '<div class="col-lg-3 col-md-6">';
+    $securityContent .= '<div class="panel panel-' . $headersClass . '">';
+    $securityContent .= '<div class="panel-heading">';
+    $securityContent .= '<div class="row">';
+    $securityContent .= '<div class="col-xs-3"><i class="fa ' . $headersIcon . ' fa-5x"></i></div>';
+    $securityContent .= '<div class="col-xs-9 text-right">';
+    $securityContent .= '<div class="huge">' . ($securityHeaders['status'] === 'secure' ? 'OK' : ($securityReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
+    $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_security') . '</div>';
+    $securityContent .= '</div></div></div>';
+    $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $securityMessage . '</span>';
+    $securityContent .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
+    $securityContent .= '</div></div>';
+
+    // Addon Security Card
+    $addonSecurity = $advisor->checkAddonSecurity();
+    $addonClass = $addonSecurity['status'] === 'secure' ? 'success' : 'info';
+
+    $securityContent .= '<div class="col-lg-3 col-md-6">';
+    $securityContent .= '<div class="panel panel-' . $addonClass . '">';
+    $securityContent .= '<div class="panel-heading">';
+    $securityContent .= '<div class="row">';
+    $securityContent .= '<div class="col-xs-3"><i class="fa fa-puzzle-piece fa-5x"></i></div>';
+    $securityContent .= '<div class="col-xs-9 text-right">';
+    $securityContent .= '<div class="huge">' . count($addonSecurity['addons']) . '</div>';
+    $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_addons') . '</div>';
+    $securityContent .= '</div></div></div>';
+    $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $addonSecurity['message'] . '</span>';
+    $securityContent .= '<span class="pull-right"><i class="fa fa-puzzle-piece"></i></span><div class="clearfix"></div></div>';
+    $securityContent .= '</div></div>';
 }
-
-$securityContent .= '<div class="col-lg-3 col-md-6">';
-$securityContent .= '<div class="panel panel-' . $headersClass . '">';
-$securityContent .= '<div class="panel-heading">';
-$securityContent .= '<div class="row">';
-$securityContent .= '<div class="col-xs-3"><i class="fa ' . $headersIcon . ' fa-5x"></i></div>';
-$securityContent .= '<div class="col-xs-9 text-right">';
-$securityContent .= '<div class="huge">' . ($securityHeaders['status'] === 'secure' ? 'OK' : ($securityReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
-$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_security') . '</div>';
-$securityContent .= '</div></div></div>';
-$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $securityMessage . '</span>';
-$securityContent .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
-$securityContent .= '</div></div>';
-
-// Addon Security Card
-$addonSecurity = $advisor->checkAddonSecurity();
-$addonClass = $addonSecurity['status'] === 'secure' ? 'success' : 'info';
-
-$securityContent .= '<div class="col-lg-3 col-md-6">';
-$securityContent .= '<div class="panel panel-' . $addonClass . '">';
-$securityContent .= '<div class="panel-heading">';
-$securityContent .= '<div class="row">';
-$securityContent .= '<div class="col-xs-3"><i class="fa fa-puzzle-piece fa-5x"></i></div>';
-$securityContent .= '<div class="col-xs-9 text-right">';
-$securityContent .= '<div class="huge">' . count($addonSecurity['addons']) . '</div>';
-$securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_addons') . '</div>';
-$securityContent .= '</div></div></div>';
-$securityContent .= '<div class="panel-footer"><span class="pull-left">' . $addonSecurity['message'] . '</span>';
-$securityContent .= '<span class="pull-right"><i class="fa fa-puzzle-piece"></i></span><div class="clearfix"></div></div>';
-$securityContent .= '</div></div>';
 
 $securityContent .= '</div>'; // Ende row
 
@@ -506,10 +515,12 @@ $actionsContent .= '<div class="col-md-3 text-center">';
 $actionsContent .= '<h4>' . $ipsStats['threats_today'] . '</h4>';
 $actionsContent .= '<p class="text-muted">Bedrohungen heute</p>';
 $actionsContent .= '</div>';
-$actionsContent .= '<div class="col-md-3 text-center">';
-$actionsContent .= '<h4>' . ($mailStats['threats_24h'] ?? 0) . '</h4>';
-$actionsContent .= '<p class="text-muted">E-Mail Bedrohungen</p>';
-$actionsContent .= '</div>';
+if ($mailSecurityEnabled) {
+    $actionsContent .= '<div class="col-md-3 text-center">';
+    $actionsContent .= '<h4>' . ($mailStats['threats_24h'] ?? 0) . '</h4>';
+    $actionsContent .= '<p class="text-muted">E-Mail Bedrohungen</p>';
+    $actionsContent .= '</div>';
+}
 $actionsContent .= '<div class="col-md-3 text-center">';
 $actionsContent .= '<h4>' . ($ipsActive ? 'Aktiv' : 'Inaktiv') . '</h4>';
 $actionsContent .= '<p class="text-muted">Sicherheitssystem</p>';

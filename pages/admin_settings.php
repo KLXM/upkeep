@@ -21,6 +21,11 @@ if (rex_post('submit', 'string')) {
     $success = true;
     $message = '';
     
+    // Module Settings speichern
+    $addon->setConfig('module_security_advisor_enabled', (bool) rex_post('module_security_advisor_enabled', 'int', 1));
+    $addon->setConfig('module_mail_security_enabled', (bool) rex_post('module_mail_security_enabled', 'int', 1));
+    $addon->setConfig('module_reporting_enabled', (bool) rex_post('module_reporting_enabled', 'int', 1));
+    
     // Ablaufzeit in Tagen speichern
     $releaseDays = (int) rex_post('admin_release_days', 'int', 30);
     if ($releaseDays < 1 || $releaseDays > 180) {
@@ -52,10 +57,82 @@ $phpReleased = $advisor->isCheckReleased('php_config');
 $dbReleased = $advisor->isCheckReleased('database');
 $serverReleased = $advisor->isCheckReleased('server_status');
 
+// Load current module settings
+$moduleSecurityAdvisorEnabled = $addon->getConfig('module_security_advisor_enabled', true);
+$moduleMailSecurityEnabled = $addon->getConfig('module_mail_security_enabled', true);
+$moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
+
 ?>
 
 <div class="row">
     <div class="col-lg-8">
+        
+        <!-- Module Settings Panel -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <i class="fa fa-puzzle-piece"></i> Modul-Einstellungen
+                </h3>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted">
+                    Aktivieren oder deaktivieren Sie Hauptfunktionen. Deaktivierte Module werden im Menü und Dashboard ausgeblendet.
+                </p>
+                
+                <form method="post">
+                    
+                    <!-- Security Advisor Module -->
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" name="module_security_advisor_enabled" value="1" <?= $moduleSecurityAdvisorEnabled ? 'checked' : '' ?>>
+                                <strong>Security Advisor</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            Sicherheitsberichte und System-Checks zur Überwachung der Systemsicherheit.
+                        </small>
+                    </div>
+                    
+                    <!-- Mail Security Module -->
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" name="module_mail_security_enabled" value="1" <?= $moduleMailSecurityEnabled ? 'checked' : '' ?>>
+                                <strong>Mail Security</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            E-Mail-Sicherheit mit Badword-Filter und Spam-Schutz für PHPMailer.
+                        </small>
+                    </div>
+                    
+                    <!-- Reporting Module -->
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" name="module_reporting_enabled" value="1" <?= $moduleReportingEnabled ? 'checked' : '' ?>>
+                                <strong>Reporting</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            E-Mail-Berichte für Sicherheitsereignisse und System-Status.
+                        </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="form-group">
+                        <button type="submit" name="submit" value="1" class="btn btn-primary">
+                            <i class="fa fa-save"></i> Einstellungen speichern
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+        
+        <!-- Admin-Wartungsfreigaben Panel -->
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title">
