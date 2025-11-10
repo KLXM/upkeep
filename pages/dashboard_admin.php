@@ -342,7 +342,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                             <input type="hidden" name="toggle_action" value="toggle_frontend">
                                             <button type="submit" class="btn btn-sm <?= $frontendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>">
                                                 <i class="rex-icon fa-<?= $frontendMaintenanceActive ? 'play' : 'pause' ?>"></i>
-                                                <?= $frontendMaintenanceActive ? 'Aktivieren' : 'Wartung' ?>
+                                                <?= $frontendMaintenanceActive ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate') ?>
                                             </button>
                                         </form>
                                         <?php endif; ?>
@@ -397,7 +397,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                             <input type="hidden" name="toggle_action" value="toggle_backend">
                                             <button type="submit" class="btn btn-sm <?= $backendMaintenanceActive ? 'btn-success' : 'btn-warning' ?>">
                                                 <i class="rex-icon fa-<?= $backendMaintenanceActive ? 'play' : 'pause' ?>"></i>
-                                                <?= $backendMaintenanceActive ? 'Aktivieren' : 'Wartung' ?>
+                                                <?= $backendMaintenanceActive ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate') ?>
                                             </button>
                                         </form>
                                         <?php endif; ?>
