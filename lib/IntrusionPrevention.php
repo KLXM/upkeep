@@ -96,28 +96,9 @@ class IntrusionPrevention
      */
     public static function checkRequest(): void
     {
-        // IPS nur aktiv wenn:
-        // 1. Im Frontend ODER
-        // 2. Im Backend aber NICHT eingeloggt (= Login-Seite)
-        // Und nur wenn IPS aktiviert ist
-        if (!self::isActive()) {
-            return;
-        }
-        
-        // Im Frontend: IPS aktiv
-        if (rex::isFrontend()) {
-            // Frontend - IPS läuft
-        }
-        // Im Backend: IPS nur aktiv wenn NICHT eingeloggt (Login-Seite)
-        elseif (rex::isBackend()) {
-            // Wenn Benutzer eingeloggt ist, IPS überspringen
-            if (rex::getUser() instanceof \rex_user) {
-                return; // Backend mit eingeloggtem User - kein IPS
-            }
-            // Sonst: Backend Login-Seite - IPS läuft weiter
-        }
-        // Alle anderen Fälle: kein IPS
-        else {
+        // IPS nur im Frontend, nicht im Backend (auch nicht auf der Login-Seite)
+        // Backend hat eigene Sicherheitsmechanismen (CSRF, Berechtigungen, Session-Management)
+        if (!rex::isFrontend() || !self::isActive()) {
             return;
         }
         
