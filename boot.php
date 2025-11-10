@@ -76,8 +76,10 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
         }
     }
     
-    // Mail Reporting System initialisieren
-    MailReporting::init();
+    // Mail Reporting System initialisieren (nur wenn Reporting-Modul aktiviert)
+    if ($addon->getConfig('module_reporting_enabled', true)) {
+        MailReporting::init();
+    }
     
     // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
@@ -177,8 +179,9 @@ if (rex::isBackend()) {
 }
 
 // Mail Security Filter für PHPMailer registrieren
-// Nur registrieren wenn PHPMailer-AddOn verfügbar ist
-if (rex_addon::get('phpmailer')->isAvailable()) {
+// Nur registrieren wenn PHPMailer-AddOn verfügbar ist und das Modul aktiviert ist
+$upkeepAddon = rex_addon::get('upkeep');
+if (rex_addon::get('phpmailer')->isAvailable() && $upkeepAddon->getConfig('module_mail_security_enabled', true)) {
     rex_extension::register('PHPMAILER_PRE_SEND', static function (rex_extension_point $ep) {
         try {
             return MailSecurityFilter::filterMail($ep);
@@ -196,9 +199,9 @@ if (rex_addon::get('phpmailer')->isAvailable()) {
 
 
 
-// Security Advisor API Route registrieren (deprecated)
-if (rex::isBackend() && rex_request::get('api') === 'security_advisor') {
-    include rex_addon::get('upkeep')->getPath('api/security_advisor.php');
+// Security Advisor API Route registrieren (deprecated) - nur wenn Modul aktiviert
+if (rex::isBackend() && rex_request::get('api') === 'security_advisor' && $upkeepAddon->getConfig('module_security_advisor_enabled', true)) {
+    include $upkeepAddon->getPath('api/security_advisor.php');
     exit;
 }
 
