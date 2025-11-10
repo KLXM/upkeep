@@ -62,7 +62,7 @@ echo '<label class="control-label">';
 echo '<input type="checkbox" name="ips_active" value="1"' . ($ipsActive ? ' checked' : '') . '> ';
 echo $addon->i18n('upkeep_ips_active');
 echo '</label>';
-echo '<p class="help-block">Aktiviert das Intrusion Prevention System für das Frontend</p>';
+echo '<p class="help-block">Aktiviert das Intrusion Prevention System für das Frontend und die REDAXO Login-Seite (nicht für eingeloggte Backend-Nutzer)</p>';
 echo '</div>';
 
 echo '<div class="form-group">';

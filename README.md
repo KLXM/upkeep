@@ -43,6 +43,7 @@ All features include comprehensive documentation directly in the Backend interfa
 - GeoIP integration and country-based analysis
 - Rate limiting and CAPTCHA system
 - Monitor-Only mode for safe testing
+- **Protection Scope**: Frontend and REDAXO login page only (not authenticated backend)
 
 ### 📊 Security Advisor
 **Location**: `Backend → Upkeep → Security Advisor`
