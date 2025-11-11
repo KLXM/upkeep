@@ -21,11 +21,6 @@ if (rex_post('submit', 'string')) {
     $success = true;
     $message = '';
     
-    // Module Settings speichern
-    $addon->setConfig('module_security_advisor_enabled', (bool) rex_post('module_security_advisor_enabled', 'int', 1));
-    $addon->setConfig('module_mail_security_enabled', (bool) rex_post('module_mail_security_enabled', 'int', 1));
-    $addon->setConfig('module_reporting_enabled', (bool) rex_post('module_reporting_enabled', 'int', 1));
-    
     // Ablaufzeit in Tagen speichern
     $releaseDays = (int) rex_post('admin_release_days', 'int', 30);
     if ($releaseDays < 1 || $releaseDays > 180) {
@@ -37,9 +32,9 @@ if (rex_post('submit', 'string')) {
     $checkTypes = ['php_config', 'database', 'server_status', 'security_settings'];
     
     foreach ($checkTypes as $checkType) {
-        $isReleased = (bool) rex_post("release_{$checkType}", 'int', 0);
+        $selectValue = rex_post("release_{$checkType}", 'string', '0');
         
-        if ($isReleased) {
+        if ($selectValue === '1') {
             $advisor->setAdminRelease($checkType);
         } else {
             $advisor->removeAdminRelease($checkType);
@@ -57,82 +52,10 @@ $phpReleased = $advisor->isCheckReleased('php_config');
 $dbReleased = $advisor->isCheckReleased('database');
 $serverReleased = $advisor->isCheckReleased('server_status');
 
-// Load current module settings
-$moduleSecurityAdvisorEnabled = $addon->getConfig('module_security_advisor_enabled', true);
-$moduleMailSecurityEnabled = $addon->getConfig('module_mail_security_enabled', true);
-$moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
-
 ?>
 
 <div class="row">
     <div class="col-lg-8">
-        
-        <!-- Module Settings Panel -->
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <h3 class="panel-title">
-                    <i class="fa fa-puzzle-piece"></i> Modul-Einstellungen
-                </h3>
-            </div>
-            <div class="panel-body">
-                <p class="text-muted">
-                    Aktivieren oder deaktivieren Sie Hauptfunktionen. Deaktivierte Module werden im Menü und Dashboard ausgeblendet.
-                </p>
-                
-                <form method="post">
-                    
-                    <!-- Security Advisor Module -->
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="module_security_advisor_enabled" value="1" <?= $moduleSecurityAdvisorEnabled ? 'checked' : '' ?>>
-                                <strong>Security Advisor</strong>
-                            </label>
-                        </div>
-                        <small class="text-muted">
-                            Sicherheitsberichte und System-Checks zur Überwachung der Systemsicherheit.
-                        </small>
-                    </div>
-                    
-                    <!-- Mail Security Module -->
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="module_mail_security_enabled" value="1" <?= $moduleMailSecurityEnabled ? 'checked' : '' ?>>
-                                <strong>Mail Security</strong>
-                            </label>
-                        </div>
-                        <small class="text-muted">
-                            E-Mail-Sicherheit mit Badword-Filter und Spam-Schutz für PHPMailer.
-                        </small>
-                    </div>
-                    
-                    <!-- Reporting Module -->
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="module_reporting_enabled" value="1" <?= $moduleReportingEnabled ? 'checked' : '' ?>>
-                                <strong>Reporting</strong>
-                            </label>
-                        </div>
-                        <small class="text-muted">
-                            E-Mail-Berichte für Sicherheitsereignisse und System-Status.
-                        </small>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div class="form-group">
-                        <button type="submit" name="submit" value="1" class="btn btn-primary">
-                            <i class="fa fa-save"></i> Einstellungen speichern
-                        </button>
-                    </div>
-                    
-                </form>
-            </div>
-        </div>
-        
-        <!-- Admin-Wartungsfreigaben Panel -->
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title">
@@ -171,12 +94,13 @@ $moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
                     
                     <!-- PHP-Konfiguration Freigabe -->
                     <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="release_php_config" value="1" <?= $phpReleased ? 'checked' : '' ?>>
-                                <strong>Server/PHP-Konfiguration als geprüft markieren</strong>
-                            </label>
-                        </div>
+                        <label for="release_php_config">
+                            <strong>Server/PHP-Konfiguration als geprüft markieren</strong>
+                        </label>
+                        <select name="release_php_config" id="release_php_config" class="form-control">
+                            <option value="0" <?= !$phpReleased ? 'selected' : '' ?>>Nicht freigegeben</option>
+                            <option value="1" <?= $phpReleased ? 'selected' : '' ?>>Freigegeben</option>
+                        </select>
                         <small class="text-muted">
                             Unterdrückt Warnungen zu PHP-Versionen und Server-Einstellungen für normale Benutzer.
                             <?php if ($phpReleased): ?>
@@ -189,12 +113,13 @@ $moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
                     
                     <!-- Datenbank Freigabe -->
                     <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="release_database" value="1" <?= $dbReleased ? 'checked' : '' ?>>
-                                <strong>Datenbank-Status als geprüft markieren</strong>
-                            </label>
-                        </div>
+                        <label for="release_database">
+                            <strong>Datenbank-Status als geprüft markieren</strong>
+                        </label>
+                        <select name="release_database" id="release_database" class="form-control">
+                            <option value="0" <?= !$dbReleased ? 'selected' : '' ?>>Nicht freigegeben</option>
+                            <option value="1" <?= $dbReleased ? 'selected' : '' ?>>Freigegeben</option>
+                        </select>
                         <small class="text-muted">
                             Unterdrückt Warnungen zu Datenbank-Versionen für normale Benutzer.
                             <?php if ($dbReleased): ?>
@@ -207,12 +132,13 @@ $moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
                     
                     <!-- Server Status Freigabe -->
                     <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="release_server_status" value="1" <?= $serverReleased ? 'checked' : '' ?>>
-                                <strong>Server-Status als geprüft markieren</strong>
-                            </label>
-                        </div>
+                        <label for="release_server_status">
+                            <strong>Server-Status als geprüft markieren</strong>
+                        </label>
+                        <select name="release_server_status" id="release_server_status" class="form-control">
+                            <option value="0" <?= !$serverReleased ? 'selected' : '' ?>>Nicht freigegeben</option>
+                            <option value="1" <?= $serverReleased ? 'selected' : '' ?>>Freigegeben</option>
+                        </select>
                         <small class="text-muted">
                             Unterdrückt allgemeine Server-Status-Warnungen für normale Benutzer.
                             <?php if ($serverReleased): ?>
@@ -225,12 +151,13 @@ $moduleReportingEnabled = $addon->getConfig('module_reporting_enabled', true);
                     
                     <!-- Sicherheitseinstellungen Freigabe -->
                     <div class="form-group">
-                        <div class="checkbox">
-                            <label>
-                                <input type="checkbox" name="release_security_settings" value="1" <?= $advisor->isCheckReleased('security_settings') ? 'checked' : '' ?>>
-                                <strong>Sicherheitseinstellungen als geprüft markieren</strong>
-                            </label>
-                        </div>
+                        <label for="release_security_settings">
+                            <strong>Sicherheitseinstellungen als geprüft markieren</strong>
+                        </label>
+                        <select name="release_security_settings" id="release_security_settings" class="form-control">
+                            <option value="0" <?= !$advisor->isCheckReleased('security_settings') ? 'selected' : '' ?>>Nicht freigegeben</option>
+                            <option value="1" <?= $advisor->isCheckReleased('security_settings') ? 'selected' : '' ?>>Freigegeben</option>
+                        </select>
                         <small class="text-muted">
                             Unterdrückt Warnungen zu fehlenden Security-Headers und anderen Sicherheitseinstellungen.
                             <?php if ($advisor->isCheckReleased('security_settings')): ?>
