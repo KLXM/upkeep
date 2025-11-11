@@ -46,6 +46,9 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
     
         // Backend-spezifische Initialisierungen
         if (rex::isBackend()) {
+            // Module-Konfiguration und Seitenausblendung
+            Upkeep::configureModulePages();
+            
             // Statusindikator im Backend-Menü setzen
             Upkeep::setStatusIndicator();
             

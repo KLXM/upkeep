@@ -783,8 +783,8 @@ upkeep_dashboard_days_ago = vor {0} Tagen
 # Admin Dashboard
 upkeep_admin_dashboard_title = Administratoreinstellungen
 upkeep_admin_dashboard_subtitle = Wartungsfreigaben verwalten
-upkeep_admin_dashboard_admin_releases = Admin-Freigaben
-upkeep_admin_dashboard_admin_releases_desc = Wartungswarnungen für Redakteure verwalten
+upkeep_admin_dashboard_admin_releases = Admin-Settings
+upkeep_admin_dashboard_admin_releases_desc = Modul-Konfiguration und Wartungsfreigaben verwalten
 upkeep_admin_dashboard_security_advisor = Security Advisor
 upkeep_admin_dashboard_security_advisor_desc = Detaillierte Systemanalyse
 upkeep_admin_dashboard_ips_settings = IPS Einstellungen
@@ -1367,3 +1367,18 @@ upkeep_type_text = Text
 upkeep_valid_until = Gültig bis
 upkeep_webserver_config_secure = Webserver Config Secure
 upkeep_webserver_version_description = Webserver Version Description
+
+# Admin-Einstellungen - Modul-Konfiguration
+upkeep_admin_module_configuration = Modul-Konfiguration
+upkeep_admin_security_advisor_enabled = Security Advisor aktiviert
+upkeep_admin_mail_security_enabled = Mail Security aktiviert
+upkeep_admin_reporting_enabled = Reporting aktiviert
+upkeep_admin_ips_enabled = IPS (Intrusion Prevention System) aktiviert
+upkeep_admin_module_disabled_warning = Modul ist deaktiviert - Navigation und Dashboard-Kachel sind ausgeblendet
+upkeep_admin_module_deactivation_info = Modul-Deaktivierung
+upkeep_admin_removes_navigation = Entfernt Navigation aus dem Menü
+upkeep_admin_hides_dashboard_tiles = Blendet Dashboard-Kacheln aus
+upkeep_admin_functionality_remains_active = Funktionalität bleibt im Hintergrund aktiv
+upkeep_admin_reduces_ui_overload = Reduziert UI-Überladung
+upkeep_email_protection_deactivated = E-Mail Schutz deaktiviert
+upkeep_ips_protection_deactivated = IPS deaktiviert

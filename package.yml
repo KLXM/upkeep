@@ -1,5 +1,5 @@
 package: upkeep
-version: '2.0.0'
+version: '2.1.0'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
@@ -13,10 +13,6 @@ page:
     block: system
     icon: 'rex-icon fa fa-wrench'
     subpages:
-        dashboard_admin:
-            title: ''
-            icon: 'rex-icon fa fa-user'
-            perm: admin
         dashboard:
             title: 'Upkeep Dashboard'
             icon: 'rex-icon fa fa-dashboard'
@@ -79,6 +75,11 @@ page:
             title: 'translate:upkeep_domain_mapping_title'
             icon: 'rex-icon fa fa-share'
             perm: upkeep[domain_mapping]
+        dashboard_admin:
+            title: ''
+            icon: 'rex-icon fa fa-user'
+            perm: admin
+            itemClass: 'pull-right'
         help:
             title: 'translate:help'
             subPath: README.md
@@ -127,3 +128,8 @@ default_config:
     all_domains_locked: false
     # Admin-Wartungsfreigaben
     admin_release_days: 30
+    # Module-Aktivierung
+    security_advisor_enabled: true
+    mail_security_enabled: true
+    reporting_enabled: true
+    ips_enabled: true

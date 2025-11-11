@@ -9,6 +9,12 @@ use KLXM\Upkeep\MailSecurityFilter;
 $addon = rex_addon::get('upkeep');
 $user = rex::getUser();
 
+// Modul-Aktivierungsstatus laden
+$securityAdvisorEnabled = $addon->getConfig('security_advisor_enabled', true);
+$mailSecurityEnabled = $addon->getConfig('mail_security_enabled', true);
+$reportingEnabled = $addon->getConfig('reporting_enabled', true);
+$ipsEnabled = $addon->getConfig('ips_enabled', true);
+
 // Sicherheits-Check für User
 if (!$user) {
             echo rex_view::error($addon->i18n('upkeep_dashboard_no_user'));
@@ -242,6 +248,64 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         </div>
     </div>
 
+    <!-- Modul-Status-Übersicht -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel panel-info module-status-overview">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <i class="fa fa-info-circle"></i> Aktueller Modul-Status
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-3 module-status-item">
+                            <div class="text-center">
+                                <span class="label label-<?= $securityAdvisorEnabled ? 'success' : 'default' ?> label-lg">
+                                    <i class="fa <?= $securityAdvisorEnabled ? 'fa-check' : 'fa-times' ?>"></i>
+                                    Security Advisor
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 module-status-item">
+                            <div class="text-center">
+                                <span class="label label-<?= $mailSecurityEnabled ? 'success' : 'default' ?> label-lg">
+                                    <i class="fa <?= $mailSecurityEnabled ? 'fa-check' : 'fa-times' ?>"></i>
+                                    Mail Security
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 module-status-item">
+                            <div class="text-center">
+                                <span class="label label-<?= $reportingEnabled ? 'success' : 'default' ?> label-lg">
+                                    <i class="fa <?= $reportingEnabled ? 'fa-check' : 'fa-times' ?>"></i>
+                                    Reporting
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 module-status-item">
+                            <div class="text-center">
+                                <span class="label label-<?= $ipsEnabled ? 'success' : 'default' ?> label-lg">
+                                    <i class="fa <?= $ipsEnabled ? 'fa-check' : 'fa-times' ?>"></i>
+                                    IPS
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top: 15px;">
+                        <div class="col-md-12 text-center">
+                            <small class="text-muted">
+                                <span class="label label-success"><i class="fa fa-check"></i></span> = Aktiv | 
+                                <span class="label label-default"><i class="fa fa-times"></i></span> = Deaktiviert
+                                | <a href="<?= rex_url::backendPage('upkeep/admin_settings') ?>" class="alert-link">Einstellungen ändern</a>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Admin Actions -->
     <?php if ($user->isAdmin()): ?>
     <div class="row dashboard-section">
@@ -263,6 +327,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             </a>
                             <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_admin_releases_desc') ?></small>
                         </div>
+                        <?php if ($securityAdvisorEnabled): ?>
                         <div class="col-md-4 col-sm-6">
                             <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-block btn-info">
                                 <i class="rex-icon fa-search"></i>
@@ -270,6 +335,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             </a>
                             <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_security_advisor_desc') ?></small>
                         </div>
+                        <?php endif; ?>
+                        <?php if ($ipsEnabled): ?>
                         <div class="col-md-4 col-sm-6">
                             <a href="<?= rex_url::backendPage('upkeep/ips/settings') ?>" class="btn btn-block btn-default">
                                 <i class="rex-icon fa-cog"></i>
@@ -277,6 +344,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                             </a>
                             <small class="text-muted"><?= $addon->i18n('upkeep_admin_dashboard_ips_settings_desc') ?></small>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -350,7 +418,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                 </div>
                             </div>
 
-                            <!-- Mail Security -->
+                            <!-- Mail Security (nur wenn aktiviert) -->
+                            <?php if ($mailSecurityEnabled): ?>
                             <div class="list-group-item" style="margin-bottom: 10px; border-radius: 4px;">
                                 <div class="row">
                                     <div class="col-xs-8">
@@ -372,6 +441,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                     </div>
                                 </div>
                             </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Rechte Spalte -->
@@ -465,7 +535,8 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
         </div>
     </div>
 
-    <!-- Intrusion Prevention System (IPS) -->
+    <!-- Intrusion Prevention System (IPS) - nur wenn aktiviert -->
+    <?php if ($ipsEnabled): ?>
     <div class="row">
         <div class="col-md-12">
             <h3 class="dashboard-section-title">
@@ -546,8 +617,10 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <!-- Mail Security System -->
+    <!-- Mail Security System - nur wenn aktiviert -->
+    <?php if ($mailSecurityEnabled): ?>
     <div class="row">
         <div class="col-md-12">
             <h3 class="dashboard-section-title">
@@ -630,6 +703,7 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
             </a>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- REDAXO Version Check -->
     <div class="row dashboard-cards">

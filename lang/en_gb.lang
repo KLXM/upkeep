@@ -785,8 +785,8 @@ upkeep_dashboard_days_ago = {0} days ago
 # Admin Dashboard
 upkeep_admin_dashboard_title = Administrator Settings
 upkeep_admin_dashboard_subtitle = Manage Maintenance Releases
-upkeep_admin_dashboard_admin_releases = Admin Releases
-upkeep_admin_dashboard_admin_releases_desc = Manage maintenance warnings for editors
+upkeep_admin_dashboard_admin_releases = Admin Settings
+upkeep_admin_dashboard_admin_releases_desc = Manage module configuration and maintenance releases
 upkeep_admin_dashboard_security_advisor = Security Advisor
 upkeep_admin_dashboard_security_advisor_desc = Detailed system analysis
 upkeep_admin_dashboard_ips_settings = IPS Settings
@@ -1352,3 +1352,18 @@ upkeep_type_text = Text
 upkeep_valid_until = Valid Until
 upkeep_webserver_config_secure = Webserver Config Secure
 upkeep_webserver_version_description = Webserver Version Description
+
+# Admin Settings - Module Configuration
+upkeep_admin_module_configuration = Module Configuration
+upkeep_admin_security_advisor_enabled = Security Advisor enabled
+upkeep_admin_mail_security_enabled = Mail Security enabled
+upkeep_admin_reporting_enabled = Reporting enabled
+upkeep_admin_ips_enabled = IPS (Intrusion Prevention System) enabled
+upkeep_admin_module_disabled_warning = Module is disabled - Navigation and dashboard tile are hidden
+upkeep_admin_module_deactivation_info = Module Deactivation
+upkeep_admin_removes_navigation = Removes navigation from menu
+upkeep_admin_hides_dashboard_tiles = Hides dashboard tiles
+upkeep_admin_functionality_remains_active = Functionality remains active in background
+upkeep_admin_reduces_ui_overload = Reduces UI overload
+upkeep_email_protection_deactivated = Email protection deactivated
+upkeep_ips_protection_deactivated = IPS deactivated

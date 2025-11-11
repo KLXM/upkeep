@@ -260,6 +260,48 @@ public static function checkFrontend(): void
 
 
     /**
+     * Konfiguriert die Module-Seiten basierend auf den Admin-Einstellungen
+     * Blendet deaktivierte Module aus der Navigation aus
+     */
+    public static function configureModulePages(): void
+    {
+        $addon = self::getAddon();
+        $page = $addon->getProperty('page');
+        
+        if (!$page || !isset($page['subpages'])) {
+            return;
+        }
+        
+        // Prüfen, ob Module deaktiviert sind und entsprechende Seiten ausblenden
+        $securityAdvisorEnabled = $addon->getConfig('security_advisor_enabled', true);
+        $mailSecurityEnabled = $addon->getConfig('mail_security_enabled', true);
+        $reportingEnabled = $addon->getConfig('reporting_enabled', true);
+        $ipsEnabled = $addon->getConfig('ips_enabled', true);
+        
+        // Security Advisor ausblenden wenn deaktiviert
+        if (!$securityAdvisorEnabled && isset($page['subpages']['security_advisor'])) {
+            unset($page['subpages']['security_advisor']);
+        }
+        
+        // Mail Security ausblenden wenn deaktiviert
+        if (!$mailSecurityEnabled && isset($page['subpages']['mail_security'])) {
+            unset($page['subpages']['mail_security']);
+        }
+        
+        // Reporting ausblenden wenn deaktiviert
+        if (!$reportingEnabled && isset($page['subpages']['reporting'])) {
+            unset($page['subpages']['reporting']);
+        }
+        
+        // IPS ausblenden wenn deaktiviert
+        if (!$ipsEnabled && isset($page['subpages']['ips'])) {
+            unset($page['subpages']['ips']);
+        }
+        
+        $addon->setProperty('page', $page);
+    }
+
+    /**
      * Setzt Statusindikator im Backend-Menü
      */
     public static function setStatusIndicator(): void
