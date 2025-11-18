@@ -59,6 +59,9 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
             if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
                 rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
             }
+            
+            // Startseiten-Redirect
+            Upkeep::redirectToStartPage();
         }    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);

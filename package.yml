@@ -133,3 +133,5 @@ default_config:
     mail_security_enabled: true
     reporting_enabled: true
     ips_enabled: true
+    # Startseite
+    default_start_page: 'dashboard'

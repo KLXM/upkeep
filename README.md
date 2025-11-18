@@ -26,6 +26,24 @@ Comprehensive maintenance and security add-on for REDAXO CMS.
 2. **Security Setup**: Backend → Upkeep → IPS → Enable Protection
 3. **Security Review**: Backend → Upkeep → Security Advisor → Run Scan
 4. **Mail Security**: Automatically active after installation
+5. **Configure Start Page**: Backend → Upkeep → Admin Settings → Default Start Page
+
+## Configuration
+
+### Default Start Page
+**Location**: `Backend → Upkeep → Admin Settings`
+
+Configure which page should be displayed when opening the Upkeep addon:
+- **Dashboard** (default): Overview with system status and quick actions
+- **Admin Dashboard**: Direct access to maintenance toggles and admin functions
+- **Maintenance - Frontend**: Quick access to frontend maintenance settings
+- **Maintenance - Backend**: Quick access to backend maintenance settings
+- **IPS**: Direct access to Intrusion Prevention System
+- **Security Advisor**: Jump directly to security analysis
+- **Mail Security**: Direct access to email protection settings
+- **Reporting**: Start with system reporting overview
+
+This is particularly useful when you need quick access to specific functions, such as enabling maintenance mode from the Admin Dashboard.
 
 ## Main Components
 
