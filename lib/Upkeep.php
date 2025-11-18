@@ -519,4 +519,36 @@ public static function checkFrontend(): void
     {
         return self::getAddon()->getConfig($key, $default);
     }
+    
+    /**
+     * Leitet zur konfigurierten Startseite weiter
+     */
+    public static function redirectToStartPage(): void
+    {
+        // Nur wenn wir auf der Upkeep-Hauptseite sind (ohne Subpage)
+        $currentPage = rex_be_controller::getCurrentPage();
+        
+        // Prüfen ob wir auf der Upkeep-Seite sind
+        if ($currentPage !== 'upkeep') {
+            return;
+        }
+        
+        // Subpage prüfen
+        $subpage = rex_request::get('subpage', 'string', '');
+        if ($subpage !== '') {
+            return; // Bereits auf einer Subpage
+        }
+        
+        // Konfigurierte Startseite laden
+        $defaultStartPage = self::getConfig('default_start_page', 'dashboard');
+        
+        // Wenn die Standard-Startseite "dashboard" ist, nichts tun
+        if ($defaultStartPage === 'dashboard') {
+            return;
+        }
+        
+        // Zur konfigurierten Startseite weiterleiten
+        rex_response::sendRedirect(rex_url::backendPage('upkeep/' . $defaultStartPage));
+        exit;
+    }
 }

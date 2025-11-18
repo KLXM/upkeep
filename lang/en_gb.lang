@@ -1367,3 +1367,14 @@ upkeep_admin_functionality_remains_active = Functionality remains active in back
 upkeep_admin_reduces_ui_overload = Reduces UI overload
 upkeep_email_protection_deactivated = Email protection deactivated
 upkeep_ips_protection_deactivated = IPS deactivated
+# Start page
+upkeep_default_start_page = Default start page
+upkeep_default_start_page_tooltip = Define which page is displayed when opening the Upkeep addon
+upkeep_start_page_dashboard = Dashboard (Default)
+upkeep_start_page_dashboard_admin = Admin Dashboard
+upkeep_start_page_maintenance_frontend = Maintenance - Frontend
+upkeep_start_page_maintenance_backend = Maintenance - Backend
+upkeep_start_page_ips = IPS - Overview
+upkeep_start_page_security_advisor = Security Advisor
+upkeep_start_page_mail_security = Mail Security
+upkeep_start_page_reporting = Reporting

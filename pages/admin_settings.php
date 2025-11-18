@@ -47,6 +47,10 @@ if (rex_post('submit', 'string')) {
     $addon->setConfig('reporting_enabled', $reportingEnabled);
     $addon->setConfig('ips_enabled', $ipsEnabled);
     
+    // Startseite speichern
+    $defaultStartPage = rex_post('default_start_page', 'string', 'dashboard');
+    $addon->setConfig('default_start_page', $defaultStartPage);
+    
     // Prüfe ob die Werte tatsächlich gespeichert wurden
     $savedSecurityAdvisor = $addon->getConfig('security_advisor_enabled', true);
     $savedMailSecurity = $addon->getConfig('mail_security_enabled', true);
@@ -179,6 +183,38 @@ $serverReleased = $advisor->isCheckReleased('server_status');
                                     <i class="fa fa-exclamation-triangle"></i> Modul ist deaktiviert - Navigation und Dashboard-Kachel sind ausgeblendet
                                 </span>
                             <?php endif; ?>
+                        </small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Standard-Startseite -->
+                    <div class="form-group">
+                        <label for="default_start_page">
+                            <strong><?= $addon->i18n('upkeep_default_start_page') ?></strong>
+                        </label>
+                        <select name="default_start_page" id="default_start_page" class="form-control">
+                            <?php
+                            $currentStartPage = $addon->getConfig('default_start_page', 'dashboard');
+                            $startPageOptions = [
+                                'dashboard' => $addon->i18n('upkeep_start_page_dashboard'),
+                                'dashboard_admin' => $addon->i18n('upkeep_start_page_dashboard_admin'),
+                                'maintenance/frontend' => $addon->i18n('upkeep_start_page_maintenance_frontend'),
+                                'maintenance/backend' => $addon->i18n('upkeep_start_page_maintenance_backend'),
+                                'ips' => $addon->i18n('upkeep_start_page_ips'),
+                                'security_advisor' => $addon->i18n('upkeep_start_page_security_advisor'),
+                                'mail_security' => $addon->i18n('upkeep_start_page_mail_security'),
+                                'reporting' => $addon->i18n('upkeep_start_page_reporting'),
+                            ];
+                            foreach ($startPageOptions as $value => $label):
+                            ?>
+                                <option value="<?= $value ?>" <?= $currentStartPage === $value ? 'selected' : '' ?>>
+                                    <?= $label ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="help-block">
+                            <?= $addon->i18n('upkeep_default_start_page_tooltip') ?>
                         </small>
                     </div>
                     
