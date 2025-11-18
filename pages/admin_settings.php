@@ -49,6 +49,23 @@ if (rex_post('submit', 'string')) {
     
     // Startseite speichern
     $defaultStartPage = rex_post('default_start_page', 'string', 'dashboard');
+    
+    // Validierung: Nur erlaubte Werte zulassen
+    $allowedStartPages = [
+        'dashboard',
+        'dashboard_admin',
+        'maintenance/frontend',
+        'maintenance/backend',
+        'ips',
+        'security_advisor',
+        'mail_security',
+        'reporting',
+    ];
+    
+    if (!in_array($defaultStartPage, $allowedStartPages, true)) {
+        $defaultStartPage = 'dashboard'; // Fallback auf Standard
+    }
+    
     $addon->setConfig('default_start_page', $defaultStartPage);
     
     // Prüfe ob die Werte tatsächlich gespeichert wurden
