@@ -57,6 +57,7 @@ All features include comprehensive documentation directly in the Backend interfa
 - Badword filtering for PHPMailer messages
 - Spam protection with customizable patterns
 - Integration via `PHPMAILER_PRE_SEND` extension point
+- **Note**: Applies only to frontend emails; backend emails are not filtered
 
 ### 🔀 Domain & URL Management
 **Location**: `Backend → Upkeep → Domains`
