@@ -4,6 +4,8 @@
 
 Das Mail Security System ist ein umfassendes Sicherheitsmodul des Upkeep AddOns, das E-Mail-Kommunikation vor Spam, Badwords und schädlichen Inhalten schützt. Es integriert sich nahtlos in PHPMailer und bietet erweiterte Funktionen wie IP/Domain-Blocklisting, Rate-Limiting und umfangreiche Protokollierung.
 
+**Wichtig**: Mail Security filtert nur E-Mails, die von Frontend-Anfragen ausgelöst werden. E-Mails aus dem REDAXO-Backend werden nicht gefiltert, um administrative Aktionen nicht zu behindern.
+
 ## Features
 
 ### 🛡️ Kernfunktionen
