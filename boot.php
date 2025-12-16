@@ -21,12 +21,6 @@ if (!rex_backend_login::hasSession()) {
     rex_login::startSession();
 }
 
-// Frontend-Wartungsmodus-Prüfung DIREKT ausführen (nicht in Extension Point)
-// Dies muss sofort geschehen, bevor andere Addons laden
-if (rex::isFrontend()) {
-    Upkeep::checkFrontend();
-}
-
 // Backend-Wartungsmodus-Prüfung DIREKT ausführen (nicht in Extension Point)
 // Muss früh geschehen, aber nach Session-Initialisierung
 if (rex::isBackend()) {
@@ -44,22 +38,30 @@ rex_extension::register('PACKAGES_INCLUDED', static function () {
     // Mail Reporting System initialisieren
     MailReporting::init();
     
-        // Backend-spezifische Initialisierungen
-        if (rex::isBackend()) {
-            // Module-Konfiguration und Seitenausblendung
-            Upkeep::configureModulePages();
-            
-            // Statusindikator im Backend-Menü setzen
-            Upkeep::setStatusIndicator();
-            
-            // CSS für das Backend laden
-            rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
-            
-            // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
-            if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
-                rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
-            }
-        }    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
+    // Frontend-Wartungsmodus-Prüfung HIER ausführen (nachdem YRewrite geladen ist)
+    // Damit rex_yrewrite::getCurrentDomain() korrekt funktioniert
+    if (rex::isFrontend()) {
+        Upkeep::checkFrontend();
+    }
+    
+    // Backend-spezifische Initialisierungen
+    if (rex::isBackend()) {
+        // Module-Konfiguration und Seitenausblendung
+        Upkeep::configureModulePages();
+        
+        // Statusindikator im Backend-Menü setzen
+        Upkeep::setStatusIndicator();
+        
+        // CSS für das Backend laden
+        rex_view::addCssFile(rex_addon::get('upkeep')->getAssetsUrl('css/upkeep.css'));
+        
+        // Cronjob für IPS-Cleanup registrieren (nur wenn Cronjob-AddOn verfügbar)
+        if (rex_addon::get('cronjob')->isAvailable() && !rex::isSafeMode()) {
+            rex_cronjob_manager::registerType('rex_upkeep_ips_cleanup_cronjob');
+        }
+    }
+    
+    // URL-Redirects (nur wenn kein Wartungsmodus aktiv war)
     Upkeep::checkDomainMapping();
 }, rex_extension::EARLY);
 
