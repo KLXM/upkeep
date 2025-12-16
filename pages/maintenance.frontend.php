@@ -109,6 +109,72 @@ $select = $field->getSelect();
 $select->addOption($addon->i18n('upkeep_active'), 1);
 $select->addOption($addon->i18n('upkeep_inactive'), 0);
 
+// Domain-Info direkt nach dem Select-Feld einfügen (nur wenn YRewrite verfügbar)
+$yrewriteAvailable = rex_addon::get('yrewrite')->isAvailable();
+if ($yrewriteAvailable) {
+    // Domain-Status laden für Übersicht
+    $allDomainsLocked = (bool) $addon->getConfig('all_domains_locked', false);
+    $domainStatus = (array) $addon->getConfig('domain_status', []);
+    $domains = rex_yrewrite::getDomains();
+    
+    // Aktive Domains zählen (die im Wartungsmodus sind)
+    $lockedDomains = [];
+    $unlockedDomains = [];
+    
+    foreach ($domains as $domain) {
+        $name = $domain->getName();
+        if ($name !== 'default') {
+            if ($allDomainsLocked || (!empty($domainStatus[$name]) && $domainStatus[$name])) {
+                $lockedDomains[] = $name;
+            } else {
+                $unlockedDomains[] = $name;
+            }
+        }
+    }
+    
+    $frontendActive = (bool) $addon->getConfig('frontend_active', false);
+    
+    // Domain-Info HTML für aktiven Wartungsmodus
+    $domainInfoHtml = '<div id="upkeep-domain-info-active" class="alert alert-info" style="margin-top:15px;' . ($frontendActive ? '' : 'display:none;') . '">';
+    $domainInfoHtml .= '<h4><i class="fa fa-globe"></i> ' . $addon->i18n('upkeep_domain_status_overview') . '</h4>';
+    $domainInfoHtml .= '<div class="row">';
+    $domainInfoHtml .= '<div class="col-md-6">';
+    $domainInfoHtml .= '<p><strong><i class="fa fa-lock text-danger"></i> ' . $addon->i18n('upkeep_domains_in_maintenance') . ':</strong></p>';
+    if (!empty($lockedDomains)) {
+        $domainInfoHtml .= '<ul class="list-unstyled">';
+        foreach ($lockedDomains as $d) {
+            $domainInfoHtml .= '<li><code>' . rex_escape($d) . '</code></li>';
+        }
+        $domainInfoHtml .= '</ul>';
+    } else {
+        $domainInfoHtml .= '<p class="text-muted">' . $addon->i18n('upkeep_no_domains_locked') . '</p>';
+    }
+    $domainInfoHtml .= '</div>';
+    $domainInfoHtml .= '<div class="col-md-6">';
+    $domainInfoHtml .= '<p><strong><i class="fa fa-unlock text-success"></i> ' . $addon->i18n('upkeep_domains_accessible') . ':</strong></p>';
+    if (!empty($unlockedDomains)) {
+        $domainInfoHtml .= '<ul class="list-unstyled">';
+        foreach ($unlockedDomains as $d) {
+            $domainInfoHtml .= '<li><code>' . rex_escape($d) . '</code></li>';
+        }
+        $domainInfoHtml .= '</ul>';
+    } else {
+        $domainInfoHtml .= '<p class="text-muted">' . $addon->i18n('upkeep_all_domains_locked') . '</p>';
+    }
+    $domainInfoHtml .= '</div>';
+    $domainInfoHtml .= '</div>';
+    $domainInfoHtml .= '<p class="text-center" style="margin-top:10px;"><a href="' . rex_url::backendPage('upkeep/maintenance/domains') . '" class="btn btn-primary btn-sm"><i class="fa fa-globe"></i> ' . $addon->i18n('upkeep_configure_domains') . '</a></p>';
+    $domainInfoHtml .= '</div>';
+    
+    // Hinweis für inaktiven Wartungsmodus
+    $domainInfoHtml .= '<div id="upkeep-domain-info-inactive" class="alert alert-warning" style="margin-top:15px;' . ($frontendActive ? 'display:none;' : '') . '">';
+    $domainInfoHtml .= '<i class="fa fa-info-circle"></i> ' . $addon->i18n('upkeep_domain_hint_inactive');
+    $domainInfoHtml .= ' <a href="' . rex_url::backendPage('upkeep/maintenance/domains') . '">' . $addon->i18n('upkeep_configure_domains') . '</a>';
+    $domainInfoHtml .= '</div>';
+    
+    $field = $form->addRawField($domainInfoHtml);
+}
+
 // Mehrsprachigkeit
 $field = $form->addFieldset($addon->i18n('upkeep_multilanguage_settings'));
 
@@ -207,7 +273,12 @@ $field->setNotice($addon->i18n('upkeep_api_token_notice'));
 $genButton = '<button class="btn btn-sm btn-primary" type="button" id="upkeep-gen-token">' . $addon->i18n('upkeep_generate_token') . '</button>';
 $field->setNotice($field->getNotice() . ' ' . $genButton);
 
-// Vorschau-Bereich
+// Erfolgsmeldung anzeigen (von Schnellaktionen)
+if (!empty($message)) {
+    echo $message;
+}
+
+// Vorschau-Bereich (Einstellungen-Formular)
 $fragment = new rex_fragment();
 $fragment->setVar('class', 'edit', false);
 $fragment->setVar('title', $addon->i18n('upkeep_settings'), false);
@@ -513,6 +584,18 @@ $(document).on('rex:ready', function() {
         $('input[name="api_einstellungen[api_token]"]').val(token);
         // Alternative mit ID
         $('#api-einstellungen-api-token').val(token);
+    });
+    
+    // Domain-Info Panel basierend auf frontend_active Select ein-/ausblenden
+    $('select[name="allgemeine_einstellungen[frontend_active]"]').on('change', function() {
+        var isActive = $(this).val() === '1';
+        if (isActive) {
+            $('#upkeep-domain-info-active').slideDown(300);
+            $('#upkeep-domain-info-inactive').slideUp(300);
+        } else {
+            $('#upkeep-domain-info-active').slideUp(300);
+            $('#upkeep-domain-info-inactive').slideDown(300);
+        }
     });
 });
 </script>

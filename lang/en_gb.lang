@@ -96,6 +96,15 @@ upkeep_save = Save
 # Frontend Settings
 upkeep_allowed_domains = Allowed Domains
 
+# Domain Status Overview
+upkeep_domain_status_overview = Domain Status Overview
+upkeep_domains_in_maintenance = Domains in Maintenance
+upkeep_domains_accessible = Domains Accessible
+upkeep_no_domains_locked = No domains locked
+upkeep_all_domains_locked = All domains are locked
+upkeep_configure_domains = Configure Domains
+upkeep_domain_hint_inactive = When maintenance mode is active, you can specify which domains should be locked.
+
 # Frontend Tooltips
 
 # Backend Settings

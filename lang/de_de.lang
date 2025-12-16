@@ -94,6 +94,15 @@ upkeep_switch_language = Sprache wechseln zu {0}
 # Frontend-Einstellungen (fehlende Übersetzungen)
 upkeep_allowed_domains = Erlaubte Domains
 
+# Domain-Status Übersicht
+upkeep_domain_status_overview = Domain-Status Übersicht
+upkeep_domains_in_maintenance = Domains im Wartungsmodus
+upkeep_domains_accessible = Domains erreichbar
+upkeep_no_domains_locked = Keine Domains gesperrt
+upkeep_all_domains_locked = Alle Domains sind gesperrt
+upkeep_configure_domains = Domains konfigurieren
+upkeep_domain_hint_inactive = Bei aktiviertem Wartungsmodus können Sie festlegen, welche Domains gesperrt werden sollen.
+
 # Frontend-Tooltips
 
 # Backend-Einstellungen

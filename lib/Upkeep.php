@@ -54,37 +54,39 @@ class Upkeep
     }
 
   /**
- * Prüft, ob die aktuelle Domäne im Wartungsmodus sein soll
+ * Prüft, ob die aktuelle Domain im Wartungsmodus ist
+ * Gibt TRUE zurück wenn die Domain gesperrt werden soll
  */
-public static function isDomainAllowed(): bool
+public static function isDomainInMaintenance(): bool
 {
+    // Wenn YRewrite nicht verfügbar, keine Domain-basierte Logik
     if (!rex_addon::get('yrewrite')->isAvailable()) {
-        return false;
+        return true; // Fallback: Wartungsmodus gilt für alle
     }
 
     $currentDomain = rex_yrewrite::getCurrentDomain()?->getName();
     if (!$currentDomain) {
-        return false;
+        return true; // Keine Domain erkannt, Wartungsmodus aktiv
     }
 
     // Prüfen, ob alle Domains gesperrt sind
     $allDomainsLocked = (bool) self::getConfig('all_domains_locked', false);
     if ($allDomainsLocked) {
-        return false; // Keine Domain ist erlaubt
+        return true; // Alle Domains sind im Wartungsmodus
     }
 
     // Holen der Domain-Statuseinstellungen aus der Konfiguration
     $domainStatus = (array) self::getConfig('domain_status', []);
     
     // Wenn die aktuelle Domain einen Eintrag hat und dieser auf 1/true gesetzt ist,
-    // dann ist der Wartungsmodus für diese Domain aktiv und wir geben false zurück
+    // dann ist der Wartungsmodus für diese Domain aktiv
     if (isset($domainStatus[$currentDomain]) && $domainStatus[$currentDomain]) {
-        return false;
+        return true; // Diese Domain ist im Wartungsmodus
     }
     
     // Wenn es keinen Eintrag gibt oder der Wert 0/false ist,
-    // dann ist der Wartungsmodus für diese Domain inaktiv und wir geben true zurück
-    return true;
+    // dann ist der Wartungsmodus für diese Domain NICHT aktiv
+    return false;
 }
 
     /**
@@ -151,6 +153,15 @@ public static function checkFrontend(): void
         return;
     }
     
+    // WICHTIG: Erst prüfen ob diese Domain überhaupt im Wartungsmodus ist
+    // Wenn nicht, sofort erlauben - egal was andere Einstellungen sagen
+    if (!self::isDomainInMaintenance()) {
+        return; // Diese Domain ist nicht im Wartungsmodus
+    }
+    
+    // Ab hier wissen wir: Diese Domain SOLL gesperrt werden
+    // Jetzt prüfen wir die Bypass-Möglichkeiten
+    
     // Prüfen, ob bereits eine Session existiert (von Passwort oder vorherigem Bypass)
     if (rex_session('upkeep_authorized', 'bool', false)) {
         return;
@@ -172,8 +183,8 @@ public static function checkFrontend(): void
         return; // API-Aufrufe immer erlauben
     }
 
-    // Prüfen, ob der Zugriff über eine Ausnahme erlaubt ist
-    if (self::isIpAllowed() || self::isDomainAllowed() || self::isPasswordValid() || self::isUserAllowed()) {
+    // Prüfen, ob der Zugriff über eine Ausnahme erlaubt ist (IP, Passwort, User)
+    if (self::isIpAllowed() || self::isPasswordValid() || self::isUserAllowed()) {
         return;
     }
 

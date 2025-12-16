@@ -1,0 +1,216 @@
+/* Modern Dashboard Cards CSS */
+
+/* Dashboard Cards Container */
+.dashboard-cards {
+    margin-bottom: 30px;
+}
+
+/* Modern Status Cards */
+.status-card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    height: 140px;
+    position: relative;
+}
+
+.status-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Card Body */
+.status-card .panel-body {
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+/* Status Icon */
+.status-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.status-icon i {
+    font-size: 24px;
+    color: white;
+}
+
+/* Status Content */
+.status-content {
+    flex: 1;
+}
+
+.status-content h3 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.status-content .status-text {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-content small {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Status Indicator */
+.status-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.status-indicator.active {
+    background: linear-gradient(90deg, #5bb585, #4a9d6f);
+}
+
+.status-indicator.warning {
+    background: linear-gradient(90deg, #cfb550, #b8a245);
+}
+
+.status-indicator.maintenance {
+    background: linear-gradient(90deg, #d9534f, #c9302c);
+}
+
+.status-indicator.inactive {
+    background: linear-gradient(90deg, #95a5a6, #7f8c8d);
+}
+
+.status-indicator.partial {
+    background: linear-gradient(90deg, #4b9ad9, #3a7bc0);
+}
+
+/* Card Color Schemes */
+.panel-success .status-icon {
+    background: linear-gradient(135deg, #5bb585, #4a9d6f);
+}
+
+.panel-warning .status-icon {
+    background: linear-gradient(135deg, #cfb550, #b8a245);
+}
+
+.panel-danger .status-icon {
+    background: linear-gradient(135deg, #d9534f, #c9302c);
+}
+
+.panel-info .status-icon {
+    background: linear-gradient(135deg, #4b9ad9, #3a7bc0);
+}
+
+.panel-default .status-icon {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+/* Card Background Gradients */
+.panel-success {
+    background: linear-gradient(135deg, #f8fff9, #e8f5e8);
+    border-left: 4px solid #5bb585;
+}
+
+.panel-warning {
+    background: linear-gradient(135deg, #fffcf0, #f9f6e8);
+    border-left: 4px solid #cfb550;
+}
+
+.panel-danger {
+    background: linear-gradient(135deg, #fff5f5, #fdf2f2);
+    border-left: 4px solid #d9534f;
+}
+
+.panel-info {
+    background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+    border-left: 4px solid #4b9ad9;
+}
+
+.panel-default {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-left: 4px solid #95a5a6;
+}
+
+/* Card Links */
+.status-card-link,
+.status-card-content-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
+}
+
+.status-card-link:hover,
+.status-card-content-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Toggle Buttons */
+.status-card .btn {
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 4px 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Section Titles */
+.dashboard-section-title {
+    color: #324050;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #dfe3e9;
+}
+
+.dashboard-section-title i {
+    margin-right: 10px;
+    color: #4b9ad9;
+}
+
+.dashboard-section-title small {
+    color: #6c757d;
+    font-weight: 400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .status-card {
+        height: auto;
+        min-height: 120px;
+    }
+    
+    .status-card .panel-body {
+        padding: 15px;
+    }
+    
+    .status-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .status-icon i {
+        font-size: 20px;
+    }
+    
+    .status-content h3 {
+        font-size: 24px;
+    }
+}
