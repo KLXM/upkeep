@@ -393,7 +393,7 @@ $languageFragment->setVar('title', $addon->i18n('upkeep_multilanguage_texts'), f
 $languageFragment->setVar('body', $languageForm, false);
 echo $languageFragment->parse('core/page/section.php');
 ?>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<?= rex_response::getNonce() ?>">
 $(document).on('rex:ready', function() {
     // PHP translations for JavaScript
     var i18n = {
@@ -587,8 +587,11 @@ $(document).on('rex:ready', function() {
     });
     
     // Domain-Info Panel basierend auf frontend_active Select ein-/ausblenden
-    $('select[name="allgemeine_einstellungen[frontend_active]"]').on('change', function() {
-        var isActive = $(this).val() === '1';
+    var $frontendActiveSelect = $('select[name="allgemeine_einstellungen[frontend_active]"]');
+    
+    // Funktion zum Aktualisieren der Domain-Info Anzeige
+    function updateDomainInfoVisibility() {
+        var isActive = $frontendActiveSelect.val() === '1';
         if (isActive) {
             $('#upkeep-domain-info-active').slideDown(300);
             $('#upkeep-domain-info-inactive').slideUp(300);
@@ -596,6 +599,19 @@ $(document).on('rex:ready', function() {
             $('#upkeep-domain-info-active').slideUp(300);
             $('#upkeep-domain-info-inactive').slideDown(300);
         }
-    });
+    }
+    
+    // Bei Änderung des Selects
+    $frontendActiveSelect.on('change', updateDomainInfoVisibility);
+    
+    // Initial beim Laden die richtige Anzeige setzen
+    var isActiveInitial = $frontendActiveSelect.val() === '1';
+    if (isActiveInitial) {
+        $('#upkeep-domain-info-active').show();
+        $('#upkeep-domain-info-inactive').hide();
+    } else {
+        $('#upkeep-domain-info-active').hide();
+        $('#upkeep-domain-info-inactive').show();
+    }
 });
 </script>
