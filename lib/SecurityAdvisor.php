@@ -2314,7 +2314,7 @@ class SecurityAdvisor
         }
         
         // Disk Space Check (simplified)
-        $diskFree = disk_free_space(rex_path::base());
+        $diskFree = \disk_free_space(rex_path::base());
         if ($diskFree !== false && $diskFree < 1024 * 1024 * 100) { // < 100MB
             $score -= 30;
             $issues[] = $this->addon->i18n('upkeep_low_disk_space');
