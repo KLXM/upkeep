@@ -180,6 +180,11 @@ class MailSecurityFilter
             return $ep->getSubject();
         }
 
+        // Mail Security soll nur im Frontend gelten, nicht im Backend
+        if (rex::isBackend()) {
+            return $ep->getSubject();
+        }
+
         $mailer = $ep->getSubject();
         $clientIp = self::getClientIp();
         
