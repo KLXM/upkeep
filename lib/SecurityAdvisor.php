@@ -420,7 +420,7 @@ class SecurityAdvisor
             'popen' => 'warnung',      // oft benötigt für Prozess-Kommunikation
             'proc_open' => 'warnung'   // oft benötigt für komplexe Prozesse
         ];
-        $disabled = array_map('trim', explode(',', ini_get('disable_functions')));
+        $disabled = function_exists('ini_get') ? array_map('trim', explode(',', ini_get('disable_functions'))) : [];
         
         foreach ($potentiallyDangerousFunctions as $func => $severity) {
             if (!in_array($func, $disabled) && function_exists($func)) {
@@ -444,6 +444,7 @@ class SecurityAdvisor
         ];
 
         foreach ($settings as $setting => $config) {
+            if (!function_exists('ini_get')) continue;
             $value = ini_get($setting);
             
             // Korrekte Boolean-Prüfung für PHP ini-Werte (alle Schreibweisen)
@@ -470,6 +471,7 @@ class SecurityAdvisor
         }
 
         // 3. Memory Limit (DoS-Schutz)
+        if (!function_exists('ini_get')) goto skip_memory_check;
         $memoryLimit = ini_get('memory_limit');
         $memoryBytes = $this->convertToBytes($memoryLimit);
         if ($memoryBytes > 512 * 1024 * 1024) { // > 512MB
@@ -478,8 +480,10 @@ class SecurityAdvisor
             $issues[] = $this->addon->i18n('upkeep_php_config_unlimited_memory');
             $score -= 2;
         }
+        skip_memory_check:
 
         // 4. Upload-Limits
+        if (!function_exists('ini_get')) goto skip_upload_check;
         $maxFileSize = ini_get('upload_max_filesize');
         $postMaxSize = ini_get('post_max_size');
         $maxFileSizeBytes = $this->convertToBytes($maxFileSize);
@@ -491,19 +495,24 @@ class SecurityAdvisor
         if ($postMaxSizeBytes > 100 * 1024 * 1024) { // > 100MB
             $warnings[] = $this->addon->i18n('upkeep_php_config_post_max_high', $postMaxSize);
         }
+        skip_upload_check:
 
         // 5. Open Basedir (Chroot-ähnliche Beschränkung)
+        if (!function_exists('ini_get')) goto skip_basedir_check;
         $openBasedir = ini_get('open_basedir');
         if (empty($openBasedir)) {
             $warnings[] = $this->addon->i18n('upkeep_php_config_open_basedir_unset');
         }
+        skip_basedir_check:
 
         // 6. Error Reporting in Produktion
-        $errorReporting = ini_get('error_reporting');
-        $logErrors = ini_get('log_errors');
-        if ($errorReporting != 0 && ini_get('display_errors') == 'On') {
-            $issues[] = $this->addon->i18n('upkeep_php_config_error_reporting_production');
-            $score -= 1;
+        if (function_exists('ini_get')) {
+            $errorReporting = ini_get('error_reporting');
+            $logErrors = ini_get('log_errors');
+                if ($errorReporting != 0 && ini_get('display_errors') == 'On') {
+                $issues[] = $this->addon->i18n('upkeep_php_config_error_reporting_production');
+                $score -= 1;
+            }
         }
         
         // 7. PHP-Versionsprüfung
@@ -2303,21 +2312,25 @@ class SecurityAdvisor
         $issues = [];
         
         // Memory Check
-        $memoryUsage = memory_get_usage(true);
-        $memoryLimit = $this->convertToBytes(ini_get('memory_limit'));
-        if ($memoryLimit > 0) {
-            $memoryPercent = ($memoryUsage / $memoryLimit) * 100;
-            if ($memoryPercent > 80) {
-                $score -= 20;
-                $issues[] = $this->addon->i18n('upkeep_high_memory_usage', round($memoryPercent, 1));
+        if (function_exists('memory_get_usage') && function_exists('ini_get')) {
+            $memoryUsage = memory_get_usage(true);
+            $memoryLimit = $this->convertToBytes(ini_get('memory_limit'));
+            if ($memoryLimit > 0) {
+                $memoryPercent = ($memoryUsage / $memoryLimit) * 100;
+                if ($memoryPercent > 80) {
+                    $score -= 20;
+                    $issues[] = $this->addon->i18n('upkeep_high_memory_usage', round($memoryPercent, 1));
+                }
             }
         }
         
         // Disk Space Check (simplified)
-        $diskFree = \disk_free_space(rex_path::base());
-        if ($diskFree !== false && $diskFree < 1024 * 1024 * 100) { // < 100MB
-            $score -= 30;
-            $issues[] = $this->addon->i18n('upkeep_low_disk_space');
+        if (function_exists('disk_free_space')) {
+            $diskFree = \disk_free_space(rex_path::base());
+            if ($diskFree !== false && $diskFree < 1024 * 1024 * 100) { // < 100MB
+                $score -= 30;
+                $issues[] = $this->addon->i18n('upkeep_low_disk_space');
+            }
         }
         
         // PHP Version Check

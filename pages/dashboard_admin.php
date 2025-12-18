@@ -97,8 +97,8 @@ try {
 // System-Info
 $phpVersion = PHP_VERSION;
 $rexVersion = rex::getVersion();
-$memoryUsage = round(memory_get_usage(true) / 1024 / 1024, 1);
-$memoryLimit = ini_get('memory_limit');
+$memoryUsage = function_exists('memory_get_usage') ? round(memory_get_usage(true) / 1024 / 1024, 1) : 0;
+$memoryLimit = function_exists('ini_get') ? ini_get('memory_limit') : 'N/A';
 
 // Status aller Upkeep-Module
 $ipsActive = IntrusionPrevention::isActive();

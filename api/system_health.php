@@ -84,10 +84,10 @@ try {
         ],
         'system' => [
             'php_version' => PHP_VERSION,
-            'memory_limit' => ini_get('memory_limit'),
-            'max_execution_time' => ini_get('max_execution_time'),
-            'upload_max_filesize' => ini_get('upload_max_filesize'),
-            'post_max_size' => ini_get('post_max_size')
+            'memory_limit' => function_exists('ini_get') ? ini_get('memory_limit') : 'N/A',
+            'max_execution_time' => function_exists('ini_get') ? ini_get('max_execution_time') : 'N/A',
+            'upload_max_filesize' => function_exists('ini_get') ? ini_get('upload_max_filesize') : 'N/A',
+            'post_max_size' => function_exists('ini_get') ? ini_get('post_max_size') : 'N/A'
         ]
     ];
 
