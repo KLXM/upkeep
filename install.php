@@ -3,9 +3,7 @@
  * Installation des Upkeep AddOns
  */
 
-use KLXM\Upkeep\Upkeep;
-
-$addon = Upkeep::getAddon();
+$addon = rex_addon::get('upkeep');
 
 // AddOn in Setup-AddOns in der config.yml aufnehmen
 $configFile = rex_path::coreData('config.yml');
