@@ -163,6 +163,11 @@ if (rex::isBackend()) {
 if (rex_addon::get('phpmailer')->isAvailable()) {
     rex_extension::register('PHPMAILER_PRE_SEND', static function (rex_extension_point $ep) {
         try {
+            // Mail Security soll nur im Frontend greifen.
+            if (!rex::isFrontend()) {
+                return $ep->getSubject();
+            }
+
             return MailSecurityFilter::filterMail($ep);
         } catch (Exception $e) {
             // Log der Exception für Debugging

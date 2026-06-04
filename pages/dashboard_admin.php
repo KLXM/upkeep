@@ -382,9 +382,15 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                         </p>
                                     </div>
                                     <div class="col-xs-4 text-right">
+                                        <?php if ($ipsEnabled): ?>
                                         <a href="<?= rex_url::backendPage('upkeep/ips') ?>" class="btn btn-sm btn-primary">
                                             <i class="rex-icon fa-cog"></i> Verwalten
                                         </a>
+                                        <?php else: ?>
+                                        <button type="button" class="btn btn-sm btn-default" disabled>
+                                            <i class="rex-icon fa-ban"></i> Deaktiviert
+                                        </button>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -522,9 +528,15 @@ rex_view::addJsFile($addon->getAssetsUrl('dashboard.js'));
                                         </p>
                                     </div>
                                     <div class="col-xs-4 text-right">
+                                        <?php if ($securityAdvisorEnabled): ?>
                                         <a href="<?= rex_url::backendPage('upkeep/security_advisor') ?>" class="btn btn-sm btn-info">
                                             <i class="rex-icon fa-search"></i> Analyse
                                         </a>
+                                        <?php else: ?>
+                                        <button type="button" class="btn btn-sm btn-default" disabled>
+                                            <i class="rex-icon fa-ban"></i> Deaktiviert
+                                        </button>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
