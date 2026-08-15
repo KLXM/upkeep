@@ -1224,7 +1224,12 @@ class MailSecurityFilter
             
         } catch (Exception $e) {
             self::debugLog("Failed to get mail security stats: " . $e->getMessage());
-            return [];
+            return [
+                'threats_24h' => [],
+                'rate_limiting' => ['unique_ips' => 0, 'total_mails' => 0],
+                'active' => self::isMailSecurityActive(),
+                'rate_limiting_enabled' => self::isMailRateLimitingEnabled(),
+            ];
         }
     }
 

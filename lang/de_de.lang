@@ -71,6 +71,7 @@ upkeep_domain_mapping_title = Domain-Redirect
 upkeep_indicator_backend = Backend-Wartungsmodus aktiv
 upkeep_indicator_frontend = Frontend-Wartungsmodus aktiv  
 upkeep_indicator_domains = Domain-Redirects aktiv
+upkeep_indicator_mail_security = Mail Security aktiv
 upkeep_indicator_security = Intrusion Prevention System aktiv
 
 # Domain-Redirects (ehemals Domain Mapping)
