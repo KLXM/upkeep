@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.1 (2026-10-17)
+
+- Fix: Das IPS hat Besucher gesperrt, die den Einstieg der Website direkt aufrufen (`/index.php` ohne Parameter). Das Muster für Skript-Endungen (`\.php$`) schlug auf die eigene Datei an. Beim Skript, das die Anfrage ausführt, prüft das IPS jetzt nur die Parameter; Angriffe dort werden weiterhin erkannt.
+
 ## 3.0.0 (2026-10-17)
 
 - Formularschutz: Bei „Ausgenommene Formulare“ wird erklärt, was der Formularname ist, wie man ihn vergibt und wie man ein Formular direkt ausnimmt; bisher erkannte Formularnamen werden angezeigt. Warnung, wenn der Standardname „formular“ eingetragen wird.
