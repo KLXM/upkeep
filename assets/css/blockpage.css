@@ -1,0 +1,210 @@
+/* upkeep - IPS block screen (self-contained, no external fonts) */
+:root {
+    --upk-bg: #f3f4f6;
+    --upk-card: #ffffff;
+    --upk-text: #1f2328;
+    --upk-muted: #57606a;
+    --upk-border: #d8dee4;
+    --upk-accent: #3b6ea8;
+    --upk-accent-text: #ffffff;
+    --upk-icon-bg: #e8eef6;
+    --upk-alert-bg: #fff4e5;
+    --upk-alert-text: #7a4100;
+    --upk-alert-border: #f0c48a;
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --upk-bg: #16181c;
+        --upk-card: #1f2228;
+        --upk-text: #e6e8eb;
+        --upk-muted: #a3abb5;
+        --upk-border: #333841;
+        --upk-accent: #6a9fd8;
+        --upk-accent-text: #0e1116;
+        --upk-icon-bg: #26303d;
+        --upk-alert-bg: #3a2a12;
+        --upk-alert-text: #f5d39c;
+        --upk-alert-border: #6b4d1e;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body.upk-bp {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: var(--upk-bg);
+    color: var(--upk-text);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.upk-bp__card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--upk-card);
+    border: 1px solid var(--upk-border);
+    border-radius: 14px;
+    padding: 32px 28px 28px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.upk-bp__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--upk-icon-bg);
+    color: var(--upk-accent);
+    margin-bottom: 18px;
+}
+
+.upk-bp__title {
+    font-size: 1.45rem;
+    line-height: 1.25;
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+
+.upk-bp__subtitle {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+}
+
+.upk-bp__lead {
+    margin: 0 0 20px;
+    color: var(--upk-muted);
+}
+
+.upk-bp__text {
+    margin: 0 0 14px;
+    color: var(--upk-muted);
+    font-size: 0.95rem;
+}
+
+.upk-bp__alert {
+    margin: 0 0 18px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--upk-alert-border);
+    background: var(--upk-alert-bg);
+    color: var(--upk-alert-text);
+    font-size: 0.95rem;
+}
+
+.upk-bp__unlock {
+    border-top: 1px solid var(--upk-border);
+    padding-top: 20px;
+    margin-top: 4px;
+}
+
+.upk-bp__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.upk-bp__form altcha-widget {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+}
+
+.upk-bp__button {
+    appearance: none;
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: var(--upk-accent);
+    color: var(--upk-accent-text);
+    cursor: pointer;
+}
+
+.upk-bp__button:focus-visible {
+    outline: 3px solid var(--upk-accent);
+    outline-offset: 2px;
+}
+
+.upk-bp__button[hidden] {
+    display: none;
+}
+
+.upk-bp__hint {
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+    color: var(--upk-muted);
+}
+
+.upk-bp__meta {
+    margin: 22px 0 0;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--upk-border);
+    display: grid;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.upk-bp__meta div {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.upk-bp__meta dt {
+    color: var(--upk-muted);
+    min-width: 120px;
+}
+
+.upk-bp__meta dd {
+    margin: 0;
+}
+
+.upk-bp__meta code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88rem;
+}
+
+.upk-bp__contact {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--upk-border);
+    font-size: 0.92rem;
+}
+
+.upk-bp__contact p {
+    margin: 0;
+    color: var(--upk-muted);
+}
+
+.upk-bp a {
+    color: var(--upk-accent);
+}
+
+@media (max-width: 480px) {
+    .upk-bp__card {
+        padding: 24px 18px 20px;
+        border-radius: 12px;
+    }
+}
