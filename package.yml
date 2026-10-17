@@ -1,5 +1,5 @@
 package: upkeep
-version: '2.2.8'
+version: '3.0.0'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
@@ -14,122 +14,84 @@ page:
     icon: 'rex-icon fa fa-wrench'
     subpages:
         dashboard:
-            title: 'Upkeep Dashboard'
-            icon: 'rex-icon fa fa-dashboard'
+            title: 'translate:upkeep_nav_dashboard'
+            icon: 'rex-icon fa fa-th-large'
             perm: upkeep[]
-        admin_settings:
-            title: 'Admin Einstellungen'
-            icon: 'rex-icon fa fa-cog'
-            perm: admin
-            hidden: true
-        ips:
-            title: 'translate:upkeep_ips_title'
-            icon: 'rex-icon fa fa-shield'
-            perm: upkeep[ips]
-            subpages:
-                threats: {title: 'translate:upkeep_ips_threats', icon: 'rex-icon fa fa-exclamation-triangle'}
-                blocked: {title: 'translate:upkeep_ips_blocked', icon: 'rex-icon fa fa-ban'}
-                positivliste: {title: 'translate:upkeep_ips_positivliste', icon: 'rex-icon fa fa-check-circle'}
-                patterns: {title: 'translate:upkeep_ips_patterns', icon: 'rex-icon fa fa-code'}
-                default_patterns: {title: 'translate:upkeep_ips_default_patterns', icon: 'rex-icon fa fa-cogs'}
-                settings: {title: 'translate:upkeep_ips_settings', icon: 'rex-icon fa fa-cog'}
-                cleanup: {title: 'translate:upkeep_ips_cleanup', icon: 'rex-icon fa fa-trash'}
-        security_advisor:
-            title: 'translate:upkeep_security_advisor_title'
-            icon: 'rex-icon fa fa-shield'
-            perm: upkeep[advisor]
-            subpages:
-                reports: {title: 'translate:upkeep_security_reports', icon: 'rex-icon fa fa-list'}
-                help: {title: 'translate:upkeep_security_advisor_help_title', subPath: SECURITY_ADVISOR.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
-        mail_security:
-            title: 'Mail Security'
-            icon: 'rex-icon fa fa-envelope-o'
-            perm: upkeep[mail_security]
-            subpages:
-                dashboard: {title: 'Dashboard', icon: 'rex-icon fa fa-dashboard'}
-                threats: {title: 'Threat Log', icon: 'rex-icon fa fa-exclamation-triangle'}
-                badwords: {title: 'Badwords', icon: 'rex-icon fa fa-filter'}
-                blocklist: {title: 'Blocklist', icon: 'rex-icon fa fa-ban'}
-                default_patterns: {title: 'Standard-Patterns', icon: 'rex-icon fa fa-cogs'}
-                settings: {title: 'Settings', icon: 'rex-icon fa fa-cog'}
-                cleanup: {title: 'Cleanup', icon: 'rex-icon fa fa-trash'}
-                help: {title: 'translate:upkeep_mail_security_help_title', subPath: MAIL_SECURITY.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
-        reporting:
-            title: 'translate:upkeep_reporting_title'
-            icon: 'rex-icon fa fa-bar-chart'
-            perm: upkeep[reporting]
-            subpages:
-                overview: {title: 'translate:upkeep_reporting_overview', icon: 'rex-icon fa fa-dashboard'}
-                system_health: {title: 'translate:upkeep_system_health_title', icon: 'rex-icon fa fa-heartbeat'}
-                mail_reporting: {title: 'translate:upkeep_mail_reporting_title', icon: 'rex-icon fa fa-paper-plane'}
         maintenance:
-            title: 'translate:upkeep_maintenance_title'
-            icon: 'rex-icon fa fa-wrench'
-            perm: upkeep[maintenance]
+            title: 'translate:upkeep_nav_maintenance'
+            icon: 'rex-icon fa fa-power-off'
+            perm: upkeep[]
             subpages:
-                frontend: {title: 'translate:upkeep_frontend_title', icon: 'rex-icon fa fa-globe', perm: 'upkeep[maintenance]'}
-                backend: {title: 'translate:upkeep_backend_title', icon: 'rex-icon fa fa-users', perm: 'admin[]'}
-                domains: {title: 'translate:upkeep_domains_title', icon: 'rex-icon fa fa-sitemap', perm: 'upkeep[maintenance_domains]'}
-                help: {title: 'translate:upkeep_maintenance_help_title', subPath: MAINTENANCE.md, itemClass: 'pull-right', icon: 'rex-icon fa fa-question-circle'}
-        domain_mapping:
-            title: 'translate:upkeep_domain_mapping_title'
-            icon: 'rex-icon fa fa-share'
-            perm: upkeep[domain_mapping]
-        dashboard_admin:
-            title: ''
-            icon: 'rex-icon fa fa-user'
+                status: {title: 'translate:upkeep_nav_maintenance_status', icon: 'rex-icon fa fa-toggle-on', perm: 'upkeep[maintenance]'}
+                domains: {title: 'translate:upkeep_nav_maintenance_domains', icon: 'rex-icon fa fa-sitemap', perm: 'upkeep[domains]'}
+                redirects: {title: 'translate:upkeep_nav_maintenance_redirects', icon: 'rex-icon fa fa-share', perm: 'upkeep[domain_mapping]'}
+        protection:
+            title: 'translate:upkeep_nav_protection'
+            icon: 'rex-icon fa fa-shield'
+            perm: upkeep[]
+            subpages:
+                events: {title: 'translate:upkeep_nav_protection_events', icon: 'rex-icon fa fa-list', perm: 'upkeep[ips]'}
+                blocked: {title: 'translate:upkeep_nav_protection_blocked', icon: 'rex-icon fa fa-ban', perm: 'upkeep[ips]'}
+                allowlist: {title: 'translate:upkeep_nav_protection_allowlist', icon: 'rex-icon fa fa-check-circle', perm: 'upkeep[ips]'}
+                patterns: {title: 'translate:upkeep_nav_protection_patterns', icon: 'rex-icon fa fa-code', perm: 'upkeep[ips]'}
+                forms: {title: 'translate:upkeep_nav_protection_forms', icon: 'rex-icon fa fa-wpforms', perm: 'upkeep[forms]'}
+                mail: {title: 'translate:upkeep_nav_protection_mail', icon: 'rex-icon fa fa-envelope-o', perm: 'upkeep[mail_security]'}
+        advisor:
+            title: 'translate:upkeep_nav_advisor'
+            icon: 'rex-icon fa fa-lightbulb-o'
+            perm: upkeep[advisor]
+        storage:
+            title: 'translate:upkeep_nav_storage'
+            icon: 'rex-icon fa fa-hdd-o'
+            perm: upkeep[]
+        settings:
+            title: 'translate:upkeep_nav_settings'
+            icon: 'rex-icon fa fa-sliders'
             perm: admin
-            itemClass: 'pull-right'
         help:
             title: 'translate:help'
             subPath: README.md
             itemClass: 'pull-right'
             icon: 'rex-icon fa fa-question-circle'
-            
+
 requires:
     redaxo: ^5.18.1
     php: '>=8.2'
 
 suggests:
-    cronjob: '^2.8'  # Für automatische IPS-Datenbereinigung
+    cronjob: '^2.8'
 
 permissions:
-    upkeep[]: 'translate:upkeep[]'
-    upkeep[frontend]: 'translate:upkeep[frontend]'
-    upkeep[domains]: 'translate:upkeep[domains]'
-    upkeep[domain_mapping]: 'translate:upkeep[domain_mapping]'
-    upkeep[security]: 'translate:upkeep[security]'
-    upkeep[mail_security]: 'Mail Security Verwaltung'
+    upkeep[]: 'translate:upkeep_perm_base'
+    upkeep[maintenance]: 'translate:upkeep_perm_maintenance'
+    upkeep[domains]: 'translate:upkeep_perm_domains'
+    upkeep[domain_mapping]: 'translate:upkeep_perm_domain_mapping'
+    upkeep[ips]: 'translate:upkeep_perm_ips'
+    upkeep[forms]: 'translate:upkeep_perm_forms'
+    upkeep[mail_security]: 'translate:upkeep_perm_mail_security'
+    upkeep[advisor]: 'translate:upkeep_perm_advisor'
+    upkeep[reporting]: 'translate:upkeep_perm_reporting'
 
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
     upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
     upkeep:security:scan: rex_upkeep_security_scan_command
     upkeep:mail-reporting:send-bundle: rex_upkeep_mail_reporting_bundle_command
+    upkeep:storage: rex_upkeep_storage_command
 
 default_config:
     frontend_active: 0
     backend_active: 0
-    frontend_password: ''
     allowed_ips: ''
     bypass_logged_in: 1
-    # IPS Configuration
-    ips_active: 0
-    ips_burst_limit: 10
-    ips_disable_system_logging: 0
-    ips_block_title: 'Access Denied'
-    ips_block_message: 'Your request has been blocked by our security system.'
-    ips_contact_info: ''
-    ips_whitelist: []
-    maintenance_page_title: 'Site Maintenance'
-    maintenance_page_message: 'We are currently performing maintenance. Please check back soon.'
     http_status_code: 503
     retry_after: 3600
     all_domains_locked: false
-    # Admin-Wartungsfreigaben
+    trusted_proxies: ''
+    ips_active: 1
+    ips_unlock_max: 3
+    ips_unlock_hours: 24
+    mail_security_active: 0
+    form_protection_active: 0
+    advisor_active: 1
     admin_release_days: 30
-    # Module-Aktivierung
-    security_advisor_enabled: true
-    mail_security_enabled: true
-    reporting_enabled: true
-    ips_enabled: true

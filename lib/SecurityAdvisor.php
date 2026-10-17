@@ -93,7 +93,64 @@ class SecurityAdvisor
         // Gesamtbewertung berechnen
         $this->calculateSecurityScore();
 
+        // Ergebnis zwischenspeichern: Seiten zeigen nur noch diesen Stand, geprüft wird per Knopf, Cron oder Konsole
+        $this->addon->setConfig('advisor_results', $this->results);
+        $this->addon->setConfig('advisor_last_check', $this->results['timestamp']);
+        $this->addon->setConfig('security_advisor_last_check', $this->results['timestamp']);
+        \rex_extension::registerPoint(new \rex_extension_point('UPKEEP_SECURITY_SCAN_COMPLETED', $this->results));
+
         return $this->results;
+    }
+
+    /**
+     * Letztes gespeichertes Prüfergebnis (ohne neue Prüfung) oder null, wenn noch nie geprüft wurde.
+     */
+    public static function getCachedResults(): ?array
+    {
+        $results = rex_addon::get('upkeep')->getConfig('advisor_results', null);
+        return is_array($results) && isset($results['checks']) ? $results : null;
+    }
+
+    /**
+     * Empfehlungen aus dem letzten Prüfergebnis: nur offene Punkte, sortiert nach Priorität.
+     * Freigegebene (ausgeblendete) Punkte stehen in 'hidden'.
+     *
+     * @return array{open: list<array>, hidden: list<array>, passed: list<array>, last_check: int}
+     */
+    public function getRecommendations(): array
+    {
+        $results = self::getCachedResults();
+        $out = ['open' => [], 'hidden' => [], 'passed' => [], 'last_check' => (int) ($results['timestamp'] ?? 0)];
+        if (!$results) {
+            return $out;
+        }
+        $order = ['high' => 0, 'medium' => 1, 'low' => 2];
+        foreach ($results['checks'] as $key => $check) {
+            $status = (string) ($check['status'] ?? 'info');
+            $severity = (string) ($check['severity'] ?? 'low');
+            // Texte der Checks kommen aus i18n() und sind bereits escaped – für die Ausgabe wieder in Rohtext wandeln
+            $raw = static fn ($v) => html_entity_decode((string) $v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $item = [
+                'key' => (string) $key,
+                'name' => $raw($check['name'] ?? $key),
+                'description' => $raw($check['description'] ?? ''),
+                'recommendations' => array_values(array_filter(array_map(
+                    static fn ($r) => $raw(is_array($r) ? ($r['text'] ?? $r['title'] ?? $r['message'] ?? '') : $r),
+                    (array) ($check['recommendations'] ?? []),
+                ))),
+                'priority' => 'error' === $status ? ('low' === $severity ? 'medium' : 'high') : ('warning' === $status ? ('high' === $severity ? 'medium' : 'low') : 'none'),
+                'status' => $status,
+            ];
+            if ('success' === $status || 'info' === $status) {
+                $out['passed'][] = $item;
+            } elseif ($this->isCheckReleased((string) $key)) {
+                $out['hidden'][] = $item;
+            } else {
+                $out['open'][] = $item;
+            }
+        }
+        usort($out['open'], static fn ($a, $b) => ($order[$a['priority']] ?? 3) <=> ($order[$b['priority']] ?? 3));
+        return $out;
     }
 
     /**
@@ -134,6 +191,13 @@ class SecurityAdvisor
         $backupPath = \rex_path::coreData('config.yml.backup.' . date('Y-m-d_H-i-s'));
         
         if (copy($configPath, $backupPath)) {
+            @chmod($backupPath, 0600);
+            // Nur die letzten drei Sicherungen behalten (sie enthalten Zugangsdaten)
+            $backups = glob(\rex_path::coreData('config.yml.backup.*')) ?: [];
+            rsort($backups);
+            foreach (array_slice($backups, 3) as $old) {
+                @unlink($old);
+            }
             return $backupPath;
         }
         
@@ -267,75 +331,6 @@ class SecurityAdvisor
         return implode('; ', $cspString);
     }
 
-    /**
-     * Prüft ein einzelnes SSL-Zertifikat
-     */
-    private function checkDomainSsl(string $domain): array
-    {
-        $result = [
-            'domain' => $domain,
-            'status' => 'error',
-            'score' => 0,
-            'valid' => false,
-            'expires' => null,
-            'issuer' => null,
-            'days_remaining' => 0,
-            'errors' => []
-        ];
-
-        try {
-            $context = stream_context_create([
-                'ssl' => [
-                    'capture_peer_cert' => true,
-                    'verify_peer' => false,
-                    'verify_peer_name' => false
-                ]
-            ]);
-
-            $stream = @stream_socket_client(
-                "ssl://{$domain}:443", 
-                $errno, 
-                $errstr, 
-                10, 
-                STREAM_CLIENT_CONNECT, 
-                $context
-            );
-
-            if ($stream) {
-                $params = stream_context_get_params($stream);
-                if (isset($params['options']['ssl']['peer_certificate'])) {
-                    $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate']);
-                    
-                    $result['valid'] = true;
-                    $result['expires'] = date('Y-m-d H:i:s', $cert['validTo_time_t']);
-                    $result['issuer'] = $cert['issuer']['CN'] ?? 'Unknown';
-                    $result['days_remaining'] = ceil(($cert['validTo_time_t'] - time()) / 86400);
-                    
-                    if ($result['days_remaining'] > 30) {
-                        $result['status'] = 'success';
-                        $result['score'] = 10;
-                    } elseif ($result['days_remaining'] > 7) {
-                        $result['status'] = 'warning';
-                        $result['score'] = 5;
-                    } else {
-                        $result['status'] = 'error';
-                        $result['score'] = 0;
-                        $result['errors'][] = $this->addon->i18n('upkeep_php_config_ssl_expired');
-                    }
-                } else {
-                    $result['errors'][] = $this->addon->i18n('upkeep_php_config_no_ssl_cert');
-                }
-                
-                fclose($stream);
-            } else {
-                $result['errors'][] = $this->addon->i18n('upkeep_php_config_ssl_connection_failed', $errstr);
-            }
-        } catch (Exception $e) {
-            $result['errors'][] = $e->getMessage();
-        }
-
-        return $result;
-    }
 
     /**
      * Prüft Server-Header auf Sicherheitslecks
@@ -343,6 +338,18 @@ class SecurityAdvisor
     private function checkServerHeaders(): void
     {
         $headers = $this->getCurrentHeaders();
+        if (!$headers) {
+            $this->results['checks']['server_headers'] = [
+                'name' => $this->addon->i18n('upkeep_check_server_headers'),
+                'status' => 'info',
+                'severity' => 'low',
+                'score' => 10,
+                'details' => ['headers' => []],
+                'recommendations' => [],
+                'description' => $this->addon->i18n('upkeep_server_header_unreachable'),
+            ];
+            return;
+        }
         $criticalIssues = [];
         $recommendations = [];
         $score = 10;
@@ -1267,21 +1274,31 @@ class SecurityAdvisor
 
     // Helper-Methoden
 
+    /**
+     * Antwort-Header der eigenen Startseite (nicht die Header der aktuellen Anfrage).
+     * Kurzer Timeout; schlägt der Abruf fehl, wird die Prüfung übersprungen.
+     */
     private function getCurrentHeaders(): array
     {
-        $headers = [];
-        if (function_exists('getallheaders')) {
-            $headers = getallheaders();
-        } else {
-            // Fallback für CLI/Test-Umgebungen
-            foreach ($_SERVER as $key => $value) {
-                if (strpos($key, 'HTTP_') === 0) {
-                    $header = str_replace('_', '-', substr($key, 5));
-                    $headers[$header] = $value;
+        $url = rtrim((string) \rex::getServer(), '/') . '/';
+        if (!preg_match('#^https?://#i', $url)) {
+            return [];
+        }
+        try {
+            $socket = \rex_socket::factoryUrl($url);
+            $socket->setTimeout(4);
+            $response = $socket->doGet();
+            $headers = [];
+            foreach (preg_split('/\r?\n/', (string) $response->getHeader()) as $line) {
+                if (str_contains($line, ':')) {
+                    [$name, $value] = explode(':', $line, 2);
+                    $headers[implode('-', array_map('ucfirst', explode('-', strtolower(trim($name)))))] = trim($value);
                 }
             }
+            return $headers;
+        } catch (\Throwable) {
+            return [];
         }
-        return $headers;
     }
 
     private function isHttps(): bool
@@ -1911,9 +1928,9 @@ class SecurityAdvisor
                 $result['backup'] = 'Backup: ' . basename($backupPath);
                 
                 if ($this->isHttps()) {
-                    $result['message'] .= $this->addon->i18n('upkeep_session_security_secure_true');
+                    $result['message'] .= ' ' . $this->addon->i18n('upkeep_session_security_secure_true');
                 } else {
-                    $result['message'] .= $this->addon->i18n('upkeep_session_security_secure_false');
+                    $result['message'] .= ' ' . $this->addon->i18n('upkeep_session_security_secure_false');
                 }
             } else {
                 $result['message'] = 'Fehler beim Schreiben der config.yml. Überprüfen Sie die Dateiberechtigungen.';
@@ -1971,7 +1988,18 @@ class SecurityAdvisor
      */
     public function getDashboardStats(): array
     {
-        $results = $this->runAllChecks();
+        // Kein Scan beim Seitenaufruf: gespeichertes Ergebnis verwenden
+        $results = self::getCachedResults();
+        if (!$results) {
+            return [
+                'security_score' => null,
+                'security_grade' => null,
+                'critical_issues' => 0,
+                'warning_issues' => 0,
+                'last_check' => 0,
+                'overall_status' => 'unknown',
+            ];
+        }
         
         return [
             'security_score' => $results['summary']['score'],

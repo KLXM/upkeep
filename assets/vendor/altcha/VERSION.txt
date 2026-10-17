@@ -1,0 +1,3 @@
+ALTCHA widget 3.2.4 (npm package "altcha", MIT, https://github.com/altcha-org/altcha)
+Files: dist/external/altcha.min.js, dist/external/altcha.css, dist/workers/sha.js (as worker-sha.js), LICENSE.txt
+Unmodified. Used only on the upkeep IPS block page (self-unlock). Challenges come from rex_api_upkeep_altcha.

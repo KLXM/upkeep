@@ -1,603 +1,211 @@
 <?php
 
-use KLXM\Upkeep\SecurityAdvisor;
+/**
+ * Übersicht für alle: dieselbe Seite für Admins, Redakteure und Kunden.
+ * Welche Kacheln erscheinen, hängt von den Rechten ab. Es wird nichts geprüft oder berechnet,
+ * was Zeit kostet – alle Zahlen kommen aus Zwischenspeichern oder einfachen Zählabfragen.
+ */
+
+use KLXM\Upkeep\FormProtection;
 use KLXM\Upkeep\IntrusionPrevention;
 use KLXM\Upkeep\MailSecurityFilter;
+use KLXM\Upkeep\SecurityAdvisor;
+use KLXM\Upkeep\Storage;
+use KLXM\Upkeep\Ui;
+use KLXM\Upkeep\Upkeep;
 
 $addon = rex_addon::get('upkeep');
-$advisor = new SecurityAdvisor();
+$user = rex::requireUser();
+$isAdmin = $user->isAdmin();
+$can = static fn (string $perm) => $user->hasPerm('upkeep[' . $perm . ']');
+$csrf = rex_csrf_token::factory('upkeep_dashboard');
 
-// Modul-Aktivierungsstatus laden
-$securityAdvisorEnabled = $addon->getConfig('security_advisor_enabled', true);
-$mailSecurityEnabled = $addon->getConfig('mail_security_enabled', true);
-$reportingEnabled = $addon->getConfig('reporting_enabled', true);
-$ipsEnabled = $addon->getConfig('ips_enabled', true);
-
-// IPS-Statistiken abrufen (nur wenn IPS aktiviert ist)
-if ($ipsEnabled) {
-    try {
-        $ipsStats = IntrusionPrevention::getStatistics();
-    } catch (Exception $e) {
-        // Fallback wenn Tabellen noch nicht existieren
-        $ipsStats = [
-            'blocked_ips' => 0,
-            'threats_today' => 0,
-            'threats_week' => 0,
-            'top_threats' => []
-        ];
-    }
-} else {
-    $ipsStats = [
-        'blocked_ips' => 0,
-        'threats_today' => 0,
-        'threats_week' => 0,
-        'top_threats' => []
-    ];
-}
-
-// Mail-Security-Statistiken abrufen (nur wenn aktiviert)
-if ($mailSecurityEnabled) {
-    try {
-        $mailStats = MailSecurityFilter::getDashboardStats();
-    } catch (Exception $e) {
-        // Fallback wenn Mail-Security noch nicht installiert
-        $mailStats = [
-            'active' => false,
-            'threats_24h' => 0,
-            'blocked_emails_24h' => 0,
-            'badwords_count' => 0,
-            'blocklist_count' => 0
-        ];
-    }
-} else {
-    $mailStats = [
-        'active' => false,
-        'threats_24h' => 0,
-        'blocked_emails_24h' => 0,
-        'badwords_count' => 0,
-        'blocklist_count' => 0
-    ];
-}
-
-// IPS-Status (nur wenn IPS-Modul aktiviert ist)
-$ipsActive = $ipsEnabled ? IntrusionPrevention::isActive() : false;
-
-// CSS für Animation
-echo '<style>
-.version-status-success {
-    animation: pulse-success 2s infinite;
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    border-color: #28a745;
-    color: #155724 !important;
-}
-
-.version-status-success h4,
-.version-status-success p {
-    color: #155724 !important;
-}
-
-@keyframes pulse-success {
-    0% {
-        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
-    }
-}
-
-.version-icon-success {
-    animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-    0%, 20%, 60%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-10px);
-    }
-    80% {
-        transform: translateY(-5px);
-    }
-}
-
-.version-status-warning {
-    animation: pulse-warning 3s infinite;
-    color: #856404 !important;
-}
-
-.version-status-warning h4,
-.version-status-warning p {
-    color: #856404 !important;
-}
-
-@keyframes pulse-warning {
-    0%, 100% {
-        background-color: #fff3cd;
-    }
-    50% {
-        background-color: #ffeaa7;
-    }
-}
-
-.version-status-danger {
-    animation: pulse-danger 2s infinite;
-    color: #721c24 !important;
-}
-
-.version-status-danger h4,
-.version-status-danger p {
-    color: #721c24 !important;
-}
-
-@keyframes pulse-danger {
-    0%, 100% {
-        background-color: #f8d7da;
-    }
-    50% {
-        background-color: #f5c6cb;
-    }
-}
-</style>';
-
-// REDAXO Version Check - IMMER anzeigen mit Animation
-$redaxoCheck = $advisor->checkRedaxoVersion();
-
-// Alert-Klasse und Icon basierend auf Status
-$alertClass = match($redaxoCheck['status']) {
-    'up_to_date' => 'alert-success version-status-success',
-    'critical' => 'alert-danger version-status-danger',
-    'outdated' => 'alert-warning version-status-warning',
-    default => 'alert-info'
-};
-
-$icon = match($redaxoCheck['status']) {
-    'up_to_date' => 'fa-check-circle version-icon-success',
-    'critical' => 'fa-exclamation-triangle',
-    'outdated' => 'fa-exclamation-circle',
-    default => 'fa-info-circle'
-};
-
-$dismissible = $redaxoCheck['status'] === 'up_to_date' ? '' : 'alert-dismissible';
-
-echo '<div class="alert ' . $alertClass . ' ' . $dismissible . '" role="alert">';
-if ($redaxoCheck['status'] !== 'up_to_date') {
-    echo '<button type="button" class="close" data-dismiss="alert" aria-label="Close">';
-    echo '<span aria-hidden="true">&times;</span>';
-    echo '</button>';
-}
-echo '<h4><i class="fa ' . $icon . '"></i> ' . $redaxoCheck['title'] . '</h4>';
-echo '<p>' . $redaxoCheck['message'] . '</p>';
-if (isset($redaxoCheck['details'])) {
-    $detailsText = '';
-    if (is_array($redaxoCheck['details'])) {
-        $allDetails = [];
-        if (!empty($redaxoCheck['details']['critical_issues'])) {
-            $allDetails = array_merge($allDetails, $redaxoCheck['details']['critical_issues']);
-        }
-        if (!empty($redaxoCheck['details']['warnings'])) {
-            $allDetails = array_merge($allDetails, $redaxoCheck['details']['warnings']);
-        }
-        $detailsText = implode(', ', $allDetails);
+// ---------- Aktionen ----------
+if ('post' === rex_request_method() && '' !== rex_post('upk_action', 'string', '')) {
+    if (!$csrf->isValid()) {
+        echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {
-        $detailsText = $redaxoCheck['details'];
-    }
-    if (!empty($detailsText)) {
-        echo '<p><strong>Details:</strong> ' . $detailsText . '</p>';
-    }
-}
-echo '</div>';
-
-// Wartungsempfehlung basierend auf Admin-Freigaben und System-Status
-$nextMaintenanceInfo = '';
-$adminReleases = [];
-$nextMaintenanceDate = null;
-
-// Sammle alle Admin-Freigaben mit Ablaufdaten
-$checkTypes = ['database', 'php_config', 'server_status', 'security_settings'];
-foreach ($checkTypes as $checkType) {
-    if ($advisor->isCheckReleased($checkType)) {
-        $releaseTimestamp = $addon->getConfig("admin_release_{$checkType}", 0);
-        $releaseDays = $addon->getConfig('admin_release_days', 30);
-        $expiryTimestamp = $releaseTimestamp + ($releaseDays * 24 * 60 * 60);
-        $adminReleases[$checkType] = $expiryTimestamp;
-    }
-}
-
-// Finde das nächste Ablaufdatum
-if (!empty($adminReleases)) {
-    $nextMaintenanceDate = min($adminReleases);
-    $daysUntilMaintenance = ceil(($nextMaintenanceDate - time()) / (24 * 60 * 60));
-    
-    if ($daysUntilMaintenance > 0) {
-        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_next_system_check_recommended') . ': <strong>' . date('d.m.Y', $nextMaintenanceDate) . '</strong> (' . $addon->i18n('upkeep_dashboard_in_days', $daysUntilMaintenance) . ')';
-    } else {
-        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_system_check_overdue');
-    }
-} else {
-    // Keine Admin-Freigaben aktiv - Standard-Empfehlung
-    $lastMaintenanceCheck = $addon->getConfig('last_maintenance_info', time());
-    $daysSinceLastInfo = floor((time() - $lastMaintenanceCheck) / (24 * 60 * 60));
-    
-    if ($daysSinceLastInfo >= 30) {
-        $nextMaintenanceInfo = $addon->i18n('upkeep_dashboard_regular_system_check_recommended');
-        // Aktualisiere Timestamp damit Info nicht täglich erscheint
-        $addon->setConfig('last_maintenance_info', time());
-    }
-}
-
-// Zeige Wartungsempfehlung an
-if (!empty($nextMaintenanceInfo)) {
-    echo '<div class="alert alert-info" role="alert">';
-    echo '<h4><i class="fa fa-calendar"></i> ' . $addon->i18n('upkeep_dashboard_maintenance_recommendation') . '</h4>';
-    echo '<p>' . $nextMaintenanceInfo . '</p>';
-
-    echo '</div>';
-}
-
-// System Status Dashboard
-$content = '<div class="row">';
-
-// System Health Card
-$systemHealth = $advisor->checkSystemHealth();
-$healthClass = match($systemHealth['status']) {
-    'healthy' => 'success',
-    'warning' => 'warning', 
-    'critical' => 'danger',
-    default => 'default'
-};
-
-$healthIcon = match($systemHealth['status']) {
-    'healthy' => 'fa-heart',
-    'warning' => 'fa-exclamation-triangle',
-    'critical' => 'fa-times-circle',
-    default => 'fa-question-circle'
-};
-
-$content .= '<div class="col-lg-3 col-md-6">';
-$content .= '<div class="panel panel-' . $healthClass . '">';
-$content .= '<div class="panel-heading">';
-$content .= '<div class="row">';
-$content .= '<div class="col-xs-3"><i class="fa ' . $healthIcon . ' fa-5x"></i></div>';
-$content .= '<div class="col-xs-9 text-right">';
-$content .= '<div class="huge">' . $systemHealth['score'] . '%</div>';
-$content .= '<div>' . $addon->i18n('upkeep_dashboard_system_health') . '</div>';
-$content .= '</div></div></div>';
-$content .= '<div class="panel-footer"><span class="pull-left">' . $systemHealth['message'] . '</span>';
-$content .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
-$content .= '</div></div>';
-
-// Database Status Card - mit Admin-Freigabe-Prüfung
-$databaseStatus = $advisor->checkDatabaseStatus();
-$dbReleased = $advisor->isCheckReleased('database');
-
-// Status anpassen wenn Admin-Freigabe aktiv ist
-if ($dbReleased && $databaseStatus['status'] !== 'healthy') {
-    $dbClass = 'info';
-    $dbIcon = 'fa-database';
-    $dbDisplayStatus = 'GEPRÜFT ✓';
-    $dbMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
-} else {
-    $dbClass = match($databaseStatus['status']) {
-        'healthy' => 'success',
-        'warning' => 'warning',
-        'critical' => 'danger',
-        default => 'danger'
-    };
-    $dbIcon = match($databaseStatus['status']) {
-        'healthy' => 'fa-database',
-        'warning' => 'fa-exclamation-circle',
-        'critical' => 'fa-exclamation-triangle',
-        default => 'fa-times-circle'
-    };
-    
-    $dbDisplayStatus = match($databaseStatus['status']) {
-        'healthy' => 'OK',
-        'warning' => 'UPDATE',
-        'critical' => 'KRITISCH',
-        'error' => 'FEHLER',
-        default => 'PRÜFEN'
-    };
-    $dbMessage = $databaseStatus['message'];
-}
-
-$content .= '<div class="col-lg-3 col-md-6">';
-$content .= '<div class="panel panel-' . $dbClass . '">';
-$content .= '<div class="panel-heading">';
-$content .= '<div class="row">';
-$content .= '<div class="col-xs-3"><i class="fa ' . $dbIcon . ' fa-5x"></i></div>';
-$content .= '<div class="col-xs-9 text-right">';
-$content .= '<div class="huge">' . $dbDisplayStatus . '</div>';
-$content .= '<div>' . $addon->i18n('upkeep_dashboard_database') . '</div>';
-$content .= '</div></div></div>';
-$content .= '<div class="panel-footer"><span class="pull-left">' . $dbMessage . '</span>';
-$content .= '<span class="pull-right"><i class="fa fa-database"></i></span><div class="clearfix"></div></div>';
-$content .= '</div></div>';
-
-// Dateisicherheit Card - vereinfacht
-$filePermissions = $advisor->checkFilePermissions();
-$permClass = $filePermissions['status'] === 'secure' ? 'success' : 'warning';
-$permIcon = $filePermissions['status'] === 'secure' ? 'fa-lock' : 'fa-unlock';
-
-$permMessage = $filePermissions['status'] === 'secure' ? $addon->i18n('upkeep_file_security_configured') : $addon->i18n('upkeep_file_security_needs_review');
-
-$content .= '<div class="col-lg-3 col-md-6">';
-$content .= '<div class="panel panel-' . $permClass . '">';
-$content .= '<div class="panel-heading">';
-$content .= '<div class="row">';
-$content .= '<div class="col-xs-3"><i class="fa ' . $permIcon . ' fa-5x"></i></div>';
-$content .= '<div class="col-xs-9 text-right">';
-$content .= '<div class="huge">' . ($filePermissions['status'] === 'secure' ? 'OK' : 'PRÜFEN') . '</div>';
-$content .= '<div>' . $addon->i18n('upkeep_dashboard_file_security') . '</div>';
-$content .= '</div></div></div>';
-$content .= '<div class="panel-footer"><span class="pull-left">' . $permMessage . '</span>';
-$content .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
-$content .= '</div></div>';
-
-// Server Konfiguration Card - mit Admin-Freigabe-Prüfung
-$phpConfig = $advisor->checkPhpConfiguration();
-$phpReleased = $advisor->isCheckReleased('php_config');
-$serverStatusReleased = $advisor->isCheckReleased('server_status');
-
-// Detailliertere PHP-Statusprüfung für Dashboard
-if ($phpConfig['status'] === 'optimal') {
-    // Alles OK - Grün
-    $phpClass = 'success';
-    $serverMessage = 'Server Konfiguration optimal';
-} elseif ($phpReleased || $serverStatusReleased) {
-    // Admin hat Freigabe erteilt - Grün
-    $phpClass = 'success';
-    $serverMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
-} else {
-    // Probleme vorhanden - Rot oder Orange je nach Schwere
-    $serverMessage = match($phpConfig['status']) {
-        'warning' => count($phpConfig['issues'] ?? []) > 0 ? 'Server Version veraltet - Update erforderlich' : 'Server Einstellungen überprüfen',
-        'error' => 'Server Version kritisch veraltet - Sofortiges Update erforderlich',
-        default => 'Server Status überprüfen'
-    };
-    
-    // Bei kritischen PHP-Problemen Rot, sonst Orange
-    $phpClass = 'danger'; // Standard: Rot für alle Probleme
-    if ($phpConfig['status'] === 'warning' && count($phpConfig['issues'] ?? []) === 0) {
-        $phpClass = 'warning'; // Nur bei harmlosen Warnings Orange
-    }
-}
-
-$content .= '<div class="col-lg-3 col-md-6">';
-$content .= '<div class="panel panel-' . $phpClass . '">';
-$content .= '<div class="panel-heading">';
-$content .= '<div class="row">';
-$content .= '<div class="col-xs-3"><i class="fa fa-server fa-5x"></i></div>';
-$content .= '<div class="col-xs-9 text-right">';
-$content .= '<div class="huge">' . ($phpConfig['status'] === 'optimal' ? 'OK' : ($phpReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
-$content .= '<div>' . $addon->i18n('upkeep_dashboard_server_setup') . '</div>';
-$content .= '</div></div></div>';
-$content .= '<div class="panel-footer"><span class="pull-left">' . $serverMessage . '</span>';
-$content .= '<span class="pull-right"><i class="fa fa-server"></i></span><div class="clearfix"></div></div>';
-$content .= '</div></div>';
-
-$content .= '</div>'; // Ende row
-
-$fragment = new rex_fragment();
-$fragment->setVar('title', '<i class="fa fa-tachometer"></i> ' . $addon->i18n('upkeep_dashboard_system_status') . ' <small>' . $addon->i18n('upkeep_dashboard_core_system_checks') . '</small>', false);
-$fragment->setVar('body', $content, false);
-echo $fragment->parse('core/page/section.php');
-
-// Security Checks Section - nur aktivierte Module anzeigen
-if ($securityAdvisorEnabled || $mailSecurityEnabled) {
-    $securityContent = '<div class="row">';
-    
-    // Mail Security Card - nur wenn aktiviert
-    if ($mailSecurityEnabled) {
-        $mailSecurityStatus = $advisor->getMailSecurityStatus();
-        $mailClass = $mailSecurityStatus['active'] ? 'success' : 'info';
-        $mailIcon = $mailSecurityStatus['active'] ? 'fa-envelope-o' : 'fa-envelope';
-
-        $mailMessage = $mailSecurityStatus['active'] ? $addon->i18n('upkeep_dashboard_email_protection_active') : $addon->i18n('upkeep_dashboard_email_protection_configure');
-
-        $securityContent .= '<div class="col-lg-3 col-md-6">';
-        $securityContent .= '<div class="panel panel-' . $mailClass . '">';
-        $securityContent .= '<div class="panel-heading">';
-        $securityContent .= '<div class="row">';
-        $securityContent .= '<div class="col-xs-3"><i class="fa ' . $mailIcon . ' fa-5x"></i></div>';
-        $securityContent .= '<div class="col-xs-9 text-right">';
-        $securityContent .= '<div class="huge">' . ($mailSecurityStatus['active'] ? 'AKTIV' : 'SETUP') . '</div>';
-        $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_mail_protection') . '</div>';
-        $securityContent .= '</div></div></div>';
-        $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $mailMessage . '</span>';
-        $securityContent .= '<span class="pull-right"><i class="fa fa-info-circle"></i></span><div class="clearfix"></div></div>';
-        $securityContent .= '</div></div>';
-    }
-
-    // E-Mail Konfiguration Card - Vereinfacht (nur wenn Mail Security aktiviert)
-    if ($mailSecurityEnabled) {
-        $phpmailerStatus = $advisor->checkPhpMailerConfig();
-        $phpmailerClass = match($phpmailerStatus['status']) {
-            'configured' => 'success',
-            'partial' => 'warning',
-            'missing' => 'warning',
-            'warning' => 'warning',
-            default => 'default'
-        };
-
-        // Benutzerfreundliche Meldung ohne technische Details
-        $emailMessage = match($phpmailerStatus['status']) {
-            'configured' => $addon->i18n('upkeep_email_configuration_ok'),
-            'partial' => $addon->i18n('upkeep_dashboard_email_settings_check'),
-            'missing' => $addon->i18n('upkeep_dashboard_email_settings_check'),
-            'warning' => $addon->i18n('upkeep_dashboard_email_settings_check'),
-            default => $addon->i18n('upkeep_dashboard_email_status_unknown')
-        };
-
-        $securityContent .= '<div class="col-lg-3 col-md-6">';
-        $securityContent .= '<div class="panel panel-' . $phpmailerClass . '">';
-        $securityContent .= '<div class="panel-heading">';
-        $securityContent .= '<div class="row">';
-        $securityContent .= '<div class="col-xs-3"><i class="fa fa-envelope-square fa-5x"></i></div>';
-        $securityContent .= '<div class="col-xs-9 text-right">';
-        $securityContent .= '<div class="huge">' . ($phpmailerStatus['status'] === 'configured' ? 'OK' : 'PRÜFEN') . '</div>';
-        $securityContent .= '<div>E-Mail System</div>';
-        $securityContent .= '</div></div></div>';
-        $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $emailMessage . '</span>';
-        $securityContent .= '<span class="pull-right"><i class="fa fa-cog"></i></span><div class="clearfix"></div></div>';
-        $securityContent .= '</div></div>';
-    }
-
-    // Sicherheits-Konfiguration Card - nur wenn Security Advisor aktiviert
-    if ($securityAdvisorEnabled) {
-        $securityHeaders = $advisor->checkSecurityHeaders();
-        $securityReleased = $advisor->isCheckReleased('security_settings');
-
-        // Status basierend auf Sicherheitsstatus und Admin-Freigabe
-        if ($securityHeaders['status'] === 'secure') {
-            // Alles OK - Grün
-            $headersClass = 'success';
-            $headersIcon = 'fa-shield';
-            $securityMessage = 'Sicherheitseinstellungen aktiv';
-        } elseif ($securityReleased) {
-            // Admin hat Freigabe erteilt - Grün
-            $headersClass = 'success';
-            $headersIcon = 'fa-shield';
-            $securityMessage = $addon->i18n('upkeep_dashboard_checked_and_approved');
-        } else {
-            // Probleme vorhanden - Orange/Rot
-            $headersClass = 'warning';
-            $headersIcon = 'fa-exclamation-triangle';
-            $securityMessage = 'Sicherheitseinstellungen überprüfen';
+        $action = rex_post('upk_action', 'string');
+        if (in_array($action, ['frontend_on', 'frontend_off'], true) && $can('maintenance')) {
+            $on = 'frontend_on' === $action;
+            if (method_exists(Upkeep::class, 'setMaintenance')) {
+                Upkeep::setMaintenance('frontend', $on, 'dashboard');
+            } else {
+                $addon->setConfig('frontend_active', $on ? 1 : 0);
+            }
+            echo rex_view::success(rex_escape(rex_i18n::rawMsg($on ? 'upkeep_dash_frontend_now_on' : 'upkeep_dash_frontend_now_off')));
+        } elseif ('dismiss_notes' === $action && $isAdmin) {
+            $addon->removeConfig('migration_notes');
         }
-
-        $securityContent .= '<div class="col-lg-3 col-md-6">';
-        $securityContent .= '<div class="panel panel-' . $headersClass . '">';
-        $securityContent .= '<div class="panel-heading">';
-        $securityContent .= '<div class="row">';
-        $securityContent .= '<div class="col-xs-3"><i class="fa ' . $headersIcon . ' fa-5x"></i></div>';
-        $securityContent .= '<div class="col-xs-9 text-right">';
-        $securityContent .= '<div class="huge">' . ($securityHeaders['status'] === 'secure' ? 'OK' : ($securityReleased ? 'GEPRÜFT ✓' : 'PRÜFEN')) . '</div>';
-        $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_security') . '</div>';
-        $securityContent .= '</div></div></div>';
-        $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $securityMessage . '</span>';
-        $securityContent .= '<span class="pull-right"><i class="fa fa-shield"></i></span><div class="clearfix"></div></div>';
-        $securityContent .= '</div></div>';
     }
-
-    // Addon Security Card - nur wenn Security Advisor aktiviert
-    if ($securityAdvisorEnabled) {
-        $addonSecurity = $advisor->checkAddonSecurity();
-        $addonClass = $addonSecurity['status'] === 'secure' ? 'success' : 'info';
-
-        $securityContent .= '<div class="col-lg-3 col-md-6">';
-        $securityContent .= '<div class="panel panel-' . $addonClass . '">';
-        $securityContent .= '<div class="panel-heading">';
-        $securityContent .= '<div class="row">';
-        $securityContent .= '<div class="col-xs-3"><i class="fa fa-puzzle-piece fa-5x"></i></div>';
-        $securityContent .= '<div class="col-xs-9 text-right">';
-        $securityContent .= '<div class="huge">' . count($addonSecurity['addons']) . '</div>';
-        $securityContent .= '<div>' . $addon->i18n('upkeep_dashboard_addons') . '</div>';
-        $securityContent .= '</div></div></div>';
-        $securityContent .= '<div class="panel-footer"><span class="pull-left">' . $addonSecurity['message'] . '</span>';
-        $securityContent .= '<span class="pull-right"><i class="fa fa-puzzle-piece"></i></span><div class="clearfix"></div></div>';
-        $securityContent .= '</div></div>';
-    }
-
-    $securityContent .= '</div>'; // Ende row
-
-    $fragment = new rex_fragment();
-    $fragment->setVar('title', '<i class="fa fa-shield"></i> ' . $addon->i18n('upkeep_dashboard_security_checks') . ' <small>' . $addon->i18n('upkeep_dashboard_security_assessment_monitoring') . '</small>', false);
-    $fragment->setVar('body', $securityContent, false);
-    echo $fragment->parse('core/page/section.php');
 }
 
+$frontendOn = (bool) $addon->getConfig('frontend_active', false);
+$backendOn = (bool) $addon->getConfig('backend_active', false);
 
+// ---------- Hinweise nach dem Update (einmalig, nur Admins) ----------
+$notes = (array) $addon->getConfig('migration_notes', []);
+if ($isAdmin && $notes) {
+    $items = '';
+    foreach ($notes as $note) {
+        $items .= '<li>' . rex_escape(rex_i18n::rawMsg('upkeep_migration_' . $note)) . '</li>';
+    }
+    echo '<div class="alert alert-info"><strong>' . rex_escape(rex_i18n::rawMsg('upkeep_migration_title')) . '</strong><ul>' . $items . '</ul>'
+        . Ui::postButton('dismiss_notes', rex_i18n::rawMsg('upkeep_migration_dismiss'), 'upkeep_dashboard', [], 'btn-default btn-xs') . '</div>';
+}
 
-// System Status Panel - Statistiken nur für aktivierte Module
-$actionsContent = '<div class="row">';
-$actionsContent .= '<div class="col-lg-12">';
-$actionsContent .= '<div class="panel panel-default">';
-$actionsContent .= '<div class="panel-heading"><h3 class="panel-title"><i class="fa fa-info-circle"></i> System Status</h3></div>';
-$actionsContent .= '<div class="panel-body">';
-
-// Einfache Statistiken ohne technische Details
-$actionsContent .= '<div class="row">';
-
-// IPS-Statistiken nur anzeigen wenn IPS aktiviert ist
-if ($ipsEnabled) {
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4>' . $ipsStats['blocked_ips'] . '</h4>';
-    $actionsContent .= '<p class="text-muted">Blockierte Zugriffe</p>';
-    $actionsContent .= '</div>';
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4>' . $ipsStats['threats_today'] . '</h4>';
-    $actionsContent .= '<p class="text-muted">Bedrohungen heute</p>';
-    $actionsContent .= '</div>';
+// ---------- Kopf: Status der Website ----------
+if ($frontendOn) {
+    $heroIcon = Ui::icon('fa-power-off', 'red');
+    $heroTitle = rex_i18n::rawMsg('upkeep_dash_site_maintenance');
+    $heroText = rex_i18n::rawMsg('upkeep_dash_site_maintenance_text');
 } else {
-    // Platzhalter für deaktiviertes IPS
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4><span class="text-muted">—</span></h4>';
-    $actionsContent .= '<p class="text-muted">IPS deaktiviert</p>';
-    $actionsContent .= '</div>';
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4><span class="text-muted">—</span></h4>';
-    $actionsContent .= '<p class="text-muted">IPS deaktiviert</p>';
-    $actionsContent .= '</div>';
+    $heroIcon = Ui::icon('fa-check', 'green');
+    $heroTitle = rex_i18n::rawMsg('upkeep_dash_site_online');
+    $heroText = rex_i18n::rawMsg('upkeep_dash_site_online_text');
 }
-
-// Mail-Bedrohungen nur anzeigen wenn Mail Security aktiviert ist
-if ($mailSecurityEnabled) {
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4>' . ($mailStats['threats_24h'] ?? 0) . '</h4>';
-    $actionsContent .= '<p class="text-muted">E-Mail Bedrohungen</p>';
-    $actionsContent .= '</div>';
-} else {
-    // Platzhalter für deaktiviertes Modul
-    $actionsContent .= '<div class="col-md-3 text-center">';
-    $actionsContent .= '<h4><span class="text-muted">—</span></h4>';
-    $actionsContent .= '<p class="text-muted">E-Mail Schutz deaktiviert</p>';
-    $actionsContent .= '</div>';
+if ($backendOn) {
+    $heroText .= ' ' . rex_i18n::rawMsg('upkeep_dash_backend_locked');
 }
-
-$actionsContent .= '<div class="col-md-3 text-center">';
-if ($ipsEnabled) {
-    $actionsContent .= '<h4>' . ($ipsActive ? 'Aktiv' : 'Inaktiv') . '</h4>';
-    $actionsContent .= '<p class="text-muted">Sicherheitssystem</p>';
-} else {
-    $actionsContent .= '<h4><span class="text-muted">—</span></h4>';
-    $actionsContent .= '<p class="text-muted">IPS deaktiviert</p>';
+$heroActions = '';
+if ($can('maintenance')) {
+    $heroActions .= $frontendOn
+        ? Ui::postButton('frontend_off', rex_i18n::rawMsg('upkeep_dash_frontend_off'), 'upkeep_dashboard', [], 'btn-primary', '', 'fa-play')
+        : Ui::postButton('frontend_on', rex_i18n::rawMsg('upkeep_dash_frontend_on'), 'upkeep_dashboard', [], 'btn-default', rex_i18n::rawMsg('upkeep_dash_frontend_on_confirm'), 'fa-power-off');
+    $heroActions .= '<a class="btn btn-default" href="' . rex_url::backendPage('upkeep/maintenance/status') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_maintenance_details')) . '</a>';
 }
-$actionsContent .= '</div>';
-$actionsContent .= '</div>';
+echo '<div class="upk-hero"><div class="upk-hero-main">' . $heroIcon . '<div><h2>' . rex_escape($heroTitle) . '</h2><p>' . rex_escape($heroText) . '</p></div></div>'
+    . ('' !== $heroActions ? '<div class="upk-hero-actions">' . $heroActions . '</div>' : '') . '</div>';
 
-// Wartungsstatus separat prüfen
-$maintenanceCheck = $advisor->runAllChecks();
-$maintenanceStatus = $maintenanceCheck['checks']['maintenance_status'] ?? null;
-
-// Zeige Wartungsnachricht IMMER an, wenn Wartung erforderlich ist
-if ($maintenanceStatus && $maintenanceStatus['status'] === 'error') {
-    echo '<div class="alert alert-danger" role="alert">';
-    echo '<h4><i class="fa fa-exclamation-triangle"></i> ' . $addon->i18n('upkeep_dashboard_maintenance_required') . '</h4>';
-    
-    // Zeige alle Wartungsnachrichten
-    $maintenanceDetails = $maintenanceStatus['details'];
-    if (!empty($maintenanceDetails['maintenance_message'])) {
-        echo '<p><strong>' . $addon->i18n('upkeep_maintenance_message') . ':</strong> ' . $maintenanceDetails['maintenance_message'] . '</p>';
+// ---------- Kacheln ----------
+$tiles = [];
+$offTile = static function (string $title, string $iconHtml, string $section) use ($addon, $isAdmin): string {
+    $foot = $isAdmin ? '<a href="' . rex_url::backendPage('upkeep/settings', ['section' => $section]) . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_enable')) . '</a>' : '';
+    return Ui::tile($title, $iconHtml, '<div>' . Ui::badge(rex_i18n::rawMsg('upkeep_dash_off')) . '</div><p class="upk-tile-text">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_off_text')) . '</p>', $foot);
+};
+$safe = static function (callable $fn, mixed $fallback = null): mixed {
+    try {
+        return $fn();
+    } catch (Throwable $e) {
+        rex_logger::logException($e);
+        return $fallback;
     }
-    
-    if (!empty($maintenanceDetails['maintenance_contact'])) {
-        echo '<p><strong>' . $addon->i18n('upkeep_dashboard_contact_technical_maintainer', $maintenanceDetails['maintenance_contact']) . '</strong></p>';
+};
+
+// Schutz (IPS)
+if ($can('ips')) {
+    $title = rex_i18n::rawMsg('upkeep_dash_tile_ips');
+    $icon = Ui::icon('fa-shield', 'blue');
+    if ($addon->getConfig('ips_active', false)) {
+        $stats = $safe(static fn () => IntrusionPrevention::getStatistics(), []) ?: [];
+        $body = '<div class="upk-tile-value">' . (int) ($stats['threats_today'] ?? 0) . ' <small>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_today')) . '</small></div>'
+            . '<ul class="upk-facts"><li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_week')) . '</span><span>' . (int) ($stats['threats_week'] ?? 0) . '</span></li>'
+            . '<li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_blocked_ips')) . '</span><span>' . (int) ($stats['blocked_ips'] ?? 0) . '</span></li></ul>';
+        $badge = $addon->getConfig('ips_monitor_only', false) ? Ui::badge(rex_i18n::rawMsg('upkeep_dash_monitor_only'), 'info') : Ui::badge(rex_i18n::rawMsg('upkeep_dash_on'), 'ok');
+        $tiles[] = Ui::tile($title, $icon, $body, $badge . '<a href="' . rex_url::backendPage('upkeep/protection/events') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_events')) . '</a>');
+    } else {
+        $tiles[] = $offTile($title, $icon, 'ips');
     }
-    
-    echo '<p>' . $addon->i18n('upkeep_maintenance_system_unavailable') . '</p>';
-    echo '</div>';
 }
 
-$actionsContent .= '</div>';
-$actionsContent .= '</div>';
-$actionsContent .= '</div>';
-$actionsContent .= '</div>'; // Ende row
+// Formularschutz
+if ($can('forms')) {
+    $title = rex_i18n::rawMsg('upkeep_dash_tile_forms');
+    $icon = Ui::icon('fa-wpforms', 'green');
+    if ($addon->getConfig('form_protection_active', false) && class_exists(FormProtection::class)) {
+        $stats = $safe(static fn () => FormProtection::getStats(30), []) ?: [];
+        $body = '<div class="upk-tile-value">' . (int) ($stats['total'] ?? 0) . ' <small>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_forms_rejected')) . '</small></div>'
+            . '<p class="upk-tile-text">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_forms_text')) . '</p>';
+        $tiles[] = Ui::tile($title, $icon, $body, Ui::badge(rex_i18n::rawMsg('upkeep_dash_on'), 'ok') . '<a href="' . rex_url::backendPage('upkeep/protection/forms') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_details')) . '</a>');
+    } else {
+        $tiles[] = $offTile($title, $icon, 'forms');
+    }
+}
 
-$fragment = new rex_fragment();
-$fragment->setVar('title', '<i class="fa fa-tachometer"></i> ' . $addon->i18n('upkeep_dashboard_system_overview'), false);
-$fragment->setVar('body', $actionsContent, false);
-echo $fragment->parse('core/page/section.php');
+// E-Mail-Schutz
+if ($can('mail_security')) {
+    $title = rex_i18n::rawMsg('upkeep_dash_tile_mail');
+    $icon = Ui::icon('fa-envelope-o', 'teal');
+    if ($addon->getConfig('mail_security_active', false)) {
+        $stats = $safe(static fn () => MailSecurityFilter::getDashboardStats(), []) ?: [];
+        $body = '<div class="upk-tile-value">' . (int) ($stats['blocked_emails_24h'] ?? 0) . ' <small>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_mail_blocked_24h')) . '</small></div>'
+            . '<ul class="upk-facts"><li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_mail_threats_24h')) . '</span><span>' . (int) ($stats['threats_24h'] ?? 0) . '</span></li></ul>';
+        $tiles[] = Ui::tile($title, $icon, $body, Ui::badge(rex_i18n::rawMsg('upkeep_dash_on'), 'ok') . '<a href="' . rex_url::backendPage('upkeep/protection/mail') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_details')) . '</a>');
+    } else {
+        $tiles[] = $offTile($title, $icon, 'mail');
+    }
+}
+
+// Empfehlungen
+if ($can('advisor') && $addon->getConfig('advisor_active', true)) {
+    $recs = (new SecurityAdvisor())->getRecommendations();
+    $open = count($recs['open']);
+    $high = count(array_filter($recs['open'], static fn ($r) => 'high' === $r['priority']));
+    if ($recs['last_check'] > 0) {
+        $body = '<div class="upk-tile-value">' . $open . ' <small>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_recs_open')) . '</small></div>'
+            . '<p class="upk-tile-text">' . rex_escape($high > 0 ? rex_i18n::rawMsg('upkeep_dash_recs_high', (string) $high) : rex_i18n::rawMsg('upkeep_dash_recs_calm')) . '</p>';
+        $foot = '<span class="upk-muted">' . rex_escape(Ui::date($recs['last_check'])) . '</span>';
+    } else {
+        $body = '<p class="upk-tile-text">' . rex_escape(rex_i18n::rawMsg('upkeep_advisor_never_checked')) . '</p>';
+        $foot = '';
+    }
+    $tiles[] = Ui::tile(rex_i18n::rawMsg('upkeep_dash_tile_advisor'), Ui::icon('fa-lightbulb-o', 'orange'), $body,
+        $foot . '<a href="' . rex_url::backendPage('upkeep/advisor') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_recs')) . '</a>');
+}
+
+// Weiterleitungen
+if ($can('domain_mapping')) {
+    $title = rex_i18n::rawMsg('upkeep_dash_tile_redirects');
+    $icon = Ui::icon('fa-share', 'indigo');
+    if ($addon->getConfig('domain_mapping_active', false)) {
+        $count = (int) $safe(static fn () => rex_sql::factory()->getArray('SELECT COUNT(*) AS c FROM ' . rex::getTable('upkeep_domain_mapping') . ' WHERE status = 1')[0]['c'] ?? 0, 0);
+        $tiles[] = Ui::tile($title, $icon, '<div class="upk-tile-value">' . $count . ' <small>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_redirects_active')) . '</small></div>',
+            Ui::badge(rex_i18n::rawMsg('upkeep_dash_on'), 'ok') . '<a href="' . rex_url::backendPage('upkeep/maintenance/redirects') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_details')) . '</a>');
+    } else {
+        $tiles[] = $offTile($title, $icon, 'redirects');
+    }
+}
+
+// Speicher (für alle)
+$report = class_exists(Storage::class) ? $safe(static fn () => Storage::getReport(), []) : [];
+if ($report) {
+    $cats = array_values((array) ($report['categories'] ?? []));
+    usort($cats, static fn ($a, $b) => ((int) ($b['bytes'] ?? 0)) <=> ((int) ($a['bytes'] ?? 0)));
+    $facts = '';
+    foreach (array_slice($cats, 0, 3) as $cat) {
+        if ((int) ($cat['bytes'] ?? 0) <= 0) {
+            continue;
+        }
+        $facts .= '<li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_storage_cat_' . ($cat['key'] ?? ''))) . '</span><span>' . rex_escape(rex_formatter::bytes((int) $cat['bytes'], [1])) . '</span></li>';
+    }
+    $body = '<div class="upk-tile-value">' . rex_escape(rex_formatter::bytes((int) ($report['total_bytes'] ?? 0), [1])) . '</div>'
+        . ('' !== $facts ? '<ul class="upk-facts">' . $facts . '</ul>' : '');
+    $foot = '<span class="upk-muted">' . rex_escape(Ui::date((int) ($report['computed_at'] ?? 0))) . '</span>';
+} else {
+    $body = '<p class="upk-tile-text">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_storage_none')) . '</p>';
+    $foot = '';
+}
+$tiles[] = Ui::tile(rex_i18n::rawMsg('upkeep_dash_tile_storage'), Ui::icon('fa-hdd-o', 'gray'), $body,
+    $foot . '<a href="' . rex_url::backendPage('upkeep/storage') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_storage')) . '</a>');
+
+// System (nur Admins)
+if ($isAdmin) {
+    $dbVersion = (string) $safe(static fn () => rex_sql::getServerVersion(), '');
+    $facts = '<ul class="upk-facts">'
+        . '<li><span>REDAXO</span><span>' . rex_escape(rex::getVersion()) . '</span></li>'
+        . '<li><span>PHP</span><span>' . rex_escape(PHP_VERSION) . '</span></li>'
+        . ('' !== $dbVersion ? '<li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_database')) . '</span><span>' . rex_escape($dbVersion) . '</span></li>' : '')
+        . '<li><span>upkeep</span><span>' . rex_escape($addon->getVersion()) . '</span></li>'
+        . '<li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_debug')) . '</span><span>' . rex_escape(rex_i18n::rawMsg(rex::isDebugMode() ? 'upkeep_dash_on' : 'upkeep_dash_off')) . '</span></li>'
+        . '</ul>';
+    $tiles[] = Ui::tile(rex_i18n::rawMsg('upkeep_dash_tile_system'), Ui::icon('fa-server', 'purple'), $facts,
+        '<a href="' . rex_url::backendPage('upkeep/settings') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_nav_settings')) . '</a>');
+}
+
+// Ansprechpartner (für alle, wenn gepflegt)
+$contact = trim((string) $addon->getConfig('maintenance_contact', ''));
+if ('' !== $contact) {
+    $tiles[] = Ui::tile(rex_i18n::rawMsg('upkeep_dash_tile_contact'), Ui::icon('fa-life-ring', 'pink'), '<p class="upk-tile-text">' . nl2br(rex_escape($contact)) . '</p>');
+}
+
+echo '<div class="upk-tiles">' . implode('', $tiles) . '</div>';

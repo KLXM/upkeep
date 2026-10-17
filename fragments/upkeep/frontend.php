@@ -8,61 +8,117 @@ use KLXM\Upkeep\Upkeep;
 $addon = Upkeep::getAddon();
 
 // Mehrsprachigkeitslogik
-$multilanguageEnabled = $addon->getConfig('multilanguage_enabled', 0);
-$languageTexts = json_decode($addon->getConfig('multilanguage_texts', '[]'), true) ?: [];
+$multilanguageEnabled = (bool) $addon->getConfig('multilanguage_enabled', 0);
+$languageTexts = json_decode((string) $addon->getConfig('multilanguage_texts', '[]'), true);
+$languageTexts = is_array($languageTexts) ? array_values(array_filter($languageTexts, static fn ($l) => is_array($l) && isset($l['language_code']) && is_string($l['language_code']) && preg_match('/^[a-zA-Z]{2,3}([_-][a-zA-Z0-9]{2,8})?$/', $l['language_code']))) : [];
 
 // Aktuelle Sprache ermitteln - erste Sprache als Standard
-$currentLanguage = !empty($languageTexts) ? $languageTexts[0]['language_code'] : 'de';
+$currentLanguage = !empty($languageTexts) ? (string) $languageTexts[0]['language_code'] : 'de';
 $languagesByCode = [];
 
 if ($multilanguageEnabled && !empty($languageTexts)) {
-    // Zuerst alle verfügbaren Sprachen in ein assoziatives Array umwandeln
     foreach ($languageTexts as $lang) {
-        if (isset($lang['language_code'])) {
-            $languagesByCode[$lang['language_code']] = $lang;
-        }
+        $languagesByCode[$lang['language_code']] = $lang;
     }
-    
+
     // Sprache aus URL-Parameter oder Cookie, Fallback auf erste verfügbare Sprache
     $requestedLang = rex_request('lang', 'string', '');
-    if ($requestedLang && isset($languagesByCode[$requestedLang])) {
+    if ($requestedLang !== '' && isset($languagesByCode[$requestedLang])) {
         $currentLanguage = $requestedLang;
-        setcookie('upkeep_lang', $currentLanguage, time() + (86400 * 30), '/'); // 30 Tage
-    } elseif ($cookieLang = $_COOKIE['upkeep_lang'] ?? '') {
-        if (isset($languagesByCode[$cookieLang])) {
-            $currentLanguage = $cookieLang;
+        if (!headers_sent()) {
+            setcookie('upkeep_lang', $currentLanguage, [
+                'expires' => time() + (86400 * 30),
+                'path' => '/',
+                'samesite' => 'Lax',
+                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+                'httponly' => true,
+            ]);
         }
+    } elseif (is_string($cookieLang = $_COOKIE['upkeep_lang'] ?? '') && isset($languagesByCode[$cookieLang])) {
+        $currentLanguage = $cookieLang;
+    } else {
+        // Reihenfolge: Browsersprache (Accept-Language) -> multilanguage_default -> erster Eintrag
+        $findCode = static function (string $wanted) use ($languagesByCode): ?string {
+            $wanted = strtolower(str_replace('-', '_', trim($wanted)));
+            if ($wanted === '') {
+                return null;
+            }
+            $primary = explode('_', $wanted)[0];
+            $primaryMatch = null;
+            foreach (array_keys($languagesByCode) as $code) {
+                $normalized = strtolower(str_replace('-', '_', (string) $code));
+                if ($normalized === $wanted) {
+                    return (string) $code;
+                }
+                if ($primaryMatch === null && explode('_', $normalized)[0] === $primary) {
+                    $primaryMatch = (string) $code;
+                }
+            }
+            return $primaryMatch;
+        };
+
+        $detected = null;
+        $acceptLanguage = substr(rex_server('HTTP_ACCEPT_LANGUAGE', 'string', ''), 0, 500);
+        if ($acceptLanguage !== '') {
+            $candidates = [];
+            foreach (explode(',', $acceptLanguage) as $i => $part) {
+                $pieces = explode(';', trim($part));
+                $tag = trim($pieces[0]);
+                if ($tag === '' || $tag === '*' || !preg_match('/^[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*$/', $tag)) {
+                    continue;
+                }
+                $q = 1.0;
+                if (isset($pieces[1]) && preg_match('/^\s*q\s*=\s*([01](?:\.\d{0,3})?)\s*$/i', $pieces[1], $m)) {
+                    $q = (float) $m[1];
+                }
+                if ($q > 0) {
+                    $candidates[] = [$tag, $q, $i];
+                }
+                if (count($candidates) >= 20) {
+                    break;
+                }
+            }
+            usort($candidates, static fn ($a, $b) => [$b[1], $a[2]] <=> [$a[1], $b[2]]);
+            foreach ($candidates as [$tag]) {
+                $detected = $findCode($tag);
+                if ($detected !== null) {
+                    break;
+                }
+            }
+        }
+        $currentLanguage = $detected ?? $findCode((string) $addon->getConfig('multilanguage_default', 'de')) ?? $currentLanguage;
     }
-    // Wenn immer noch die Standardsprache verwendet wird, verwende die erste verfügbare
-    if (!isset($languagesByCode[$currentLanguage]) && !empty($languagesByCode)) {
-        $currentLanguage = array_keys($languagesByCode)[0];
+    if (!isset($languagesByCode[$currentLanguage])) {
+        $currentLanguage = (string) array_key_first($languagesByCode);
     }
 }
 
 // Texte für die aktuelle Sprache ermitteln
 $currentTexts = [];
 if ($multilanguageEnabled && !empty($languageTexts)) {
-    // Verwende die bereits erstellte $languagesByCode Array
-    $currentTexts = $languagesByCode[$currentLanguage] ?? $languagesByCode[$defaultLanguage] ?? $languageTexts[0];
+    $currentTexts = $languagesByCode[$currentLanguage] ?? $languageTexts[0];
 }
 
 // Fallback auf alte Einstellungen wenn keine Mehrsprachigkeit oder keine Texte vorhanden
-$title = $currentTexts['title'] ?? $addon->getConfig('maintenance_page_title', 'Wartungsarbeiten');
-$message = $currentTexts['message'] ?? $addon->getConfig('maintenance_page_message', 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.');
-$passwordLabel = $currentTexts['password_label'] ?? 'Passwort eingeben';
-$passwordButton = $currentTexts['password_button'] ?? 'Anmelden';
-$languageSwitchLabel = $currentTexts['language_switch'] ?? 'Sprache wählen';
+$title = (string) ($currentTexts['title'] ?? $addon->getConfig('maintenance_page_title', 'Wartungsarbeiten'));
+$message = (string) ($currentTexts['message'] ?? $addon->getConfig('maintenance_page_message', 'Diese Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut.'));
+$passwordLabel = (string) ($currentTexts['password_label'] ?? 'Passwort eingeben');
+$passwordButton = (string) ($currentTexts['password_button'] ?? 'Anmelden');
+$languageSwitchLabel = (string) ($currentTexts['language_switch'] ?? 'Sprache wählen');
 
-$showPasswordForm = $addon->getConfig('frontend_password', '') !== '';
+$showPasswordForm = Upkeep::hasFrontendPassword();
 
-// Prüfen, ob eine Passwort-Fehler angezeigt werden soll
-$passwordError = false;
-if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_authorized', 'bool', false)) {
-    $passwordError = true;
+// Fehlerzustand des Passwortformulars (nur nach einem POST)
+$passwordErrorState = Upkeep::getPasswordError();
+$passwordErrorText = '';
+if ($passwordErrorState === 'locked') {
+    $passwordErrorText = (string) ($currentTexts['password_locked'] ?? $addon->i18n('upkeep_frontend_password_locked'));
+} elseif ($passwordErrorState === 'invalid') {
+    $passwordErrorText = (string) ($currentTexts['password_error'] ?? $addon->i18n('upkeep_frontend_password_error'));
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?= $currentLanguage ?>">
+<html lang="<?= rex_escape($currentLanguage) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -370,7 +426,7 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
         <?php if ($multilanguageEnabled && count($languageTexts) > 1): ?>
         <div class="language-switcher">
             <div class="language-dropdown">
-                <button class="language-button" id="language-toggle">
+                <button type="button" class="language-button" id="language-toggle" aria-label="<?= htmlspecialchars($languageSwitchLabel) ?>">
                     <svg class="language-flag" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M2 12h20"></path>
@@ -382,11 +438,12 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
                     <?php 
                     foreach ($languageTexts as $lang): 
                         $isActive = $lang['language_code'] === $currentLanguage;
+                    $langName = (string) ($lang['language_name'] ?? $lang['language_code']);
                     ?>
-                    <button class="language-option <?= $isActive ? 'active' : '' ?>" 
+                    <button type="button" class="language-option <?= $isActive ? 'active' : '' ?>" 
                             data-lang="<?= htmlspecialchars($lang['language_code']) ?>">
                         <span class="language-code"><?= htmlspecialchars(strtoupper($lang['language_code'])) ?></span>
-                        <?= htmlspecialchars($lang['language_name']) ?>
+                        <?= htmlspecialchars($langName) ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
@@ -408,12 +465,12 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
             
             <?php if ($showPasswordForm): ?>
             <form class="maintenance-password-form" method="post">
-                <?php if ($passwordError): ?>
-                <div class="error-message">Falsches Passwort. Bitte versuchen Sie es erneut.</div>
+                <?php if ($passwordErrorText !== ''): ?>
+                <div class="error-message" role="alert"><?= rex_escape($passwordErrorText) ?></div>
                 <?php endif; ?>
                 
                 <input type="password" name="upkeep_password" class="maintenance-input" 
-                       placeholder="<?= htmlspecialchars($passwordLabel) ?>" required>
+                       placeholder="<?= htmlspecialchars($passwordLabel) ?>" aria-label="<?= htmlspecialchars($passwordLabel) ?>" autocomplete="current-password" maxlength="512" required>
                 <button type="submit" class="maintenance-button"><?= htmlspecialchars($passwordButton) ?></button>
                 
                 <?php if ($multilanguageEnabled): ?>
@@ -485,7 +542,7 @@ if (rex_request('upkeep_password', 'string', '') !== '' && !rex_session('upkeep_
                     e.stopPropagation();
                     const selectedLang = this.dataset.lang;
                     
-                    if (selectedLang !== '<?= $currentLanguage ?>') {
+                    if (selectedLang !== <?= json_encode($currentLanguage, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>) {
                         // Add fading effect
                         mainContent.classList.add('fading');
                         
