@@ -1977,3 +1977,19 @@ upkeep_storage_disk_free = {0} of {1} free on the server
 upkeep_storage_server = Server
 upkeep_storage_breakdown = Breakdown
 upkeep_storage_empty_categories = Empty categories ({0})
+
+# upkeep 3 (lists)
+upkeep_list_ips_on = Protection switched on
+upkeep_list_ips_off = Protection switched off
+upkeep_list_events_intro = Attacks on the website detected by the protection.
+upkeep_list_blocked_title = Blocked IP addresses
+upkeep_list_blocked_intro = Addresses without access to the website – blocked automatically or manually.
+upkeep_list_allowlist_intro = Trusted addresses that the protection never blocks.
+upkeep_list_patterns_intro = Detection rules of the protection: your own and the bundled patterns.
+upkeep_list_patterns_custom = Custom patterns
+upkeep_list_patterns_default = Default patterns
+upkeep_list_stat_today = Today
+upkeep_list_stat_week = Last 7 days
+upkeep_list_show = Show
+upkeep_list_select = Select
+upkeep_list_pages = Pages

@@ -7,6 +7,8 @@
  * Der globale Schalter liegt in den Einstellungen (Abschnitt "redirects").
  */
 
+use KLXM\Upkeep\Ui;
+
 $addon = rex_addon::get('upkeep');
 $csrf = rex_csrf_token::factory('upkeep_redirects');
 $pageKey = 'upkeep/maintenance/redirects';
@@ -212,139 +214,70 @@ if (rex_post('save', 'bool')) {
     }
 }
 
+$t = static fn (string $key, string ...$args): string => rex_i18n::rawMsg($key, ...$args);
+$isAdmin = rex::requireUser()->isAdmin();
+
+// Kopf
+$active = (bool) $addon->getConfig('domain_mapping_active', false);
+$actions = Ui::badge($t($active ? 'upkeep_redirects_module_on' : 'upkeep_redirects_module_off'), $active ? 'ok' : 'muted');
+if ($isAdmin) {
+    $actions .= ' <a class="btn btn-default" href="' . rex_url::backendPage('upkeep/settings', ['section' => 'redirects']) . '">' . rex_escape($t('upkeep_nav_settings')) . '</a>';
+}
+echo Ui::hero($t('upkeep_redirects_title'), $t('upkeep_set_section_redirects_desc'), Ui::icon('fa-share', 'indigo'), $actions);
+
 echo implode('', $messages);
 
-// Formular
-if ($func === 'add' || $func === 'edit') {
-    if ($func === 'edit' && !$data) {
-        $sql = rex_sql::factory();
-        $sql->setQuery('SELECT * FROM ' . $table . ' WHERE id = ?', [$id]);
-        if ($sql->getRows() === 0) {
-            echo rex_view::error($addon->i18n('upkeep_redirects_not_found'));
-            $func = '';
-        } else {
-            foreach (['id', 'source_domain', 'source_path', 'target_url', 'redirect_code', 'is_wildcard', 'status', 'description'] as $col) {
-                $data[$col] = $sql->getValue($col);
-            }
+// Formulardaten
+if ($func === 'edit' && !$data) {
+    $sql = rex_sql::factory();
+    $sql->setQuery('SELECT * FROM ' . $table . ' WHERE id = ?', [$id]);
+    if ($sql->getRows() === 0) {
+        echo rex_view::error(rex_escape($t('upkeep_redirects_not_found')));
+        $func = '';
+    } else {
+        foreach (['id', 'source_domain', 'source_path', 'target_url', 'redirect_code', 'is_wildcard', 'status', 'description'] as $col) {
+            $data[$col] = $sql->getValue($col);
         }
     }
-    if ($func === 'add' && !isset($data['status'])) {
+}
+if ($func !== 'edit') {
+    if ($func !== 'add') {
+        $data = [];
+    }
+    if (!isset($data['status'])) {
         $data['status'] = 1;
     }
 }
-
-if ($func === 'add' || $func === 'edit') {
-    $formElements = [];
-
-    $n = [];
-    $n['label'] = '<label for="upk-source-domain">' . $addon->i18n('upkeep_domain_mapping_source_domain') . '</label>';
-    $n['field'] = '<input class="form-control" type="text" id="upk-source-domain" name="source_domain" value="' . rex_escape((string) ($data['source_domain'] ?? '')) . '" required maxlength="253" placeholder="alte-domain.de">';
-    $n['note'] = rex_escape($addon->i18n('upkeep_redirects_domain_note'));
-    $formElements[] = $n;
-
-    $n = [];
-    $n['label'] = '<label for="upk-source-path">' . $addon->i18n('upkeep_domain_mapping_source_path') . '</label>';
-    $n['field'] = '<input class="form-control upk-mono" type="text" id="upk-source-path" name="source_path" value="' . rex_escape((string) ($data['source_path'] ?? '')) . '" maxlength="255" placeholder="/pfad/zur/seite">';
-    $n['note'] = rex_escape($addon->i18n('upkeep_redirects_path_note'));
-    $formElements[] = $n;
-
-    $n = [];
-    $n['label'] = '<label for="upk-is-wildcard">' . $addon->i18n('upkeep_domain_mapping_is_wildcard') . '</label>';
-    $n['field'] = '<div class="checkbox"><label><input type="checkbox" id="upk-is-wildcard" name="is_wildcard" value="1"' . (!empty($data['is_wildcard']) ? ' checked' : '') . '> ' . rex_escape($addon->i18n('upkeep_redirects_wildcard_label')) . '</label></div>';
-    $n['note'] = rex_escape($addon->i18n('upkeep_domain_mapping_wildcard_note'));
-    $formElements[] = $n;
-
-    $n = [];
-    $n['label'] = '<label for="upk-target-url">' . $addon->i18n('upkeep_domain_mapping_target_url') . '</label>';
-    $n['field'] = '<input class="form-control upk-mono" type="url" id="upk-target-url" name="target_url" value="' . rex_escape((string) ($data['target_url'] ?? '')) . '" required maxlength="2000" placeholder="https://neue-domain.de/">';
-    $n['note'] = rex_escape($addon->i18n('upkeep_redirects_target_note'));
-    $formElements[] = $n;
-
-    $select = new rex_select();
-    $select->setId('upk-redirect-code');
-    $select->setName('redirect_code');
-    $select->setAttribute('class', 'form-control');
-    foreach ($allowedCodes as $code) {
-        $select->addOption($code . ' - ' . $addon->i18n('upkeep_redirects_code_' . $code), $code);
-    }
-    $select->setSelected((int) ($data['redirect_code'] ?? 301));
-    $n = [];
-    $n['label'] = '<label for="upk-redirect-code">' . $addon->i18n('upkeep_domain_mapping_redirect_code') . '</label>';
-    $n['field'] = $select->get();
-    $formElements[] = $n;
-
-    $n = [];
-    $n['label'] = '<label for="upk-description">' . $addon->i18n('upkeep_domain_mapping_description_field') . '</label>';
-    $n['field'] = '<textarea class="form-control" id="upk-description" name="description" rows="3" maxlength="1000">' . rex_escape((string) ($data['description'] ?? '')) . '</textarea>';
-    $formElements[] = $n;
-
-    $n = [];
-    $n['label'] = '<label for="upk-status">' . $addon->i18n('upkeep_domain_mapping_status') . '</label>';
-    $n['field'] = '<div class="checkbox"><label><input type="checkbox" id="upk-status" name="status" value="1"' . (!empty($data['status']) ? ' checked' : '') . '> ' . rex_escape($addon->i18n('upkeep_redirects_status_label')) . '</label></div>';
-    $formElements[] = $n;
-
-    $fragment = new rex_fragment();
-    $fragment->setVar('elements', $formElements, false);
-    $form = $fragment->parse('core/form/form.php');
-
-    $buttons = [
-        ['field' => '<button class="btn btn-save rex-form-aligned" type="submit" name="save" value="1">' . rex_i18n::msg('form_save') . '</button>'],
-        ['field' => '<a class="btn btn-abort" href="' . rex_url::backendPage($pageKey) . '">' . rex_i18n::msg('form_abort') . '</a>'],
-    ];
-    $fragment = new rex_fragment();
-    $fragment->setVar('elements', $buttons, false);
-    $buttonHtml = $fragment->parse('core/form/submit.php');
-
-    $fragment = new rex_fragment();
-    $fragment->setVar('class', 'edit', false);
-    $fragment->setVar('title', $func === 'add' ? $addon->i18n('upkeep_domain_mapping_add') : $addon->i18n('upkeep_domain_mapping_edit'), false);
-    $fragment->setVar('body', $form, false);
-    $fragment->setVar('buttons', $buttonHtml, false);
-
-    echo '<form action="' . rex_url::backendPage($pageKey) . '" method="post">';
-    echo $csrf->getHiddenField();
-    echo '<input type="hidden" name="func" value="' . rex_escape($func) . '">';
-    if ($func === 'edit') {
-        echo '<input type="hidden" name="id" value="' . (int) $id . '">';
-    }
-    echo $fragment->parse('core/page/section.php');
-    echo '</form>';
-    return;
-}
+$isEdit = $func === 'edit';
 
 // Liste
-$active = (bool) $addon->getConfig('domain_mapping_active', false);
-$settingsUrl = rex_url::backendPage('upkeep/settings', ['section' => 'redirects']);
-
-$toolbar = '<div class="upk-toolbar">';
-$toolbar .= '<a class="btn btn-primary" href="' . rex_url::backendPage($pageKey, ['func' => 'add']) . '"><i class="rex-icon rex-icon-add"></i> ' . rex_escape($addon->i18n('upkeep_domain_mapping_add')) . '</a>';
-$toolbar .= ' <span class="upk-badge ' . ($active ? 'upk-badge--ok' : 'upk-badge--muted') . '">' . rex_escape($active ? $addon->i18n('upkeep_redirects_module_on') : $addon->i18n('upkeep_redirects_module_off')) . '</span>';
-$toolbar .= ' <a href="' . $settingsUrl . '"><i class="rex-icon fa-cog"></i> ' . rex_escape($addon->i18n('upkeep_pages_settings_link')) . '</a>';
-$toolbar .= '</div>';
-
-$sql = rex_sql::factory();
 $rows = [];
 try {
-    $rows = $sql->getArray('SELECT * FROM ' . $table . ' ORDER BY source_domain, source_path');
+    $rows = rex_sql::factory()->getArray('SELECT * FROM ' . $table . ' ORDER BY source_domain, source_path');
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
-    echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+    echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
 }
 
+echo Ui::listTitle($t('upkeep_redirects_title'), count($rows));
+
 if (!$rows) {
-    $body = '<div class="upk-empty"><p>' . rex_escape($addon->i18n('upkeep_domain_mapping_no_entries')) . '</p>'
-        . '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_domain_mapping_help_text')) . '</p></div>';
+    echo '<div class="upk-group">' . Ui::emptyState($t('upkeep_domain_mapping_no_entries'), 'fa-share') . '</div>';
 } else {
+    $labels = [
+        'domain' => $t('upkeep_domain_mapping_source_domain'),
+        'path' => $t('upkeep_domain_mapping_source_path'),
+        'target' => $t('upkeep_domain_mapping_target_url'),
+        'code' => $t('upkeep_redirects_code_short'),
+        'status' => $t('upkeep_domain_mapping_status'),
+        'description' => $t('upkeep_domain_mapping_description_field'),
+        'actions' => $t('upkeep_actions'),
+    ];
     $body = '<form id="upk-redirects-row" action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField() . '</form>';
-    $body .= '<div class="table-responsive"><table class="table table-striped table-hover">';
-    $body .= '<thead><tr>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_domain_mapping_source_domain')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_domain_mapping_source_path')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_domain_mapping_target_url')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_redirects_code_short')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_domain_mapping_status')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_domain_mapping_description_field')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+    foreach ($labels as $key => $label) {
+        $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
     $body .= '</tr></thead><tbody>';
 
     foreach ($rows as $row) {
@@ -354,30 +287,54 @@ if (!$rows) {
         $desc = (string) ($row['description'] ?? '');
         $isOn = (int) $row['status'] === 1;
 
-        $body .= '<tr>';
-        $body .= '<td>' . rex_escape((string) $row['source_domain']) . '</td>';
-        $body .= '<td>' . ($path === ''
-            ? '<span class="upk-muted">' . rex_escape($addon->i18n('upkeep_redirects_domain_only')) . '</span>'
+        $body .= '<tr' . ($isEdit && $rowId === (int) $id ? ' class="upk-table-current"' : '') . '>';
+        $body .= Ui::td($labels['domain'], rex_escape((string) $row['source_domain']), 'upk-nowrap');
+        $body .= Ui::td($labels['path'], ($path === ''
+            ? '<span class="upk-muted">' . rex_escape($t('upkeep_redirects_domain_only')) . '</span>'
             : '<span class="upk-mono">' . rex_escape($path) . '</span>')
-            . ((int) $row['is_wildcard'] ? ' <span class="upk-badge upk-badge--muted">' . rex_escape($addon->i18n('upkeep_redirects_wildcard_badge')) . '</span>' : '')
-            . '</td>';
-        $body .= '<td><span class="upk-mono" title="' . rex_escape($target) . '">' . rex_escape(mb_strimwidth($target, 0, 60, '…')) . '</span></td>';
-        $body .= '<td>' . (int) $row['redirect_code'] . '</td>';
-        $body .= '<td><span class="upk-badge ' . ($isOn ? 'upk-badge--ok' : 'upk-badge--muted') . '">' . rex_escape($isOn ? $addon->i18n('upkeep_active') : $addon->i18n('upkeep_inactive')) . '</span></td>';
-        $body .= '<td><span class="upk-muted" title="' . rex_escape($desc) . '">' . rex_escape(mb_strimwidth($desc, 0, 40, '…')) . '</span></td>';
-        $body .= '<td class="upk-actions">';
-        $body .= '<a class="btn btn-default btn-xs" href="' . rex_url::backendPage($pageKey, ['func' => 'edit', 'id' => $rowId]) . '"><i class="rex-icon rex-icon-edit"></i> ' . rex_escape($addon->i18n('upkeep_edit')) . '</a> ';
-        $body .= '<button type="submit" form="upk-redirects-row" class="btn btn-default btn-xs" name="toggle_mapping" value="' . $rowId . '">'
-            . rex_escape($isOn ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '</button> ';
-        $body .= '<button type="submit" form="upk-redirects-row" class="btn btn-delete btn-xs" name="delete_mapping" value="' . $rowId . '" data-confirm="' . rex_escape($addon->i18n('upkeep_redirects_delete_confirm')) . '">'
-            . '<i class="rex-icon rex-icon-delete"></i> ' . rex_escape($addon->i18n('upkeep_delete')) . '</button>';
-        $body .= '</td>';
+            . ((int) $row['is_wildcard'] ? ' ' . Ui::badge($t('upkeep_redirects_wildcard_badge'), 'info') : ''));
+        $body .= Ui::td($labels['target'], '<span class="upk-mono" title="' . rex_escape($target) . '">' . rex_escape(mb_strimwidth($target, 0, 60, '…')) . '</span>');
+        $body .= Ui::td($labels['code'], (string) (int) $row['redirect_code']);
+        $body .= Ui::td($labels['status'], Ui::status($isOn));
+        $body .= Ui::td($labels['description'], '<span class="upk-muted" title="' . rex_escape($desc) . '">' . rex_escape(mb_strimwidth($desc, 0, 40, '…')) . '</span>');
+        $body .= Ui::td($labels['actions'],
+            '<a class="btn btn-xs upk-btn-ghost" href="' . rex_url::backendPage($pageKey, ['func' => 'edit', 'id' => $rowId]) . '#upk-form"><i class="rex-icon rex-icon-edit" aria-hidden="true"></i> ' . rex_escape($t('upkeep_edit')) . '</a> '
+            . '<button type="submit" form="upk-redirects-row" class="btn btn-xs upk-btn-ghost" name="toggle_mapping" value="' . $rowId . '">'
+            . rex_escape($isOn ? $t('upkeep_deactivate') : $t('upkeep_activate')) . '</button> '
+            . '<button type="submit" form="upk-redirects-row" class="btn btn-xs upk-btn-ghost upk-btn-ghost--danger" name="delete_mapping" value="' . $rowId . '" data-confirm="' . rex_escape($t('upkeep_redirects_delete_confirm')) . '">'
+            . '<i class="rex-icon rex-icon-delete" aria-hidden="true"></i> ' . rex_escape($t('upkeep_delete')) . '</button>',
+            'upk-actions');
         $body .= '</tr>';
     }
-    $body .= '</tbody></table></div>';
+    $body .= '</tbody></table></div></div>';
+    echo $body;
+}
+echo '<p class="upk-group-note">' . rex_escape($t('upkeep_redirects_domain_note')) . '</p>';
+
+// Formular: anlegen / bearbeiten
+$codeOptions = '';
+foreach ($allowedCodes as $code) {
+    $codeOptions .= '<option value="' . $code . '"' . ((int) ($data['redirect_code'] ?? 301) === $code ? ' selected' : '') . '>' . $code . ' – ' . rex_escape($t('upkeep_redirects_code_' . $code)) . '</option>';
 }
 
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('upkeep_redirects_title'), false);
-$fragment->setVar('body', $toolbar . $body, false);
-echo $fragment->parse('core/page/section.php');
+$form = '<details class="upk-group upk-form-details"' . (!$rows || $func === 'add' || $isEdit ? ' open' : '') . ' id="upk-form">'
+    . '<summary>' . rex_escape($isEdit ? $t('upkeep_domain_mapping_edit') : $t('upkeep_domain_mapping_add')) . '</summary>'
+    . '<form action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField()
+    . '<input type="hidden" name="func" value="' . ($isEdit ? 'edit' : 'add') . '">';
+if ($isEdit) {
+    $form .= '<input type="hidden" name="id" value="' . (int) $id . '">';
+}
+$form .= Ui::row($t('upkeep_domain_mapping_source_domain'), '<input class="form-control" type="text" id="upk-source-domain" name="source_domain" value="' . rex_escape((string) ($data['source_domain'] ?? '')) . '" required maxlength="253" placeholder="alte-domain.de">', $t('upkeep_redirects_domain_note'), 'upk-source-domain');
+$form .= Ui::row($t('upkeep_domain_mapping_source_path'), '<input class="form-control upk-mono" type="text" id="upk-source-path" name="source_path" value="' . rex_escape((string) ($data['source_path'] ?? '')) . '" maxlength="255" placeholder="/pfad/zur/seite">', $t('upkeep_redirects_path_note'), 'upk-source-path');
+$form .= Ui::row($t('upkeep_redirects_wildcard_label'), Ui::switch('is_wildcard', !empty($data['is_wildcard']), 'upk-is-wildcard'), $t('upkeep_domain_mapping_wildcard_note'), 'upk-is-wildcard');
+$form .= Ui::row($t('upkeep_domain_mapping_target_url'), '<input class="form-control upk-mono" type="url" id="upk-target-url" name="target_url" value="' . rex_escape((string) ($data['target_url'] ?? '')) . '" required maxlength="2000" placeholder="https://neue-domain.de/">', $t('upkeep_redirects_target_note'), 'upk-target-url');
+$form .= Ui::row($t('upkeep_domain_mapping_redirect_code'), '<select class="form-control" id="upk-redirect-code" name="redirect_code">' . $codeOptions . '</select>', '', 'upk-redirect-code');
+$form .= Ui::row($t('upkeep_domain_mapping_description_field'), '<textarea class="form-control" id="upk-description" name="description" rows="2" maxlength="1000">' . rex_escape((string) ($data['description'] ?? '')) . '</textarea>', '', 'upk-description');
+$form .= Ui::row($t('upkeep_redirects_status_label'), Ui::switch('status', !empty($data['status']), 'upk-status'), '', 'upk-status');
+$form .= '<div class="upk-form-actions">';
+if ($isEdit || $func === 'add') {
+    $form .= '<a class="btn btn-abort" href="' . rex_url::backendPage($pageKey) . '">' . rex_escape(rex_i18n::rawMsg('form_abort')) . '</a>';
+}
+$form .= '<button class="btn btn-save" type="submit" name="save" value="1">' . rex_escape(rex_i18n::rawMsg('form_save')) . '</button></div>';
+$form .= '</form></details>';
+echo $form;

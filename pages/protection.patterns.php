@@ -8,6 +8,7 @@
  */
 
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\Ui;
 
 $addon = rex_addon::get('upkeep');
 $csrf = rex_csrf_token::factory('upkeep_patterns');
@@ -21,16 +22,6 @@ $regexValid = static function (string $pattern): bool {
         return \KLXM\Upkeep\PatternValidator::isValid($pattern);
     }
     return @preg_match($pattern, '') !== false;
-};
-
-$severityBadge = static function (string $severity) use ($addon): string {
-    $class = match ($severity) {
-        'critical' => 'upk-badge--danger',
-        'high', 'medium' => 'upk-badge--warn',
-        default => 'upk-badge--muted',
-    };
-    $label = in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? $addon->i18n('upkeep_ips_severity_' . $severity) : ($severity ?: '-');
-    return '<span class="upk-badge ' . $class . '">' . rex_escape($label) . '</span>';
 };
 
 $url = static fn (array $params = []): string => rex_url::backendPage($pageKey, ['tab' => $tab] + $params);
@@ -118,17 +109,33 @@ if ($hasAction) {
     }
 }
 
-// --- Tabs -----------------------------------------------------------------
-$tabs = ['custom' => $addon->i18n('upkeep_ips_custom_patterns'), 'default' => $addon->i18n('upkeep_ips_default_patterns')];
-echo '<div class="upk-tabs"><ul class="nav nav-tabs">';
-foreach ($tabs as $key => $label) {
-    echo '<li' . ($key === $tab ? ' class="active"' : '') . '><a href="' . rex_url::backendPage($pageKey, ['tab' => $key]) . '">' . rex_escape($label) . '</a></li>';
+$t = static fn (string $key, string ...$args): string => rex_i18n::rawMsg($key, ...$args);
+$isAdmin = rex::requireUser()->isAdmin();
+
+// Kopf
+$ipsOn = (bool) $addon->getConfig('ips_active', false);
+$actions = Ui::badge($t($ipsOn ? 'upkeep_list_ips_on' : 'upkeep_list_ips_off'), $ipsOn ? 'ok' : 'muted');
+if ($isAdmin) {
+    $actions .= ' <a class="btn btn-default" href="' . rex_url::backendPage('upkeep/settings', ['section' => 'ips']) . '">' . rex_escape($t('upkeep_nav_settings')) . '</a>';
 }
-echo '</ul></div>';
+echo Ui::hero($t('upkeep_nav_protection_patterns'), $t('upkeep_list_patterns_intro'), Ui::icon('fa-shield', 'blue'), $actions);
+
+// --- Umschalter -----------------------------------------------------------
+echo Ui::segmented([
+    'custom' => [$t('upkeep_list_patterns_custom'), rex_url::backendPage($pageKey, ['tab' => 'custom'])],
+    'default' => [$t('upkeep_list_patterns_default'), rex_url::backendPage($pageKey, ['tab' => 'default'])],
+], $tab, $t('upkeep_nav_protection_patterns'));
 
 echo implode('', $messages);
 
-$toolbar = '<div class="upk-toolbar"><a href="' . rex_url::backendPage('upkeep/settings', ['section' => 'ips']) . '"><i class="rex-icon fa-cog"></i> ' . rex_escape($addon->i18n('upkeep_pages_settings_link')) . '</a></div>';
+$typeText = static fn (array $row): string => rex_escape((int) $row['is_regex'] ? $t('upkeep_type_regex') : $t('upkeep_type_text'));
+$thead = static function (array $labels): string {
+    $html = '<thead><tr>';
+    foreach ($labels as $key => $label) {
+        $html .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
+    return $html . '</tr></thead>';
+};
 
 // --- Standard-Muster ------------------------------------------------------
 if ($tab === 'default') {
@@ -136,48 +143,46 @@ if ($tab === 'default') {
         $rows = rex_sql::factory()->getArray('SELECT * FROM ' . rex::getTable('upkeep_ips_default_patterns') . ' ORDER BY category, pattern');
     } catch (rex_sql_exception $e) {
         rex_logger::logException($e);
-        echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+        echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
         return;
     }
 
-    $body = $toolbar . '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_ips_default_patterns_explanation')) . '</p>';
+    echo Ui::listTitle($t('upkeep_list_patterns_default'), count($rows));
     if (!$rows) {
-        $body .= '<div class="upk-empty"><p>' . rex_escape($addon->i18n('upkeep_ips_no_default_patterns')) . '</p></div>';
-    } else {
-        $body .= '<form id="upk-patterns-default" action="' . $url() . '" method="post">' . $csrf->getHiddenField() . '</form>';
-        $body .= '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_pattern')) . '</th>';
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_description')) . '</th>';
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_type')) . '</th>';
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_pages_status')) . '</th>';
-        $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
-        $body .= '</tr></thead><tbody>';
-        $currentCategory = null;
-        foreach ($rows as $row) {
-            $category = (string) $row['category'];
-            if ($category !== $currentCategory) {
-                $body .= '<tr class="upk-group-row"><th colspan="6">' . rex_escape($category) . '</th></tr>';
-                $currentCategory = $category;
-            }
-            $on = (int) $row['status'] === 1;
-            $body .= '<tr>';
-            $body .= '<td><span class="upk-mono">' . rex_escape((string) $row['pattern']) . '</span></td>';
-            $body .= '<td>' . rex_escape((string) ($row['description'] ?? '')) . '</td>';
-            $body .= '<td>' . $severityBadge((string) $row['severity']) . '</td>';
-            $body .= '<td>' . rex_escape((int) $row['is_regex'] ? $addon->i18n('upkeep_type_regex') : $addon->i18n('upkeep_type_text')) . '</td>';
-            $body .= '<td><span class="upk-badge ' . ($on ? 'upk-badge--ok' : 'upk-badge--muted') . '">' . rex_escape($on ? $addon->i18n('upkeep_active') : $addon->i18n('upkeep_inactive')) . '</span></td>';
-            $body .= '<td class="upk-actions"><button type="submit" form="upk-patterns-default" class="btn btn-default btn-xs" name="toggle_default" value="' . (int) $row['id'] . '">'
-                . rex_escape($on ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '</button></td>';
-            $body .= '</tr>';
-        }
-        $body .= '</tbody></table></div>';
+        echo '<div class="upk-group">' . Ui::emptyState($t('upkeep_ips_no_default_patterns'), 'fa-code') . '</div>';
+        return;
     }
-
-    $fragment = new rex_fragment();
-    $fragment->setVar('title', $addon->i18n('upkeep_ips_default_patterns'), false);
-    $fragment->setVar('body', $body, false);
-    echo $fragment->parse('core/page/section.php');
+    $labels = [
+        'pattern' => $t('upkeep_ips_pattern'),
+        'description' => $t('upkeep_ips_description'),
+        'severity' => $t('upkeep_ips_severity'),
+        'type' => $t('upkeep_ips_type'),
+        'status' => $t('upkeep_pages_status'),
+        'actions' => $t('upkeep_actions'),
+    ];
+    $body = '<form id="upk-patterns-default" action="' . $url() . '" method="post">' . $csrf->getHiddenField() . '</form>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table">' . $thead($labels) . '<tbody>';
+    $currentCategory = null;
+    foreach ($rows as $row) {
+        $category = (string) $row['category'];
+        if ($category !== $currentCategory) {
+            $body .= '<tr class="upk-table-group"><th colspan="6" scope="colgroup">' . rex_escape($category) . '</th></tr>';
+            $currentCategory = $category;
+        }
+        $on = (int) $row['status'] === 1;
+        $body .= '<tr>';
+        $body .= Ui::td($labels['pattern'], '<span class="upk-mono">' . rex_escape((string) $row['pattern']) . '</span>');
+        $body .= Ui::td($labels['description'], rex_escape((string) ($row['description'] ?? '')));
+        $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
+        $body .= Ui::td($labels['type'], $typeText($row));
+        $body .= Ui::td($labels['status'], Ui::status($on));
+        $body .= Ui::td($labels['actions'], '<button type="submit" form="upk-patterns-default" class="btn btn-xs upk-btn-ghost" name="toggle_default" value="' . (int) $row['id'] . '">'
+            . rex_escape($on ? $t('upkeep_deactivate') : $t('upkeep_activate')) . '</button>', 'upk-actions');
+        $body .= '</tr>';
+    }
+    $body .= '</tbody></table></div></div>';
+    $body .= '<p class="upk-group-note">' . rex_escape($t('upkeep_ips_default_patterns_explanation')) . '</p>';
+    echo $body;
     return;
 }
 
@@ -186,7 +191,7 @@ try {
     $rows = rex_sql::factory()->getArray('SELECT * FROM ' . rex::getTable('upkeep_ips_custom_patterns') . ' ORDER BY created_at DESC');
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
-    echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+    echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
     return;
 }
 
@@ -197,43 +202,42 @@ if ($editId > 0 && $formData === null) {
     }
 }
 
+echo Ui::listTitle($t('upkeep_list_patterns_custom'), count($rows));
 if (!$rows) {
-    $body = $toolbar . '<div class="upk-empty"><p>' . rex_escape($addon->i18n('upkeep_ips_no_patterns')) . '</p></div>';
+    echo '<div class="upk-group">' . Ui::emptyState($t('upkeep_ips_no_patterns'), 'fa-code') . '</div>';
 } else {
-    $body = $toolbar . '<form id="upk-patterns-custom" action="' . $url() . '" method="post">' . $csrf->getHiddenField() . '</form>';
-    $body .= '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_pattern')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_description')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_type')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_pages_status')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_created')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
-    $body .= '</tr></thead><tbody>';
+    $labels = [
+        'pattern' => $t('upkeep_ips_pattern'),
+        'description' => $t('upkeep_ips_description'),
+        'severity' => $t('upkeep_ips_severity'),
+        'type' => $t('upkeep_ips_type'),
+        'status' => $t('upkeep_pages_status'),
+        'created' => $t('upkeep_ips_created'),
+        'actions' => $t('upkeep_actions'),
+    ];
+    $body = '<form id="upk-patterns-custom" action="' . $url() . '" method="post">' . $csrf->getHiddenField() . '</form>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table">' . $thead($labels) . '<tbody>';
     foreach ($rows as $row) {
         $id = (int) $row['id'];
         $on = (int) $row['status'] === 1;
         $created = strtotime((string) $row['created_at']);
-        $body .= '<tr>';
-        $body .= '<td><span class="upk-mono">' . rex_escape((string) $row['pattern']) . '</span></td>';
-        $body .= '<td>' . rex_escape((string) ($row['description'] ?? '')) . '</td>';
-        $body .= '<td>' . $severityBadge((string) $row['severity']) . '</td>';
-        $body .= '<td>' . rex_escape((int) $row['is_regex'] ? $addon->i18n('upkeep_type_regex') : $addon->i18n('upkeep_type_text')) . '</td>';
-        $body .= '<td><span class="upk-badge ' . ($on ? 'upk-badge--ok' : 'upk-badge--muted') . '">' . rex_escape($on ? $addon->i18n('upkeep_active') : $addon->i18n('upkeep_inactive')) . '</span></td>';
-        $body .= '<td>' . rex_escape($created ? date('d.m.Y H:i', $created) : '-') . '</td>';
-        $body .= '<td class="upk-actions">';
-        $body .= '<a class="btn btn-default btn-xs" href="' . $url(['edit' => $id]) . '"><i class="rex-icon rex-icon-edit"></i> ' . rex_escape($addon->i18n('upkeep_edit')) . '</a> ';
-        $body .= '<button type="submit" form="upk-patterns-custom" class="btn btn-default btn-xs" name="toggle_custom" value="' . $id . '">' . rex_escape($on ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '</button> ';
-        $body .= '<button type="submit" form="upk-patterns-custom" class="btn btn-delete btn-xs" name="delete_custom" value="' . $id . '" data-confirm="' . rex_escape($addon->i18n('upkeep_patterns_delete_confirm')) . '"><i class="rex-icon rex-icon-delete"></i> ' . rex_escape($addon->i18n('upkeep_delete')) . '</button>';
-        $body .= '</td></tr>';
+        $body .= '<tr' . ($id === $editId ? ' class="upk-table-current"' : '') . '>';
+        $body .= Ui::td($labels['pattern'], '<span class="upk-mono">' . rex_escape((string) $row['pattern']) . '</span>');
+        $body .= Ui::td($labels['description'], rex_escape((string) ($row['description'] ?? '')));
+        $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
+        $body .= Ui::td($labels['type'], $typeText($row));
+        $body .= Ui::td($labels['status'], Ui::status($on));
+        $body .= Ui::td($labels['created'], rex_escape($created ? date('d.m.Y H:i', $created) : '-'), 'upk-nowrap');
+        $body .= Ui::td($labels['actions'],
+            '<a class="btn btn-xs upk-btn-ghost" href="' . $url(['edit' => $id]) . '#upk-form"><i class="rex-icon rex-icon-edit" aria-hidden="true"></i> ' . rex_escape($t('upkeep_edit')) . '</a> '
+            . '<button type="submit" form="upk-patterns-custom" class="btn btn-xs upk-btn-ghost" name="toggle_custom" value="' . $id . '">' . rex_escape($on ? $t('upkeep_deactivate') : $t('upkeep_activate')) . '</button> '
+            . '<button type="submit" form="upk-patterns-custom" class="btn btn-xs upk-btn-ghost upk-btn-ghost--danger" name="delete_custom" value="' . $id . '" data-confirm="' . rex_escape($t('upkeep_patterns_delete_confirm')) . '"><i class="rex-icon rex-icon-delete" aria-hidden="true"></i> ' . rex_escape($t('upkeep_delete')) . '</button>',
+            'upk-actions');
+        $body .= '</tr>';
     }
-    $body .= '</tbody></table></div>';
+    $body .= '</tbody></table></div></div>';
+    echo $body;
 }
-
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('upkeep_ips_custom_patterns'), false);
-$fragment->setVar('body', $body, false);
-echo $fragment->parse('core/page/section.php');
 
 // Formular: anlegen / bearbeiten
 $isEdit = $editId > 0 && $formData !== null;
@@ -241,35 +245,26 @@ $current = $formData ?? ['pattern' => '', 'description' => '', 'severity' => 'me
 $options = '';
 foreach ($severities as $sev) {
     $options .= '<option value="' . $sev . '"' . (($current['severity'] ?? 'medium') === $sev ? ' selected' : '') . '>'
-        . rex_escape($addon->i18n('upkeep_ips_severity_' . $sev) . ' – ' . $addon->i18n('upkeep_ips_severity_' . $sev . '_tooltip')) . '</option>';
+        . rex_escape($t('upkeep_ips_severity_' . $sev) . ' – ' . $t('upkeep_ips_severity_' . $sev . '_tooltip')) . '</option>';
 }
 
-$form = '<form action="' . $url() . '" method="post">' . $csrf->getHiddenField();
+$form = '<details class="upk-group upk-form-details"' . (!$rows || $formData !== null ? ' open' : '') . ' id="upk-form">'
+    . '<summary>' . rex_escape($isEdit ? $t('upkeep_patterns_edit') : $t('upkeep_patterns_add')) . '</summary>'
+    . '<form action="' . $url() . '" method="post">' . $csrf->getHiddenField();
 if ($isEdit) {
     $form .= '<input type="hidden" name="id" value="' . (int) $editId . '">';
 }
-$form .= '<div class="row">';
-$form .= '<div class="col-sm-5"><div class="form-group"><label for="upk-pat-pattern">' . rex_escape($addon->i18n('upkeep_ips_pattern')) . '</label>'
-    . '<input type="text" class="form-control upk-mono" id="upk-pat-pattern" name="pattern" required maxlength="500" value="' . rex_escape((string) ($current['pattern'] ?? '')) . '">'
-    . '<p class="help-block">' . rex_escape($addon->i18n('upkeep_ips_pattern_tooltip')) . '</p></div></div>';
-$form .= '<div class="col-sm-4"><div class="form-group"><label for="upk-pat-desc">' . rex_escape($addon->i18n('upkeep_ips_description')) . '</label>'
-    . '<input type="text" class="form-control" id="upk-pat-desc" name="description" maxlength="1000" value="' . rex_escape((string) ($current['description'] ?? '')) . '"></div></div>';
-$form .= '<div class="col-sm-3"><div class="form-group"><label for="upk-pat-sev">' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</label>'
-    . '<select class="form-control" id="upk-pat-sev" name="severity">' . $options . '</select></div></div>';
-$form .= '</div>';
-$form .= '<div class="checkbox"><label><input type="checkbox" name="is_regex" value="1"' . (!empty($current['is_regex']) ? ' checked' : '') . '> ' . rex_escape($addon->i18n('upkeep_patterns_is_regex_label')) . '</label></div>';
+$form .= Ui::row($t('upkeep_ips_pattern'), '<input type="text" class="form-control upk-mono" id="upk-pat-pattern" name="pattern" required maxlength="500" value="' . rex_escape((string) ($current['pattern'] ?? '')) . '">', $t('upkeep_ips_pattern_tooltip'), 'upk-pat-pattern');
+$form .= Ui::row($t('upkeep_ips_description'), '<input type="text" class="form-control" id="upk-pat-desc" name="description" maxlength="1000" value="' . rex_escape((string) ($current['description'] ?? '')) . '">', '', 'upk-pat-desc');
+$form .= Ui::row($t('upkeep_ips_severity'), '<select class="form-control" id="upk-pat-sev" name="severity">' . $options . '</select>', '', 'upk-pat-sev');
+$form .= Ui::row($t('upkeep_patterns_is_regex_label'), Ui::switch('is_regex', !empty($current['is_regex']), 'upk-pat-regex'), $t('upkeep_ips_pattern_note_regex') . ' ' . $t('upkeep_ips_pattern_note_test'), 'upk-pat-regex');
 if ($isEdit) {
-    $form .= '<div class="checkbox"><label><input type="checkbox" name="status" value="1"' . (!empty($current['status']) ? ' checked' : '') . '> ' . rex_escape($addon->i18n('upkeep_active')) . '</label></div>';
+    $form .= Ui::row($t('upkeep_active'), Ui::switch('status', !empty($current['status']), 'upk-pat-status'), '', 'upk-pat-status');
 }
-$form .= '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_ips_pattern_note_regex')) . ' ' . rex_escape($addon->i18n('upkeep_ips_pattern_note_test')) . '</p>';
-$form .= '<button type="submit" class="btn btn-save" name="save_pattern" value="1">' . rex_escape($isEdit ? $addon->i18n('upkeep_update') : $addon->i18n('upkeep_add')) . '</button>';
+$form .= '<div class="upk-form-actions">';
 if ($isEdit) {
-    $form .= ' <a class="btn btn-abort" href="' . $url() . '">' . rex_escape($addon->i18n('upkeep_cancel')) . '</a>';
+    $form .= '<a class="btn btn-abort" href="' . $url() . '">' . rex_escape($t('upkeep_cancel')) . '</a>';
 }
-$form .= '</form>';
-
-$fragment = new rex_fragment();
-$fragment->setVar('class', 'edit', false);
-$fragment->setVar('title', $isEdit ? $addon->i18n('upkeep_patterns_edit') : $addon->i18n('upkeep_patterns_add'), false);
-$fragment->setVar('body', $form, false);
-echo $fragment->parse('core/page/section.php');
+$form .= '<button type="submit" class="btn btn-save" name="save_pattern" value="1">' . rex_escape($isEdit ? $t('upkeep_update') : $t('upkeep_add')) . '</button></div>';
+$form .= '</form></details>';
+echo $form;

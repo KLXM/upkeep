@@ -87,6 +87,90 @@ final class Ui
             . '</section>';
     }
 
+    /** Kopf einer Seite: Symbol, Titel, eine Zeile Einleitung, rechts Status und Aktionen ($actionsHtml ist fertiges HTML) */
+    public static function hero(string $title, string $intro, string $iconHtml, string $actionsHtml = ''): string
+    {
+        return '<div class="upk-hero"><div class="upk-hero-main">' . $iconHtml
+            . '<div><h2>' . rex_escape($title) . '</h2>' . ('' !== $intro ? '<p>' . rex_escape($intro) . '</p>' : '') . '</div></div>'
+            . ('' !== $actionsHtml ? '<div class="upk-hero-actions">' . $actionsHtml . '</div>' : '')
+            . '</div>';
+    }
+
+    /**
+     * Umschalter als Segment-Leiste (statt Bootstrap-Tabs).
+     *
+     * @param array<string, array{0: string, 1: string}> $items key => [Beschriftung, URL (fertig escaped aus rex_url)]
+     */
+    public static function segmented(array $items, string $active, string $ariaLabel): string
+    {
+        $html = '<nav class="upk-segmented" aria-label="' . rex_escape($ariaLabel) . '">';
+        foreach ($items as $key => [$label, $url]) {
+            $html .= (string) $key === $active
+                ? '<a class="active" aria-current="page" href="' . $url . '">' . rex_escape($label) . '</a>'
+                : '<a href="' . $url . '">' . rex_escape($label) . '</a>';
+        }
+        return $html . '</nav>';
+    }
+
+    /** Seitenzahlen als kleine Segment-Leiste. $link liefert die fertig escapte URL zu einer Seite. */
+    public static function pager(int $current, int $pages, callable $link): string
+    {
+        if ($pages <= 1) {
+            return '';
+        }
+        $html = '<nav class="upk-segmented upk-segmented--pager" aria-label="' . rex_escape(self::t('upkeep_list_pages')) . '">';
+        $html .= $current > 1
+            ? '<a href="' . $link($current - 1) . '" aria-label="' . rex_escape(self::t('upkeep_previous')) . '">&lsaquo;</a>'
+            : '<span class="disabled" aria-hidden="true">&lsaquo;</span>';
+        for ($i = max(1, $current - 3); $i <= min($pages, $current + 3); ++$i) {
+            $html .= $i === $current
+                ? '<a class="active" aria-current="page" href="' . $link($i) . '">' . $i . '</a>'
+                : '<a href="' . $link($i) . '">' . $i . '</a>';
+        }
+        $html .= $current < $pages
+            ? '<a href="' . $link($current + 1) . '" aria-label="' . rex_escape(self::t('upkeep_next')) . '">&rsaquo;</a>'
+            : '<span class="disabled" aria-hidden="true">&rsaquo;</span>';
+        return $html . '</nav>';
+    }
+
+    /** Leerer Zustand: Symbol und ein Satz */
+    public static function emptyState(string $text, string $fa = 'fa-check'): string
+    {
+        return '<div class="upk-empty"><i class="rex-icon fa ' . rex_escape($fa) . '" aria-hidden="true"></i>' . rex_escape($text) . '</div>';
+    }
+
+    /** Schweregrad als Kennzeichen (kritisch/hoch = rot, mittel = gelb, niedrig = blau) */
+    public static function severity(string $severity): string
+    {
+        $variant = match ($severity) {
+            'critical', 'high' => 'danger',
+            'medium' => 'warn',
+            'low' => 'info',
+            default => 'muted',
+        };
+        $label = in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? self::t('upkeep_ips_severity_' . $severity) : ('' !== $severity ? $severity : '–');
+        return self::badge($label, $variant);
+    }
+
+    /** Status aktiv/inaktiv als Kennzeichen */
+    public static function status(bool $on): string
+    {
+        return $on ? self::badge(self::t('upkeep_active'), 'ok') : self::badge(self::t('upkeep_inactive'), 'muted');
+    }
+
+    /** Titel über einer Liste, optional mit Anzahl */
+    public static function listTitle(string $title, ?int $count = null): string
+    {
+        return '<h3 class="upk-group-title">' . rex_escape($title)
+            . (null !== $count ? ' <span class="upk-count">' . $count . '</span>' : '') . '</h3>';
+    }
+
+    /** Zelle einer .upk-table mit Beschriftung für die Kartenansicht auf dem Handy ($html ist fertiges HTML) */
+    public static function td(string $label, string $html, string $class = ''): string
+    {
+        return '<td data-label="' . rex_escape($label) . '"' . ('' !== $class ? ' class="' . rex_escape($class) . '"' : '') . '>' . $html . '</td>';
+    }
+
     public static function date(int $timestamp): string
     {
         return $timestamp > 0 ? \rex_formatter::intlDateTime($timestamp, [\IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT]) : '–';

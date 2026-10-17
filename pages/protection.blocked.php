@@ -7,6 +7,7 @@
  */
 
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\Ui;
 
 $addon = rex_addon::get('upkeep');
 $csrf = rex_csrf_token::factory('upkeep_blocked');
@@ -104,24 +105,29 @@ if (rex_post('add_blocked_ip', 'bool') || rex_post('bulk_import_ips', 'bool') ||
     }
 }
 
+$t = static fn (string $key, string ...$args): string => rex_i18n::rawMsg($key, ...$args);
+$isAdmin = rex::requireUser()->isAdmin();
+$hadError = str_contains(implode('', $messages), 'alert-danger');
+
+// Kopf
+$ipsOn = (bool) $addon->getConfig('ips_active', false);
+$actions = Ui::badge($t($ipsOn ? 'upkeep_list_ips_on' : 'upkeep_list_ips_off'), $ipsOn ? 'ok' : 'muted');
+if ($ipsOn && $addon->getConfig('ips_monitor_only', false)) {
+    $actions .= ' ' . Ui::badge($t('upkeep_set_ips_monitor_only'), 'info');
+}
+if ($isAdmin) {
+    $actions .= ' <a class="btn btn-default" href="' . rex_url::backendPage('upkeep/settings', ['section' => 'ips']) . '">' . rex_escape($t('upkeep_nav_settings')) . '</a>';
+}
+echo Ui::hero($t('upkeep_list_blocked_title'), $t('upkeep_list_blocked_intro'), Ui::icon('fa-shield', 'blue'), $actions);
+
 echo implode('', $messages);
 
-$durationOptions = static function (string $selected) use ($addon, $durations): string {
+$durationOptions = static function (string $selected) use ($t, $durations): string {
     $html = '';
     foreach ($durations as $d) {
-        $html .= '<option value="' . $d . '"' . ($d === $selected ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_ips_block_duration_' . $d)) . '</option>';
+        $html .= '<option value="' . $d . '"' . ($d === $selected ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_block_duration_' . $d)) . '</option>';
     }
     return $html;
-};
-
-$severityBadge = static function (string $severity) use ($addon): string {
-    $class = match ($severity) {
-        'critical' => 'upk-badge--danger',
-        'high', 'medium' => 'upk-badge--warn',
-        default => 'upk-badge--muted',
-    };
-    $label = in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? $addon->i18n('upkeep_ips_severity_' . $severity) : ($severity ?: '-');
-    return '<span class="upk-badge ' . $class . '">' . rex_escape($label) . '</span>';
 };
 
 $geoAvailable = is_file(rex_path::addonData('upkeep', 'ip2geo.mmdb'));
@@ -140,6 +146,7 @@ $country = static function (string $ip) use ($geoAvailable): string {
 // Liste der aktiven Sperren
 $total = 0;
 $rows = [];
+$counts = ['temporary' => 0, 'permanent' => 0];
 try {
     $sql = rex_sql::factory();
     $sql->setQuery('SELECT COUNT(*) AS total FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > NOW()');
@@ -147,72 +154,14 @@ try {
     $pages = max(1, (int) ceil($total / $perPage));
     $current = min(max(1, rex_get('p', 'int', 1)), $pages);
     $rows = $sql->getArray('SELECT * FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > NOW() ORDER BY created_at DESC LIMIT ' . (int) $perPage . ' OFFSET ' . (int) (($current - 1) * $perPage));
+    $sql->setQuery('SELECT COUNT(*) AS c FROM ' . $table . ' WHERE expires_at IS NULL OR block_type = \'permanent\'');
+    $counts['permanent'] = (int) $sql->getValue('c');
+    $counts['temporary'] = max(0, $total - $counts['permanent']);
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
-    echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+    echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
     return;
 }
-
-$toolbar = '<div class="upk-toolbar">'
-    . '<span class="upk-muted">' . rex_escape($addon->i18n('upkeep_pages_entries_total', $total)) . '</span> '
-    . '<a href="' . rex_url::backendPage('upkeep/protection/allowlist') . '"><i class="rex-icon fa-check"></i> ' . rex_escape($addon->i18n('upkeep_ips_positivliste')) . '</a> '
-    . '<a href="' . rex_url::backendPage('upkeep/settings', ['section' => 'ips']) . '"><i class="rex-icon fa-cog"></i> ' . rex_escape($addon->i18n('upkeep_pages_settings_link')) . '</a>'
-    . '</div>';
-
-if (!$rows) {
-    $body = '<div class="upk-empty"><p>' . rex_escape($addon->i18n('upkeep_ips_no_blocked_entries')) . '</p></div>';
-} else {
-    $body = '<form id="upk-blocked-row" action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField() . '</form>';
-    $body .= '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_ip')) . '</th>';
-    if ($geoAvailable) {
-        $body .= '<th>' . rex_escape($addon->i18n('upkeep_pages_country')) . '</th>';
-    }
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_type')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_reason')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_expires')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_created')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
-    $body .= '</tr></thead><tbody>';
-    foreach ($rows as $row) {
-        $ip = (string) $row['ip_address'];
-        $reason = (string) ($row['reason'] ?? '');
-        $permanent = ($row['block_type'] ?? '') === 'permanent' || empty($row['expires_at']);
-        $expires = !empty($row['expires_at']) ? strtotime((string) $row['expires_at']) : false;
-        $created = strtotime((string) $row['created_at']);
-        $body .= '<tr>';
-        $body .= '<td><span class="upk-mono">' . rex_escape($ip) . '</span></td>';
-        if ($geoAvailable) {
-            $body .= '<td><span class="upk-muted">' . rex_escape($country($ip) ?: '-') . '</span></td>';
-        }
-        $body .= '<td><span class="upk-badge ' . ($permanent ? 'upk-badge--danger' : 'upk-badge--warn') . '">' . rex_escape($permanent ? $addon->i18n('upkeep_ips_block_duration_permanent') : $addon->i18n('upkeep_blocked_temporary')) . '</span></td>';
-        $body .= '<td>' . $severityBadge((string) ($row['threat_level'] ?? '')) . '</td>';
-        $body .= '<td title="' . rex_escape($reason) . '">' . rex_escape(mb_strimwidth($reason, 0, 60, '…')) . '</td>';
-        $body .= '<td>' . rex_escape($expires ? date('d.m.Y H:i', $expires) : $addon->i18n('upkeep_ips_block_duration_permanent')) . '</td>';
-        $body .= '<td>' . rex_escape($created ? date('d.m.Y H:i', $created) : '-') . '</td>';
-        $body .= '<td class="upk-actions"><button type="submit" form="upk-blocked-row" class="btn btn-default btn-xs" name="unblock_ip" value="' . rex_escape($ip) . '" data-confirm="' . rex_escape($addon->i18n('upkeep_ips_confirm_unblock')) . '">'
-            . '<i class="rex-icon fa-unlock"></i> ' . rex_escape($addon->i18n('upkeep_blocked_unblock')) . '</button></td>';
-        $body .= '</tr>';
-    }
-    $body .= '</tbody></table></div>';
-
-    if ($pages > 1) {
-        $link = static fn (int $p): string => rex_url::backendPage($pageKey, ['p' => $p]);
-        $body .= '<nav><ul class="pagination pagination-sm">';
-        $body .= $current > 1 ? '<li><a href="' . $link($current - 1) . '" aria-label="' . rex_escape($addon->i18n('upkeep_previous')) . '">&laquo;</a></li>' : '<li class="disabled"><span>&laquo;</span></li>';
-        for ($i = max(1, $current - 3); $i <= min($pages, $current + 3); ++$i) {
-            $body .= $i === $current ? '<li class="active"><span>' . $i . '</span></li>' : '<li><a href="' . $link($i) . '">' . $i . '</a></li>';
-        }
-        $body .= $current < $pages ? '<li><a href="' . $link($current + 1) . '" aria-label="' . rex_escape($addon->i18n('upkeep_next')) . '">&raquo;</a></li>' : '<li class="disabled"><span>&raquo;</span></li>';
-        $body .= '</ul></nav>';
-    }
-}
-
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('upkeep_ips_blocked_entries'), false);
-$fragment->setVar('body', $toolbar . $body, false);
-echo $fragment->parse('core/page/section.php');
 
 // Schnellaktionen: auffällige IPs der letzten 24 Stunden
 $recent = [];
@@ -221,81 +170,129 @@ try {
 } catch (Throwable $e) {
     rex_logger::logException($e);
 }
-if ($recent) {
-    $body = '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_blocked_quick_help')) . '</p>';
-    $body .= '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_ip')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_blocked_threat_count')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_blocked_last_threat')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
+$recent = array_values(array_filter($recent, static fn ($item) => $isIpOrCidr((string) ($item['ip'] ?? ''))));
+
+$stat = static fn (string $title, string $icon, string $color, int $value): string => Ui::tile($title, Ui::icon($icon, $color), '<div class="upk-tile-value">' . $value . '</div>', '', 'upk-tile--stat');
+echo '<div class="upk-tiles upk-tiles--stats">'
+    . $stat($t('upkeep_blocked_temporary'), 'fa-clock-o', 'orange', $counts['temporary'])
+    . $stat($t('upkeep_ips_block_duration_permanent'), 'fa-ban', 'red', $counts['permanent'])
+    . $stat($t('upkeep_blocked_quick_title'), 'fa-exclamation-triangle', 'purple', count($recent))
+    . '</div>';
+
+echo Ui::listTitle($t('upkeep_ips_blocked_entries'), $total);
+
+if (!$rows) {
+    echo '<div class="upk-group">' . Ui::emptyState($t('upkeep_ips_no_blocked_entries'), 'fa-check') . '</div>';
+} else {
+    $labels = [
+        'ip' => $t('upkeep_ips_ip'),
+        'country' => $t('upkeep_pages_country'),
+        'type' => $t('upkeep_ips_type'),
+        'severity' => $t('upkeep_ips_severity'),
+        'reason' => $t('upkeep_ips_reason'),
+        'expires' => $t('upkeep_ips_expires'),
+        'created' => $t('upkeep_ips_created'),
+        'actions' => $t('upkeep_actions'),
+    ];
+    if (!$geoAvailable) {
+        unset($labels['country']);
+    }
+    $body = '<form id="upk-blocked-row" action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField() . '</form>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+    foreach ($labels as $key => $label) {
+        $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
     $body .= '</tr></thead><tbody>';
-    foreach ($recent as $item) {
-        $ip = (string) ($item['ip'] ?? '');
-        if (!$isIpOrCidr($ip)) {
-            continue;
-        }
-        $count = (int) ($item['threat_count'] ?? 0);
-        $last = strtotime((string) ($item['last_threat'] ?? ''));
+    foreach ($rows as $row) {
+        $ip = (string) $row['ip_address'];
+        $reason = (string) ($row['reason'] ?? '');
+        $permanent = ($row['block_type'] ?? '') === 'permanent' || empty($row['expires_at']);
+        $expires = !empty($row['expires_at']) ? strtotime((string) $row['expires_at']) : false;
+        $created = strtotime((string) $row['created_at']);
         $body .= '<tr>';
-        $body .= '<td><span class="upk-mono">' . rex_escape($ip) . '</span></td>';
-        $body .= '<td>' . $count . '</td>';
-        $body .= '<td>' . $severityBadge((string) ($item['max_severity'] ?? '')) . '</td>';
-        $body .= '<td>' . rex_escape($last ? date('d.m.Y H:i', $last) : '-') . '</td>';
-        $body .= '<td class="upk-actions"><form action="' . rex_url::backendPage($pageKey) . '" method="post">'
-            . $csrf->getHiddenField()
-            . '<input type="hidden" name="ip_address" value="' . rex_escape($ip) . '">'
-            . '<input type="hidden" name="block_duration" value="24h">'
-            . '<input type="hidden" name="reason" value="' . rex_escape($addon->i18n('upkeep_blocked_quick_reason', $count)) . '">'
-            . '<button type="submit" class="btn btn-default btn-xs" name="add_blocked_ip" value="1" data-confirm="' . rex_escape($addon->i18n('upkeep_blocked_quick_confirm', $ip)) . '">'
-            . '<i class="rex-icon fa-ban"></i> ' . rex_escape($addon->i18n('upkeep_blocked_quick_button')) . '</button>'
-            . '</form></td>';
+        $body .= Ui::td($labels['ip'], '<span class="upk-mono">' . rex_escape($ip) . '</span>');
+        if ($geoAvailable) {
+            $body .= Ui::td($labels['country'], '<span class="upk-muted">' . rex_escape($country($ip) ?: '-') . '</span>');
+        }
+        $body .= Ui::td($labels['type'], Ui::badge($permanent ? $t('upkeep_ips_block_duration_permanent') : $t('upkeep_blocked_temporary'), $permanent ? 'danger' : 'warn'));
+        $body .= Ui::td($labels['severity'], Ui::severity((string) ($row['threat_level'] ?? '')));
+        $body .= Ui::td($labels['reason'], '<span title="' . rex_escape($reason) . '">' . rex_escape(mb_strimwidth($reason, 0, 60, '…')) . '</span>');
+        $body .= Ui::td($labels['expires'], rex_escape($expires ? date('d.m.Y H:i', $expires) : $t('upkeep_ips_block_duration_permanent')), 'upk-nowrap');
+        $body .= Ui::td($labels['created'], rex_escape($created ? date('d.m.Y H:i', $created) : '-'), 'upk-nowrap');
+        $body .= Ui::td($labels['actions'], '<button type="submit" form="upk-blocked-row" class="btn btn-xs upk-btn-ghost" name="unblock_ip" value="' . rex_escape($ip) . '" data-confirm="' . rex_escape($t('upkeep_ips_confirm_unblock')) . '">'
+            . '<i class="rex-icon fa-unlock" aria-hidden="true"></i> ' . rex_escape($t('upkeep_blocked_unblock')) . '</button>', 'upk-actions');
         $body .= '</tr>';
     }
     $body .= '</tbody></table></div>';
+    $pager = Ui::pager($current, $pages, static fn (int $p): string => rex_url::backendPage($pageKey, ['p' => $p]));
+    if ('' !== $pager) {
+        $body .= '<div class="upk-group-foot">' . $pager . '</div>';
+    }
+    $body .= '</div>';
+    echo $body;
+}
 
-    $fragment = new rex_fragment();
-    $fragment->setVar('title', $addon->i18n('upkeep_blocked_quick_title'), false);
-    $fragment->setVar('body', $body, false);
-    echo $fragment->parse('core/page/section.php');
+// Auffällige IP-Adressen der letzten 24 Stunden
+if ($recent) {
+    $labels = [
+        'ip' => $t('upkeep_ips_ip'),
+        'count' => $t('upkeep_blocked_threat_count'),
+        'severity' => $t('upkeep_ips_severity'),
+        'last' => $t('upkeep_blocked_last_threat'),
+        'actions' => $t('upkeep_actions'),
+    ];
+    $body = Ui::listTitle($t('upkeep_blocked_quick_title'), count($recent));
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+    foreach ($labels as $key => $label) {
+        $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
+    $body .= '</tr></thead><tbody>';
+    foreach ($recent as $item) {
+        $ip = (string) ($item['ip'] ?? '');
+        $count = (int) ($item['threat_count'] ?? 0);
+        $last = strtotime((string) ($item['last_threat'] ?? ''));
+        $body .= '<tr>';
+        $body .= Ui::td($labels['ip'], '<span class="upk-mono">' . rex_escape($ip) . '</span>');
+        $body .= Ui::td($labels['count'], (string) $count);
+        $body .= Ui::td($labels['severity'], Ui::severity((string) ($item['max_severity'] ?? '')));
+        $body .= Ui::td($labels['last'], rex_escape($last ? date('d.m.Y H:i', $last) : '-'), 'upk-nowrap');
+        $body .= Ui::td($labels['actions'], '<form class="upk-inline-form" action="' . rex_url::backendPage($pageKey) . '" method="post">'
+            . $csrf->getHiddenField()
+            . '<input type="hidden" name="ip_address" value="' . rex_escape($ip) . '">'
+            . '<input type="hidden" name="block_duration" value="24h">'
+            . '<input type="hidden" name="reason" value="' . rex_escape($t('upkeep_blocked_quick_reason', (string) $count)) . '">'
+            . '<button type="submit" class="btn btn-xs upk-btn-ghost upk-btn-ghost--danger" name="add_blocked_ip" value="1" data-confirm="' . rex_escape($t('upkeep_blocked_quick_confirm', $ip)) . '">'
+            . '<i class="rex-icon fa-ban" aria-hidden="true"></i> ' . rex_escape($t('upkeep_blocked_quick_button')) . '</button>'
+            . '</form>', 'upk-actions');
+        $body .= '</tr>';
+    }
+    $body .= '</tbody></table></div></div>';
+    $body .= '<p class="upk-group-note">' . rex_escape($t('upkeep_blocked_quick_help')) . '</p>';
+    echo $body;
 }
 
 // Formular: einzelne IP sperren
-$form = '<form action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField();
-$form .= '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_ips_blocked_help')) . ' ' . rex_escape($addon->i18n('upkeep_blocked_format_help')) . '</p>';
-$form .= '<div class="row">';
-$form .= '<div class="col-sm-4"><div class="form-group"><label for="upk-block-ip">' . rex_escape($addon->i18n('upkeep_ips_ip_address')) . '</label>'
-    . '<input type="text" class="form-control upk-mono" id="upk-block-ip" name="ip_address" required maxlength="64" placeholder="192.0.2.10 / 192.0.2.0/24"></div></div>';
-$form .= '<div class="col-sm-3"><div class="form-group"><label for="upk-block-duration">' . rex_escape($addon->i18n('upkeep_ips_block_duration')) . '</label>'
-    . '<select class="form-control" id="upk-block-duration" name="block_duration">' . $durationOptions('permanent') . '</select></div></div>';
-$form .= '<div class="col-sm-5"><div class="form-group"><label for="upk-block-reason">' . rex_escape($addon->i18n('upkeep_ips_reason')) . '</label>'
-    . '<input type="text" class="form-control" id="upk-block-reason" name="reason" maxlength="255" placeholder="' . rex_escape($addon->i18n('upkeep_ips_block_reason_manual')) . '"></div></div>';
-$form .= '</div>';
-$form .= '<button type="submit" class="btn btn-primary" name="add_blocked_ip" value="1"><i class="rex-icon fa-ban"></i> ' . rex_escape($addon->i18n('upkeep_ips_blocked_add')) . '</button>';
-$form .= '</form>';
-
-$fragment = new rex_fragment();
-$fragment->setVar('class', 'edit', false);
-$fragment->setVar('title', $addon->i18n('upkeep_ips_blocked_add'), false);
-$fragment->setVar('body', $form, false);
-echo $fragment->parse('core/page/section.php');
+$postedAdd = rex_post('add_blocked_ip', 'bool') && $hadError;
+$value = static fn (string $name, string $default = ''): string => $postedAdd ? (string) rex_post($name, 'string', $default) : $default;
+$form = '<details class="upk-group upk-form-details"' . (!$rows || $postedAdd ? ' open' : '') . ' id="upk-form">'
+    . '<summary>' . rex_escape($t('upkeep_ips_blocked_add')) . '</summary>'
+    . '<form action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField()
+    . '<p class="upk-form-intro">' . rex_escape($t('upkeep_blocked_format_help')) . '</p>'
+    . Ui::row($t('upkeep_ips_ip_address'), '<input type="text" class="form-control upk-mono" id="upk-block-ip" name="ip_address" required maxlength="64" placeholder="192.0.2.10 / 192.0.2.0/24" value="' . rex_escape($value('ip_address')) . '">', '', 'upk-block-ip')
+    . Ui::row($t('upkeep_ips_block_duration'), '<select class="form-control" id="upk-block-duration" name="block_duration">' . $durationOptions($value('block_duration', 'permanent')) . '</select>', '', 'upk-block-duration')
+    . Ui::row($t('upkeep_ips_reason'), '<input type="text" class="form-control" id="upk-block-reason" name="reason" maxlength="255" placeholder="' . rex_escape($t('upkeep_ips_block_reason_manual')) . '" value="' . rex_escape($value('reason')) . '">', '', 'upk-block-reason')
+    . '<div class="upk-form-actions"><button type="submit" class="btn btn-primary" name="add_blocked_ip" value="1"><i class="rex-icon fa-ban" aria-hidden="true"></i> ' . rex_escape($t('upkeep_ips_blocked_add')) . '</button></div>'
+    . '</form></details>';
+echo $form;
 
 // Formular: Liste sperren
-$form = '<form action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField();
-$form .= '<p class="upk-muted">' . rex_escape($addon->i18n('upkeep_blocked_bulk_help')) . '</p>';
-$form .= '<div class="row">';
-$form .= '<div class="col-sm-6"><div class="form-group"><label for="upk-bulk-list">' . rex_escape($addon->i18n('upkeep_blocked_bulk_list')) . '</label>'
-    . '<textarea class="form-control upk-mono" id="upk-bulk-list" name="ip_list" rows="8" required placeholder="192.0.2.10&#10;198.51.100.0/24&#10;# ' . rex_escape($addon->i18n('upkeep_blocked_bulk_comment')) . '&#10;2001:db8::/32"></textarea></div></div>';
-$form .= '<div class="col-sm-3"><div class="form-group"><label for="upk-bulk-duration">' . rex_escape($addon->i18n('upkeep_ips_block_duration')) . '</label>'
-    . '<select class="form-control" id="upk-bulk-duration" name="bulk_duration">' . $durationOptions('24h') . '</select></div></div>';
-$form .= '<div class="col-sm-3"><div class="form-group"><label for="upk-bulk-reason">' . rex_escape($addon->i18n('upkeep_ips_reason')) . '</label>'
-    . '<input type="text" class="form-control" id="upk-bulk-reason" name="bulk_reason" maxlength="255"></div></div>';
-$form .= '</div>';
-$form .= '<button type="submit" class="btn btn-default" name="bulk_import_ips" value="1" data-confirm="' . rex_escape($addon->i18n('upkeep_blocked_bulk_confirm')) . '"><i class="rex-icon fa-upload"></i> ' . rex_escape($addon->i18n('upkeep_blocked_bulk_button')) . '</button>';
-$form .= '</form>';
-
-$fragment = new rex_fragment();
-$fragment->setVar('class', 'edit', false);
-$fragment->setVar('title', $addon->i18n('upkeep_blocked_bulk_title'), false);
-$fragment->setVar('body', $form, false);
-echo $fragment->parse('core/page/section.php');
+$postedBulk = rex_post('bulk_import_ips', 'bool') && $hadError;
+$form = '<details class="upk-group upk-form-details"' . ($postedBulk ? ' open' : '') . '>'
+    . '<summary>' . rex_escape($t('upkeep_blocked_bulk_title')) . '</summary>'
+    . '<form action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField()
+    . Ui::row($t('upkeep_blocked_bulk_list'), '<textarea class="form-control upk-mono" id="upk-bulk-list" name="ip_list" rows="8" required placeholder="192.0.2.10&#10;198.51.100.0/24&#10;# ' . rex_escape($t('upkeep_blocked_bulk_comment')) . '&#10;2001:db8::/32">' . ($postedBulk ? rex_escape(rex_post('ip_list', 'string', '')) : '') . '</textarea>', $t('upkeep_blocked_bulk_help'), 'upk-bulk-list', '', true)
+    . Ui::row($t('upkeep_ips_block_duration'), '<select class="form-control" id="upk-bulk-duration" name="bulk_duration">' . $durationOptions('24h') . '</select>', '', 'upk-bulk-duration')
+    . Ui::row($t('upkeep_ips_reason'), '<input type="text" class="form-control" id="upk-bulk-reason" name="bulk_reason" maxlength="255">', '', 'upk-bulk-reason')
+    . '<div class="upk-form-actions"><button type="submit" class="btn btn-default" name="bulk_import_ips" value="1" data-confirm="' . rex_escape($t('upkeep_blocked_bulk_confirm')) . '"><i class="rex-icon fa-upload" aria-hidden="true"></i> ' . rex_escape($t('upkeep_blocked_bulk_button')) . '</button></div>'
+    . '</form></details>';
+echo $form;

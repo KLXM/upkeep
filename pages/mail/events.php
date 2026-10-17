@@ -6,19 +6,13 @@
  * Eingebunden von pages/protection.mail.php ($addon, $pageKey, $tab, $tabUrl).
  */
 
+use KLXM\Upkeep\Ui;
+
+$t = static fn (string $key, string ...$args): string => rex_i18n::rawMsg($key, ...$args);
 $table = rex::getTable('upkeep_ips_threat_log');
 $perPage = 50;
 $severities = ['low', 'medium', 'high', 'critical'];
 
-$severityBadge = static function (string $severity) use ($addon): string {
-    $class = match ($severity) {
-        'critical' => 'upk-badge--danger',
-        'high', 'medium' => 'upk-badge--warn',
-        default => 'upk-badge--muted',
-    };
-    $label = in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? $addon->i18n('upkeep_ips_severity_' . $severity) : ($severity ?: '-');
-    return '<span class="upk-badge ' . $class . '">' . rex_escape($label) . '</span>';
-};
 $typeLabel = static fn (string $type): string => ucwords(str_replace('_', ' ', preg_replace('/^mail_/', '', $type)));
 $formatTime = static function (?string $value): string {
     $ts = $value ? strtotime($value) : false;
@@ -36,25 +30,22 @@ if ($detailId > 0) {
                 'upkeep_ips_ip_address' => '<span class="upk-mono">' . rex_escape((string) $sql->getValue('ip_address')) . '</span>',
                 'upkeep_mail_security_threat_type' => rex_escape($typeLabel((string) $sql->getValue('threat_type'))),
                 'upkeep_ips_category' => rex_escape((string) $sql->getValue('threat_category')),
-                'upkeep_ips_severity' => $severityBadge((string) $sql->getValue('severity')),
+                'upkeep_ips_severity' => Ui::severity((string) $sql->getValue('severity')),
                 'upkeep_ips_pattern' => '<span class="upk-mono">' . rex_escape((string) $sql->getValue('pattern_matched')) . '</span>',
                 'upkeep_ips_action' => rex_escape((string) $sql->getValue('action_taken')),
                 'upkeep_ips_uri' => '<span class="upk-mono">' . rex_escape((string) $sql->getValue('request_uri')) . '</span>',
                 'upkeep_mail_events_user_agent' => '<span class="upk-mono">' . rex_escape((string) $sql->getValue('user_agent')) . '</span>',
                 'upkeep_ips_created_at' => rex_escape($formatTime((string) $sql->getValue('created_at'))),
             ];
-            $dl = '<dl class="dl-horizontal">';
+            $detailRows = [];
             foreach ($fields as $key => $value) {
-                $dl .= '<dt>' . rex_escape($addon->i18n($key)) . '</dt><dd>' . $value . '</dd>';
+                $detailRows[] = '<div class="upk-row upk-row--detail"><div class="upk-row-label"><strong>' . rex_escape($t($key)) . '</strong></div><div class="upk-row-control">' . $value . '</div></div>';
             }
-            $dl .= '</dl><p><a class="btn btn-default" href="' . $tabUrl() . '">' . rex_escape($addon->i18n('upkeep_close')) . '</a></p>';
-
-            $fragment = new rex_fragment();
-            $fragment->setVar('title', $addon->i18n('upkeep_mail_events_details'), false);
-            $fragment->setVar('body', $dl, false);
-            echo $fragment->parse('core/page/section.php');
+            echo Ui::listTitle($t('upkeep_mail_events_details'))
+                . '<div class="upk-group">' . implode('', $detailRows)
+                . '<div class="upk-form-actions"><a class="btn btn-default" href="' . $tabUrl() . '">' . rex_escape($t('upkeep_close')) . '</a></div></div>';
         } else {
-            echo rex_view::warning(rex_escape($addon->i18n('upkeep_mail_events_not_found')));
+            echo rex_view::warning(rex_escape($t('upkeep_mail_events_not_found')));
         }
     } catch (rex_sql_exception $e) {
         rex_logger::logException($e);
@@ -107,73 +98,71 @@ try {
     $rows = $sql->getArray('SELECT * FROM ' . $table . $whereSql . ' ORDER BY created_at DESC LIMIT ' . (int) $perPage . ' OFFSET ' . (int) (($current - 1) * $perPage), $params);
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
-    echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+    echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
     return;
 }
 
 $filterParams = array_filter(['type' => $filterType, 'severity' => $filterSeverity, 'ip' => $filterIp, 'date' => $filterDate], static fn ($v) => $v !== '');
 
-$filter = '<form class="upk-filter form-inline" method="get" action="' . rex_url::backendController() . '">';
+$filter = '<form class="upk-group upk-filterbar" method="get" action="' . rex_url::backendController() . '">';
 $filter .= '<input type="hidden" name="page" value="' . rex_escape($pageKey) . '"><input type="hidden" name="tab" value="events">';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-me-type">' . rex_escape($addon->i18n('upkeep_mail_security_threat_type')) . '</label><select class="form-control" id="upk-me-type" name="type"><option value="">' . rex_escape($addon->i18n('upkeep_all_types')) . '</option>';
+$filter .= '<label class="sr-only" for="upk-me-ip">' . rex_escape($t('upkeep_ips_ip_address')) . '</label><input type="search" class="form-control upk-filterbar-text" id="upk-me-ip" name="ip" maxlength="64" placeholder="' . rex_escape($t('upkeep_ips_ip_address')) . '" value="' . rex_escape($filterIp) . '">';
+$filter .= '<label class="sr-only" for="upk-me-type">' . rex_escape($t('upkeep_mail_security_threat_type')) . '</label><select class="form-control" id="upk-me-type" name="type"><option value="">' . rex_escape($t('upkeep_all_types')) . '</option>';
 foreach ($types as $type) {
     $filter .= '<option value="' . rex_escape($type) . '"' . ($filterType === $type ? ' selected' : '') . '>' . rex_escape($typeLabel($type)) . '</option>';
 }
-$filter .= '</select></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-me-sev">' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</label><select class="form-control" id="upk-me-sev" name="severity"><option value="">' . rex_escape($addon->i18n('upkeep_filter_all_severities')) . '</option>';
+$filter .= '</select>';
+$filter .= '<label class="sr-only" for="upk-me-sev">' . rex_escape($t('upkeep_ips_severity')) . '</label><select class="form-control" id="upk-me-sev" name="severity"><option value="">' . rex_escape($t('upkeep_filter_all_severities')) . '</option>';
 foreach ($severities as $sev) {
-    $filter .= '<option value="' . $sev . '"' . ($filterSeverity === $sev ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_ips_severity_' . $sev)) . '</option>';
+    $filter .= '<option value="' . $sev . '"' . ($filterSeverity === $sev ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_severity_' . $sev)) . '</option>';
 }
-$filter .= '</select></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-me-ip">' . rex_escape($addon->i18n('upkeep_ips_ip_address')) . '</label><input type="text" class="form-control" id="upk-me-ip" name="ip" maxlength="64" placeholder="' . rex_escape($addon->i18n('upkeep_ips_ip_address')) . '" value="' . rex_escape($filterIp) . '"></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-me-date">' . rex_escape($addon->i18n('upkeep_date')) . '</label><input type="date" class="form-control" id="upk-me-date" name="date" value="' . rex_escape($filterDate) . '"></div> ';
-$filter .= '<button type="submit" class="btn btn-default"><i class="rex-icon fa-search"></i> ' . rex_escape($addon->i18n('upkeep_filter')) . '</button> ';
+$filter .= '</select>';
+$filter .= '<label class="upk-filterbar-field" for="upk-me-date"><span>' . rex_escape($t('upkeep_date')) . '</span><input type="date" class="form-control" id="upk-me-date" name="date" value="' . rex_escape($filterDate) . '"></label>';
+$filter .= '<span class="upk-filterbar-end">';
 if ($filterParams) {
-    $filter .= '<a class="btn btn-link" href="' . $tabUrl() . '">' . rex_escape($addon->i18n('upkeep_reset')) . '</a>';
+    $filter .= '<a class="upk-filterbar-reset" href="' . $tabUrl() . '">' . rex_escape($t('upkeep_reset')) . '</a>';
 }
+$filter .= '<button type="submit" class="btn btn-primary"><i class="rex-icon fa-search" aria-hidden="true"></i> ' . rex_escape($t('upkeep_filter')) . '</button></span>';
 $filter .= '</form>';
+echo $filter;
 
-$toolbar = '<div class="upk-toolbar"><span class="upk-muted">' . rex_escape($addon->i18n('upkeep_pages_entries_total', $total)) . '</span></div>';
+echo Ui::listTitle($t('upkeep_mail_security_threats'), $total);
 
 if (!$rows) {
-    $body = '<div class="upk-empty"><p>' . rex_escape($addon->i18n('upkeep_no_threats_message')) . '</p></div>';
-} else {
-    $body = '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_time')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_ip_address')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_mail_security_threat_type')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_pattern')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_action')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_details')) . '</th>';
-    $body .= '</tr></thead><tbody>';
-    foreach ($rows as $row) {
-        $pattern = (string) ($row['pattern_matched'] ?? '');
-        $body .= '<tr>';
-        $body .= '<td>' . rex_escape($formatTime((string) $row['created_at'])) . '</td>';
-        $body .= '<td><span class="upk-mono">' . rex_escape((string) $row['ip_address']) . '</span></td>';
-        $body .= '<td>' . rex_escape($typeLabel((string) $row['threat_type'])) . '</td>';
-        $body .= '<td><span class="upk-mono" title="' . rex_escape($pattern) . '">' . rex_escape(mb_strimwidth($pattern, 0, 50, '…')) . '</span></td>';
-        $body .= '<td>' . $severityBadge((string) $row['severity']) . '</td>';
-        $body .= '<td>' . rex_escape((string) ($row['action_taken'] ?? '')) . '</td>';
-        $body .= '<td class="upk-actions"><a class="btn btn-default btn-xs" href="' . $tabUrl($filterParams + ['id' => (int) $row['id']]) . '">' . rex_escape($addon->i18n('upkeep_details')) . '</a></td>';
-        $body .= '</tr>';
-    }
-    $body .= '</tbody></table></div>';
-
-    if ($pages > 1) {
-        $link = static fn (int $p): string => $tabUrl($filterParams + ['p' => $p]);
-        $body .= '<nav><ul class="pagination pagination-sm">';
-        $body .= $current > 1 ? '<li><a href="' . $link($current - 1) . '" aria-label="' . rex_escape($addon->i18n('upkeep_previous')) . '">&laquo;</a></li>' : '<li class="disabled"><span>&laquo;</span></li>';
-        for ($i = max(1, $current - 3); $i <= min($pages, $current + 3); ++$i) {
-            $body .= $i === $current ? '<li class="active"><span>' . $i . '</span></li>' : '<li><a href="' . $link($i) . '">' . $i . '</a></li>';
-        }
-        $body .= $current < $pages ? '<li><a href="' . $link($current + 1) . '" aria-label="' . rex_escape($addon->i18n('upkeep_next')) . '">&raquo;</a></li>' : '<li class="disabled"><span>&raquo;</span></li>';
-        $body .= '</ul></nav>';
-    }
+    echo '<div class="upk-group">' . Ui::emptyState($t($filterParams ? 'upkeep_pages_no_match' : 'upkeep_no_threats_message'), $filterParams ? 'fa-filter' : 'fa-check') . '</div>';
+    return;
 }
 
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('upkeep_mail_security_threats'), false);
-$fragment->setVar('body', $toolbar . $filter . $body, false);
-echo $fragment->parse('core/page/section.php');
+$labels = [
+    'time' => $t('upkeep_ips_time'),
+    'ip' => $t('upkeep_ips_ip_address'),
+    'type' => $t('upkeep_mail_security_threat_type'),
+    'pattern' => $t('upkeep_ips_pattern'),
+    'severity' => $t('upkeep_ips_severity'),
+    'action' => $t('upkeep_ips_action'),
+    'actions' => $t('upkeep_details'),
+];
+$body = '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+foreach ($labels as $key => $label) {
+    $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+}
+$body .= '</tr></thead><tbody>';
+foreach ($rows as $row) {
+    $pattern = (string) ($row['pattern_matched'] ?? '');
+    $body .= '<tr' . ((int) $row['id'] === $detailId ? ' class="upk-table-current"' : '') . '>';
+    $body .= Ui::td($labels['time'], rex_escape($formatTime((string) $row['created_at'])), 'upk-nowrap');
+    $body .= Ui::td($labels['ip'], '<span class="upk-mono">' . rex_escape((string) $row['ip_address']) . '</span>');
+    $body .= Ui::td($labels['type'], rex_escape($typeLabel((string) $row['threat_type'])));
+    $body .= Ui::td($labels['pattern'], '<span class="upk-mono" title="' . rex_escape($pattern) . '">' . rex_escape(mb_strimwidth($pattern, 0, 50, '…')) . '</span>');
+    $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
+    $body .= Ui::td($labels['action'], rex_escape((string) ($row['action_taken'] ?? '')));
+    $body .= Ui::td($labels['actions'], '<a class="btn btn-xs upk-btn-ghost" href="' . $tabUrl($filterParams + ['id' => (int) $row['id']]) . '">' . rex_escape($t('upkeep_details')) . '</a>', 'upk-actions');
+    $body .= '</tr>';
+}
+$body .= '</tbody></table></div>';
+$pager = Ui::pager($current, $pages, static fn (int $p): string => $tabUrl($filterParams + ['p' => $p]));
+if ('' !== $pager) {
+    $body .= '<div class="upk-group-foot">' . $pager . '</div>';
+}
+$body .= '</div>';
+echo $body;

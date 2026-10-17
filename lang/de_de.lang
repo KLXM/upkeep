@@ -1992,3 +1992,19 @@ upkeep_storage_disk_free = {0} von {1} frei auf dem Server
 upkeep_storage_server = Server
 upkeep_storage_breakdown = Aufschlüsselung
 upkeep_storage_empty_categories = Leere Bereiche ({0})
+
+# upkeep 3 (lists)
+upkeep_list_ips_on = Schutz eingeschaltet
+upkeep_list_ips_off = Schutz ausgeschaltet
+upkeep_list_events_intro = Angriffsversuche, die der Schutz auf der Website erkannt hat.
+upkeep_list_blocked_title = Gesperrte IP-Adressen
+upkeep_list_blocked_intro = Adressen ohne Zugriff auf die Website – automatisch oder von Hand gesperrt.
+upkeep_list_allowlist_intro = Vertrauenswürdige Adressen, die der Schutz nie sperrt.
+upkeep_list_patterns_intro = Erkennungsregeln des Schutzes: eigene und mitgelieferte Muster.
+upkeep_list_patterns_custom = Eigene Muster
+upkeep_list_patterns_default = Standard-Muster
+upkeep_list_stat_today = Heute
+upkeep_list_stat_week = Letzte 7 Tage
+upkeep_list_show = Anzeigen
+upkeep_list_select = Auswählen
+upkeep_list_pages = Seiten

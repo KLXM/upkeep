@@ -6,6 +6,8 @@
  * Eingebunden von pages/protection.mail.php ($addon, $pageKey, $tab, $tabUrl).
  */
 
+use KLXM\Upkeep\Ui;
+
 $csrf = rex_csrf_token::factory('upkeep_mail_blocklist');
 $table = rex::getTable('upkeep_mail_blocklist');
 $severities = ['low', 'medium', 'high', 'critical'];
@@ -122,6 +124,9 @@ if ($hasAction) {
     }
 }
 
+$t = static fn (string $key, string ...$args): string => rex_i18n::rawMsg($key, ...$args);
+$hadError = str_contains(implode('', $messages), 'alert-danger');
+
 echo implode('', $messages);
 
 // Filter (GET)
@@ -158,61 +163,63 @@ try {
     $rows = rex_sql::factory()->getArray('SELECT * FROM ' . $table . $whereSql . ' ORDER BY created_at DESC', $params);
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
-    echo rex_view::error($addon->i18n('upkeep_pages_table_missing'));
+    echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
     return;
 }
 
-$typeLabel = static fn (string $t): string => in_array($t, ['email', 'domain', 'ip', 'pattern'], true) ? $addon->i18n('upkeep_type_' . $t) : $t;
-$severityBadge = static function (string $severity) use ($addon): string {
-    $class = match ($severity) {
-        'critical' => 'upk-badge--danger',
-        'high', 'medium' => 'upk-badge--warn',
-        default => 'upk-badge--muted',
-    };
-    $label = in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? $addon->i18n('upkeep_ips_severity_' . $severity) : ($severity ?: '-');
-    return '<span class="upk-badge ' . $class . '">' . rex_escape($label) . '</span>';
-};
+$typeLabel = static fn (string $v): string => in_array($v, ['email', 'domain', 'ip', 'pattern'], true) ? $t('upkeep_type_' . $v) : $v;
 
 $filterParams = array_filter(['type' => $filterType, 'severity' => $filterSeverity, 'status' => $filterStatus, 'q' => $filterSearch], static fn ($v) => $v !== '');
 $listUrl = $tabUrl($filterParams);
 
-$filter = '<form class="upk-filter form-inline" method="get" action="' . rex_url::backendController() . '">';
+$filter = '<form class="upk-group upk-filterbar" method="get" action="' . rex_url::backendController() . '">';
 $filter .= '<input type="hidden" name="page" value="' . rex_escape($pageKey) . '"><input type="hidden" name="tab" value="blocklist">';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-bl-ftype">' . rex_escape($addon->i18n('upkeep_ips_type')) . '</label><select class="form-control" id="upk-bl-ftype" name="type"><option value="">' . rex_escape($addon->i18n('upkeep_all_types')) . '</option>';
-foreach ($types as $t) {
-    $filter .= '<option value="' . $t . '"' . ($filterType === $t ? ' selected' : '') . '>' . rex_escape($typeLabel($t)) . '</option>';
+$filter .= '<label class="sr-only" for="upk-bl-fq">' . rex_escape($t('upkeep_pages_search')) . '</label><input type="search" class="form-control upk-filterbar-text" id="upk-bl-fq" name="q" maxlength="100" placeholder="' . rex_escape($t('upkeep_pages_search')) . '" value="' . rex_escape($filterSearch) . '">';
+$filter .= '<label class="sr-only" for="upk-bl-ftype">' . rex_escape($t('upkeep_ips_type')) . '</label><select class="form-control" id="upk-bl-ftype" name="type"><option value="">' . rex_escape($t('upkeep_all_types')) . '</option>';
+foreach ($types as $v) {
+    $filter .= '<option value="' . $v . '"' . ($filterType === $v ? ' selected' : '') . '>' . rex_escape($typeLabel($v)) . '</option>';
 }
-$filter .= '</select></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-bl-fsev">' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</label><select class="form-control" id="upk-bl-fsev" name="severity"><option value="">' . rex_escape($addon->i18n('upkeep_filter_all_severities')) . '</option>';
+$filter .= '</select>';
+$filter .= '<label class="sr-only" for="upk-bl-fsev">' . rex_escape($t('upkeep_ips_severity')) . '</label><select class="form-control" id="upk-bl-fsev" name="severity"><option value="">' . rex_escape($t('upkeep_filter_all_severities')) . '</option>';
 foreach ($severities as $sev) {
-    $filter .= '<option value="' . $sev . '"' . ($filterSeverity === $sev ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_ips_severity_' . $sev)) . '</option>';
+    $filter .= '<option value="' . $sev . '"' . ($filterSeverity === $sev ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_severity_' . $sev)) . '</option>';
 }
-$filter .= '</select></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-bl-fstatus">' . rex_escape($addon->i18n('upkeep_pages_status')) . '</label><select class="form-control" id="upk-bl-fstatus" name="status"><option value="">' . rex_escape($addon->i18n('upkeep_all_status')) . '</option>'
-    . '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_active')) . '</option>'
-    . '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_inactive')) . '</option></select></div> ';
-$filter .= '<div class="form-group"><label class="sr-only" for="upk-bl-fq">' . rex_escape($addon->i18n('upkeep_pages_search')) . '</label><input type="search" class="form-control" id="upk-bl-fq" name="q" maxlength="100" placeholder="' . rex_escape($addon->i18n('upkeep_pages_search')) . '" value="' . rex_escape($filterSearch) . '"></div> ';
-$filter .= '<button type="submit" class="btn btn-default"><i class="rex-icon fa-search"></i> ' . rex_escape($addon->i18n('upkeep_filter')) . '</button> ';
+$filter .= '</select>';
+$filter .= '<label class="sr-only" for="upk-bl-fstatus">' . rex_escape($t('upkeep_pages_status')) . '</label><select class="form-control" id="upk-bl-fstatus" name="status"><option value="">' . rex_escape($t('upkeep_all_status')) . '</option>'
+    . '<option value="1"' . ($filterStatus === '1' ? ' selected' : '') . '>' . rex_escape($t('upkeep_active')) . '</option>'
+    . '<option value="0"' . ($filterStatus === '0' ? ' selected' : '') . '>' . rex_escape($t('upkeep_inactive')) . '</option></select>';
+$filter .= '<span class="upk-filterbar-end">';
 if ($filterParams) {
-    $filter .= '<a class="btn btn-link" href="' . $tabUrl() . '">' . rex_escape($addon->i18n('upkeep_reset')) . '</a>';
+    $filter .= '<a class="upk-filterbar-reset" href="' . $tabUrl() . '">' . rex_escape($t('upkeep_reset')) . '</a>';
 }
+$filter .= '<button type="submit" class="btn btn-primary"><i class="rex-icon fa-search" aria-hidden="true"></i> ' . rex_escape($t('upkeep_filter')) . '</button></span>';
 $filter .= '</form>';
+echo $filter;
 
-$toolbar = '<div class="upk-toolbar"><span class="upk-muted">' . rex_escape($addon->i18n('upkeep_pages_entries_total', count($rows))) . '</span></div>';
+echo Ui::listTitle($t('upkeep_mail_security_blocklist_entries'), count($rows));
 
 if (!$rows) {
-    $body = '<div class="upk-empty"><p>' . rex_escape($addon->i18n($filterParams ? 'upkeep_pages_no_match' : 'upkeep_mail_blocklist_empty')) . '</p></div>';
+    echo '<div class="upk-group">' . Ui::emptyState($t($filterParams ? 'upkeep_pages_no_match' : 'upkeep_mail_blocklist_empty'), $filterParams ? 'fa-filter' : 'fa-check') . '</div>';
 } else {
+    $labels = [
+        'select' => $t('upkeep_list_select'),
+        'entry' => $t('upkeep_mail_blocklist_entry'),
+        'type' => $t('upkeep_ips_type'),
+        'severity' => $t('upkeep_ips_severity'),
+        'status' => $t('upkeep_pages_status'),
+        'reason' => $t('upkeep_reason'),
+        'until' => $t('upkeep_valid_until'),
+        'actions' => $t('upkeep_actions'),
+    ];
     $body = '<form id="upk-bl-rows" action="' . $listUrl . '" method="post">' . $csrf->getHiddenField() . '</form>';
-    $body .= '<div class="table-responsive"><table class="table table-striped table-hover"><thead><tr>';
-    $body .= '<th class="rex-table-icon"><input type="checkbox" data-upk-check-all="upk-bl-rows" aria-label="' . rex_escape($addon->i18n('upkeep_select_all')) . '"></th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_mail_blocklist_entry')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_type')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_pages_status')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_reason')) . '</th>';
-    $body .= '<th>' . rex_escape($addon->i18n('upkeep_valid_until')) . '</th>';
-    $body .= '<th class="upk-actions">' . rex_escape($addon->i18n('upkeep_actions')) . '</th>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+    $body .= '<th scope="col" class="upk-table-check"><input type="checkbox" data-upk-check-all="upk-bl-rows" aria-label="' . rex_escape($t('upkeep_select_all')) . '"></th>';
+    foreach ($labels as $key => $label) {
+        if ('select' === $key) {
+            continue;
+        }
+        $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
     $body .= '</tr></thead><tbody>';
     foreach ($rows as $row) {
         $id = (int) $row['id'];
@@ -220,68 +227,59 @@ if (!$rows) {
         $expires = !empty($row['expires_at']) ? strtotime((string) $row['expires_at']) : false;
         $expired = $expires && $expires < time();
         $on = (int) $row['status'] === 1;
-        [$statusClass, $statusText] = $expired
-            ? ['upk-badge--warn', $addon->i18n('upkeep_status_expired')]
-            : ($on ? ['upk-badge--ok', $addon->i18n('upkeep_active')] : ['upk-badge--muted', $addon->i18n('upkeep_inactive')]);
+        $statusBadge = $expired ? Ui::badge($t('upkeep_status_expired'), 'warn') : Ui::status($on);
         $reason = (string) ($row['reason'] ?? '');
-        $body .= '<tr>';
-        $body .= '<td class="rex-table-icon"><input type="checkbox" form="upk-bl-rows" name="selected_blocklist[]" value="' . $id . '" aria-label="' . rex_escape($identifier) . '"></td>';
-        $body .= '<td><span class="upk-mono">' . rex_escape($identifier) . '</span></td>';
-        $body .= '<td>' . rex_escape($typeLabel((string) $row['blocklist_type'])) . '</td>';
-        $body .= '<td>' . $severityBadge((string) $row['severity']) . '</td>';
-        $body .= '<td><span class="upk-badge ' . $statusClass . '">' . rex_escape($statusText) . '</span></td>';
-        $body .= '<td><span class="upk-muted" title="' . rex_escape($reason) . '">' . rex_escape(mb_strimwidth($reason, 0, 50, '…')) . '</span></td>';
-        $body .= '<td>' . rex_escape($expires ? date('d.m.Y H:i', $expires) : $addon->i18n('upkeep_ips_block_duration_permanent')) . '</td>';
-        $body .= '<td class="upk-actions">';
+        $actions = '';
         if (!$expired) {
-            $body .= '<button type="submit" form="upk-bl-rows" class="btn btn-default btn-xs" name="toggle_blocklist" value="' . $id . '">' . rex_escape($on ? $addon->i18n('upkeep_deactivate') : $addon->i18n('upkeep_activate')) . '</button> ';
+            $actions .= '<button type="submit" form="upk-bl-rows" class="btn btn-xs upk-btn-ghost" name="toggle_blocklist" value="' . $id . '">' . rex_escape($on ? $t('upkeep_deactivate') : $t('upkeep_activate')) . '</button> ';
         }
-        $body .= '<button type="submit" form="upk-bl-rows" class="btn btn-delete btn-xs" name="remove_blocklist" value="' . $id . '" data-confirm="' . rex_escape($addon->i18n('upkeep_delete_blocklist_confirm')) . '"><i class="rex-icon rex-icon-delete"></i> ' . rex_escape($addon->i18n('upkeep_delete')) . '</button>';
-        $body .= '</td></tr>';
+        $actions .= '<button type="submit" form="upk-bl-rows" class="btn btn-xs upk-btn-ghost upk-btn-ghost--danger" name="remove_blocklist" value="' . $id . '" data-confirm="' . rex_escape($t('upkeep_delete_blocklist_confirm')) . '"><i class="rex-icon rex-icon-delete" aria-hidden="true"></i> ' . rex_escape($t('upkeep_delete')) . '</button>';
+        $body .= '<tr>';
+        $body .= Ui::td($labels['select'], '<input type="checkbox" form="upk-bl-rows" name="selected_blocklist[]" value="' . $id . '" aria-label="' . rex_escape($identifier) . '">', 'upk-table-check');
+        $body .= Ui::td($labels['entry'], '<span class="upk-mono">' . rex_escape($identifier) . '</span>');
+        $body .= Ui::td($labels['type'], rex_escape($typeLabel((string) $row['blocklist_type'])));
+        $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
+        $body .= Ui::td($labels['status'], $statusBadge);
+        $body .= Ui::td($labels['reason'], '<span class="upk-muted" title="' . rex_escape($reason) . '">' . rex_escape(mb_strimwidth($reason, 0, 50, '…')) . '</span>');
+        $body .= Ui::td($labels['until'], rex_escape($expires ? date('d.m.Y H:i', $expires) : $t('upkeep_ips_block_duration_permanent')), 'upk-nowrap');
+        $body .= Ui::td($labels['actions'], $actions, 'upk-actions');
+        $body .= '</tr>';
     }
     $body .= '</tbody></table></div>';
-    $body .= '<div class="upk-toolbar form-inline">'
-        . '<label class="sr-only" for="upk-bl-bulk">' . rex_escape($addon->i18n('upkeep_bulk_action_select')) . '</label>'
+    $body .= '<div class="upk-group-foot"><div class="upk-bulk">'
+        . '<label class="sr-only" for="upk-bl-bulk">' . rex_escape($t('upkeep_bulk_action_select')) . '</label>'
         . '<select class="form-control" id="upk-bl-bulk" name="bulk_action" form="upk-bl-rows">'
-        . '<option value="">' . rex_escape($addon->i18n('upkeep_bulk_action_select')) . '</option>'
-        . '<option value="activate">' . rex_escape($addon->i18n('upkeep_activate')) . '</option>'
-        . '<option value="deactivate">' . rex_escape($addon->i18n('upkeep_deactivate')) . '</option>'
-        . '<option value="delete">' . rex_escape($addon->i18n('upkeep_delete')) . '</option>'
-        . '</select> '
-        . '<button type="submit" class="btn btn-default" form="upk-bl-rows" name="bulk_apply" value="1" data-confirm="' . rex_escape($addon->i18n('upkeep_bulk_confirm')) . '">' . rex_escape($addon->i18n('upkeep_execute')) . '</button>'
-        . '</div>';
+        . '<option value="">' . rex_escape($t('upkeep_bulk_action_select')) . '</option>'
+        . '<option value="activate">' . rex_escape($t('upkeep_activate')) . '</option>'
+        . '<option value="deactivate">' . rex_escape($t('upkeep_deactivate')) . '</option>'
+        . '<option value="delete">' . rex_escape($t('upkeep_delete')) . '</option>'
+        . '</select>'
+        . '<button type="submit" class="btn btn-default" form="upk-bl-rows" name="bulk_apply" value="1" data-confirm="' . rex_escape($t('upkeep_bulk_confirm')) . '">' . rex_escape($t('upkeep_execute')) . '</button>'
+        . '</div></div>';
+    $body .= '</div>';
+    echo $body;
 }
 
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('upkeep_mail_security_blocklist_entries'), false);
-$fragment->setVar('body', $toolbar . $filter . $body, false);
-echo $fragment->parse('core/page/section.php');
-
 // Formular: hinzufügen (ein Wertfeld, Bedeutung je nach Typ)
+$posted = rex_post('add_blocklist', 'bool') && $hadError;
+$value = static fn (string $name, string $default = ''): string => $posted ? (string) rex_post($name, 'string', $default) : $default;
+$selType = $value('blocklist_type', 'email');
+$selSev = $value('blocklist_severity', 'medium');
 $typeOptions = '';
-foreach ($types as $t) {
-    $typeOptions .= '<option value="' . $t . '">' . rex_escape($typeLabel($t)) . '</option>';
+foreach ($types as $v) {
+    $typeOptions .= '<option value="' . $v . '"' . ($v === $selType ? ' selected' : '') . '>' . rex_escape($typeLabel($v)) . '</option>';
 }
 $sevOptions = '';
 foreach ($severities as $sev) {
-    $sevOptions .= '<option value="' . $sev . '"' . ($sev === 'medium' ? ' selected' : '') . '>' . rex_escape($addon->i18n('upkeep_ips_severity_' . $sev)) . '</option>';
+    $sevOptions .= '<option value="' . $sev . '"' . ($sev === $selSev ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_severity_' . $sev)) . '</option>';
 }
-$form = '<form action="' . $listUrl . '" method="post">' . $csrf->getHiddenField();
-$form .= '<div class="row">';
-$form .= '<div class="col-sm-2"><div class="form-group"><label for="upk-bl-type">' . rex_escape($addon->i18n('upkeep_ips_type')) . '</label><select class="form-control" id="upk-bl-type" name="blocklist_type">' . $typeOptions . '</select></div></div>';
-$form .= '<div class="col-sm-4"><div class="form-group"><label for="upk-bl-value">' . rex_escape($addon->i18n('upkeep_mail_blocklist_entry')) . '</label>'
-    . '<input type="text" class="form-control upk-mono" id="upk-bl-value" name="blocklist_value" required maxlength="255" placeholder="spam@example.com / example.com / 192.0.2.*">'
-    . '<p class="help-block">' . rex_escape($addon->i18n('upkeep_mail_blocklist_value_help')) . '</p></div></div>';
-$form .= '<div class="col-sm-2"><div class="form-group"><label for="upk-bl-sev">' . rex_escape($addon->i18n('upkeep_ips_severity')) . '</label><select class="form-control" id="upk-bl-sev" name="blocklist_severity">' . $sevOptions . '</select></div></div>';
-$form .= '<div class="col-sm-4"><div class="form-group"><label for="upk-bl-expires">' . rex_escape($addon->i18n('upkeep_valid_until')) . '</label>'
-    . '<input type="datetime-local" class="form-control" id="upk-bl-expires" name="blocklist_expires"><p class="help-block">' . rex_escape($addon->i18n('upkeep_empty_permanent')) . '</p></div></div>';
-$form .= '</div>';
-$form .= '<div class="form-group"><label for="upk-bl-reason">' . rex_escape($addon->i18n('upkeep_reason')) . '</label><input type="text" class="form-control" id="upk-bl-reason" name="blocklist_reason" maxlength="1000"></div>';
-$form .= '<button type="submit" class="btn btn-primary" name="add_blocklist" value="1"><i class="rex-icon rex-icon-add"></i> ' . rex_escape($addon->i18n('upkeep_add_to_blocklist')) . '</button>';
-$form .= '</form>';
-
-$fragment = new rex_fragment();
-$fragment->setVar('class', 'edit', false);
-$fragment->setVar('title', $addon->i18n('upkeep_add_to_blocklist'), false);
-$fragment->setVar('body', $form, false);
-echo $fragment->parse('core/page/section.php');
+echo '<details class="upk-group upk-form-details"' . ($posted || (!$rows && !$filterParams) ? ' open' : '') . ' id="upk-form">'
+    . '<summary>' . rex_escape($t('upkeep_add_to_blocklist')) . '</summary>'
+    . '<form action="' . $listUrl . '" method="post">' . $csrf->getHiddenField()
+    . Ui::row($t('upkeep_ips_type'), '<select class="form-control" id="upk-bl-type" name="blocklist_type">' . $typeOptions . '</select>', '', 'upk-bl-type')
+    . Ui::row($t('upkeep_mail_blocklist_entry'), '<input type="text" class="form-control upk-mono" id="upk-bl-value" name="blocklist_value" required maxlength="255" placeholder="spam@example.com / example.com / 192.0.2.*" value="' . rex_escape($value('blocklist_value')) . '">', $t('upkeep_mail_blocklist_value_help'), 'upk-bl-value')
+    . Ui::row($t('upkeep_ips_severity'), '<select class="form-control" id="upk-bl-sev" name="blocklist_severity">' . $sevOptions . '</select>', '', 'upk-bl-sev')
+    . Ui::row($t('upkeep_valid_until'), '<input type="datetime-local" class="form-control" id="upk-bl-expires" name="blocklist_expires" value="' . rex_escape($value('blocklist_expires')) . '">', $t('upkeep_empty_permanent'), 'upk-bl-expires')
+    . Ui::row($t('upkeep_reason'), '<input type="text" class="form-control" id="upk-bl-reason" name="blocklist_reason" maxlength="1000" value="' . rex_escape($value('blocklist_reason')) . '">', '', 'upk-bl-reason')
+    . '<div class="upk-form-actions"><button type="submit" class="btn btn-primary" name="add_blocklist" value="1"><i class="rex-icon rex-icon-add" aria-hidden="true"></i> ' . rex_escape($t('upkeep_add_to_blocklist')) . '</button></div>'
+    . '</form></details>';
