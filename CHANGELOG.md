@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.0.0 (in Arbeit)
+## 3.0.0-beta1 (2026-10-17)
 
 Komplett überarbeitet: Sicherheit nach aktuellem Stand, neue Oberfläche, Formularschutz für YForm, Speicherübersicht. Das Update von 2.x übernimmt Einstellungen, Rechte und Daten automatisch.
 
