@@ -117,7 +117,7 @@ final class SettingsSections
                     ]],
                     ['title' => 'upkeep_set_group_form_behaviour', 'fields' => [
                         ['key' => 'form_protection_message', 'type' => 'text', 'default' => ''],
-                        ['key' => 'form_protection_exclude', 'type' => 'textarea', 'default' => ''],
+                        ['key' => 'form_protection_exclude', 'type' => 'textarea', 'default' => '', 'explain' => 'formnames'],
                         ['key' => 'form_protection_report_ips', 'type' => 'switch', 'default' => 1],
                         ['key' => 'form_protection_log_days', 'type' => 'number', 'default' => 30, 'min' => 1, 'max' => 365],
                     ]],

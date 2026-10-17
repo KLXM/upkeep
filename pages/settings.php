@@ -143,6 +143,10 @@ if ('post' === rex_request_method()) {
             }
             $addon->setConfig($key, $value);
         }
+        $excluded = preg_split('/[\s,]+/', (string) $addon->getConfig('form_protection_exclude', ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ('forms' === $section && in_array('formular', $excluded, true)) {
+            $errors[] = rex_i18n::rawMsg('upkeep_set_exclude_warn_default');
+        }
         $messages[] = $errors
             ? rex_view::warning(rex_escape(rex_i18n::rawMsg('upkeep_set_saved_with_errors')) . '<br>' . implode('<br>', array_map('rex_escape', $errors)))
             : rex_view::success(rex_escape(rex_i18n::rawMsg('upkeep_set_saved')));
@@ -258,8 +262,24 @@ $renderField = static function (array $field) use ($addon, $label, $help, $secti
             if (!empty($field['currentIp'])) {
                 $hint = trim($hint . ' ' . rex_i18n::rawMsg('upkeep_set_your_ip', (string) rex_server('REMOTE_ADDR', 'string', '')));
             }
-            return Ui::row($label($key), '<textarea class="form-control upk-mono" rows="3" id="' . $id . '" name="' . rex_escape($key) . '"'
+            $html = Ui::row($label($key), '<textarea class="form-control upk-mono" rows="3" id="' . $id . '" name="' . rex_escape($key) . '"'
                 . (isset($field['placeholder']) ? ' placeholder="' . rex_escape($field['placeholder']) . '"' : '') . '>' . rex_escape($text) . '</textarea>', $hint, $id, '', true);
+            if ('formnames' === ($field['explain'] ?? '')) {
+                // Erklärung: woher der Formularname kommt, wie man ihn setzt oder ein Formular direkt ausnimmt
+                $code = static fn (string $c) => '<code>' . rex_escape($c) . '</code>';
+                $seen = class_exists(\KLXM\Upkeep\FormProtection::class) ? array_keys((array) (\KLXM\Upkeep\FormProtection::getStats(365)['by_form'] ?? [])) : [];
+                $html .= '<div class="upk-explain">'
+                    . '<p>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_name')) . '</p>'
+                    . '<p>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_set')) . '</p>'
+                    . '<ul><li>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_pipe')) . ' ' . $code('objparams|form_name|kontakt') . '</li>'
+                    . '<li>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_php')) . ' ' . $code("\$yform->setObjectparams('form_name', 'kontakt');") . '</li></ul>'
+                    . '<p>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_direct')) . '</p>'
+                    . '<ul><li>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_pipe')) . ' ' . $code('objparams|upkeep_spam_protection|0') . '</li>'
+                    . '<li>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_php')) . ' ' . $code("\$yform->setObjectparams('upkeep_spam_protection', 0);") . '</li></ul>'
+                    . ($seen ? '<p>' . rex_escape(rex_i18n::rawMsg('upkeep_set_exclude_explain_seen')) . ' ' . implode(', ', array_map($code, $seen)) . '</p>' : '')
+                    . '</div>';
+            }
+            return $html;
         case 'password':
             $isSet = '' !== (string) $addon->getConfig($field['hashKey'], '') || '' !== (string) $addon->getConfig($key, '');
             return Ui::row($label($key), '<input class="form-control" type="password" autocomplete="new-password" minlength="8" id="' . $id . '" name="' . rex_escape($key) . '" placeholder="'

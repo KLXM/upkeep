@@ -523,3 +523,10 @@ details.upk-group[open] > summary { border-bottom: 1px solid var(--upk-sep); }
 /* ---------- Links in eigenen Bausteinen (Kontrast >= 4.5:1, Kern-Links bleiben unverändert) ---------- */
 .upk-tile a:not(.btn), .upk-row a:not(.btn), .upk-hero a:not(.btn), .upk-group a:not(.btn), .upk-link.btn-link, .upkeep-storage a:not(.btn) { color: var(--upk-link); }
 .upk-tile a:not(.btn):hover, .upk-row a:not(.btn):hover, .upk-group a:not(.btn):hover, .upkeep-storage a:not(.btn):hover { color: var(--upk-text); }
+
+/* ---------- Erklärung unter einem Feld ---------- */
+.upk-explain + .upk-row { border-top: 1px solid var(--upk-sep); }
+.upk-explain { padding: 0 16px 14px; font-size: 12px; line-height: 1.5; color: var(--upk-muted); }
+.upk-explain p { margin: 0 0 4px; }
+.upk-explain ul { margin: 0 0 8px; padding-left: 18px; }
+.upk-explain code { font-size: 11px; color: var(--upk-text); background: var(--upk-bg-soft); border: 1px solid var(--upk-border); border-radius: 4px; padding: 1px 4px; display: inline-block; max-width: 100%; white-space: normal; word-break: normal; overflow-wrap: anywhere; vertical-align: baseline; }
