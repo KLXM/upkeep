@@ -76,6 +76,7 @@ rex_extension::register('PACKAGES_INCLUDED', static function () use ($addon, $sa
         rex_cronjob_manager::registerType(rex_upkeep_ips_cleanup_cronjob::class);
         rex_cronjob_manager::registerType(rex_upkeep_storage_cronjob::class);
         rex_cronjob_manager::registerType(rex_upkeep_advisor_cronjob::class);
+        rex_cronjob_manager::registerType(rex_upkeep_mail_reporting_cronjob::class);
     }
 }, rex_extension::EARLY);
 

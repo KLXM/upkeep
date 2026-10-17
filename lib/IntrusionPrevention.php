@@ -1694,6 +1694,32 @@ class IntrusionPrevention
     }
 
     /**
+     * Sperrt eine einzelne IP für eine frei wählbare Dauer in Sekunden (z. B. Mail-Filter).
+     * Im Gegensatz zu blockIpManually() (feste Stufen 1h/6h/24h/…) ohne Rückmeldungstexte.
+     * Positivliste und Monitor-Only-Modus werden respektiert; bestehende Sperren bleiben unverändert.
+     * Quelle 'auto'/'external' erlaubt die Selbstentsperrung per ALTCHA, 'manual' nicht.
+     */
+    public static function blockIpForSeconds(string $ip, int $seconds, string $reason = '', string $source = 'auto'): bool
+    {
+        try {
+            $ip = trim($ip);
+            if (filter_var($ip, FILTER_VALIDATE_IP) === false || $seconds < 60) {
+                return false;
+            }
+            if (self::isMonitorOnlyMode() || self::isOnPositivliste($ip) || self::isBlocked($ip)) {
+                return false;
+            }
+            $source = in_array($source, ['auto', 'manual', 'external'], true) ? $source : 'auto';
+            self::blockIpTemporarily($ip, min($seconds, 30 * 86400), $reason, $source);
+            self::invalidateCache();
+            return self::isBlocked($ip);
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            return false;
+        }
+    }
+
+    /**
      * Validiert CIDR-Notation
      *
      * @return array{valid: bool, message: string}
@@ -1998,10 +2024,14 @@ class IntrusionPrevention
     }
 
     /**
-     * Automatische Bereinigung höchstens einmal pro Stunde (Zeitstempel-Datei)
+     * Automatische Bereinigung höchstens einmal pro Stunde (Zeitstempel-Datei).
+     * Abschaltbar über ips_cleanup_auto (dann nur Cronjob/Konsole/Button).
      */
     private static function maybeCleanup(): void
     {
+        if (!(bool) self::getAddon()->getConfig('ips_cleanup_auto', 1)) {
+            return;
+        }
         $marker = rex_path::addonData('upkeep', 'store/ips_last_cleanup');
         $last = is_file($marker) ? (int) @filemtime($marker) : 0;
         if (time() - $last < self::CLEANUP_INTERVAL) {

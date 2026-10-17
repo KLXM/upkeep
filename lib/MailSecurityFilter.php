@@ -24,6 +24,13 @@ use rex_extension_point;
 class MailSecurityFilter
 {
     private static ?rex_addon $addon = null;
+
+    /** Kopfzeile der eigenen Admin-Benachrichtigung (wird nie gefiltert) */
+    public const NOTIFICATION_HEADER = 'X-Upkeep-Notification';
+
+    private const MAX_NOTIFICATIONS_PER_HOUR = 10;
+
+    private static bool $sendingNotification = false;
     /**
      * Liefert die Addon-Instanz
      */
@@ -183,8 +190,16 @@ class MailSecurityFilter
         $mailer = $ep->getSubject();
 
         try {
-            if (!self::isMailSecurityActive() || PHP_SAPI === 'cli' || !is_object($mailer)) {
+            // Eigene Benachrichtigungen an den Admin nie filtern (keine Rekursion)
+            if (self::$sendingNotification || !self::isMailSecurityActive() || PHP_SAPI === 'cli' || !is_object($mailer)) {
                 return $mailer;
+            }
+            if (method_exists($mailer, 'getCustomHeaders')) {
+                foreach ((array) $mailer->getCustomHeaders() as $header) {
+                    if (is_array($header) && strcasecmp((string) ($header[0] ?? ''), self::NOTIFICATION_HEADER) === 0) {
+                        return $mailer;
+                    }
+                }
             }
 
             $clientIp = ClientIp::get();
@@ -198,11 +213,20 @@ class MailSecurityFilter
                 return $mailer;
             }
 
-            $block = self::evaluate($mailer, $clientIp);
+            $findings = [];
+            $block = self::evaluate($mailer, $clientIp, $findings);
             if ($block !== null) {
-                self::cancelMail($mailer, $block);
+                self::cancelMail($mailer, $block['reason']);
                 $ep->setSubject($mailer);
+                self::afterBlock($clientIp, $block);
                 return $mailer;
+            }
+
+            // mail_security_sanitize_content: Mail mit nicht blockierenden Inhaltstreffern
+            // wird entschärft statt nur protokolliert
+            if ($findings !== [] && (bool) self::getAddon()->getConfig('mail_security_sanitize_content', 0)) {
+                self::sanitizeMailer($mailer);
+                $ep->setSubject($mailer);
             }
 
             if (self::isMailRateLimitingEnabled()) {
@@ -217,10 +241,38 @@ class MailSecurityFilter
     }
 
     /**
-     * Führt alle Prüfungen aus. Liefert einen Grund, wenn die Mail blockiert werden soll.
+     * Ab welcher Schwere ein Treffer die Mail blockiert (mail_security_block_suspicious):
+     * - aus (Standard): nur "critical" blockiert; "high"/"medium"/"low" werden nur protokolliert
+     * - an: "high" und "critical" blockieren (Verhalten bis 2.x); "high"-Spam erst ab dem dritten Versuch in 24 h
+     * Immer blockiert (unabhängig vom Schalter, gelten als "critical"): überschrittenes Rate-Limit
+     * (eigener Schalter), CR/LF im Betreff/Absendernamen (Header-Injection), vom IPS gesperrte IP.
      */
-    private static function evaluate(object $mailer, string $clientIp): ?string
+    private static function blocksAt(string $severity): bool
     {
+        if ($severity === 'critical') {
+            return true;
+        }
+        return $severity === 'high' && (bool) self::getAddon()->getConfig('mail_security_block_suspicious', 0);
+    }
+
+    /**
+     * Führt alle Prüfungen aus. Liefert Grund und Schwere, wenn die Mail blockiert werden soll.
+     * $findings sammelt nicht blockierende Inhaltstreffer (für mail_security_sanitize_content).
+     *
+     * Prüfgruppen: mail_security_check_subject (Betreff), mail_security_check_body (Text/HTML),
+     * mail_security_check_sender (Absenderdomain, Absendername, Antwortadressen).
+     * Rate-Limit, IP- und Empfänger-Blocklist laufen immer.
+     *
+     * @param list<array<string, mixed>> $findings
+     * @return array{reason: string, severity: string}|null
+     */
+    private static function evaluate(object $mailer, string $clientIp, array &$findings = []): ?array
+    {
+        $addon = self::getAddon();
+        $checkSubject = (bool) $addon->getConfig('mail_security_check_subject', 1);
+        $checkBody = (bool) $addon->getConfig('mail_security_check_body', 1);
+        $checkSender = (bool) $addon->getConfig('mail_security_check_sender', 1);
+
         // 1. Rate-Limiting (wiederholtes Überschreiten wird als "medium" ans IPS gemeldet)
         if (self::isMailRateLimitExceeded($clientIp)) {
             self::logMailThreat('rate_limit_exceeded', $clientIp, [
@@ -229,47 +281,62 @@ class MailSecurityFilter
                 'action' => 'blocked',
             ]);
             IntrusionPrevention::reportExternalThreat('mail_rate_limit', 'medium', 'Email rate limit exceeded', $clientIp);
-            return 'rate_limit';
+            return ['reason' => 'rate_limit', 'severity' => 'high'];
         }
 
         // 2. IP-Blocklist (Mail-Blocklist oder IPS-Sperre)
         $ipThreat = self::checkIpBlocklist($clientIp);
         if ($ipThreat !== null) {
-            self::logMailThreat('blocklisted_ip', $clientIp, $ipThreat);
-            if (in_array($ipThreat['severity'], ['critical', 'high'], true)) {
-                return 'blocklisted_ip';
+            $ipsBlocked = ($ipThreat['type'] ?? '') === 'ips_blocked_ip';
+            $blocks = $ipsBlocked || self::blocksAt((string) $ipThreat['severity']);
+            self::logMailThreat('blocklisted_ip', $clientIp, $ipThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+            if ($blocks) {
+                return ['reason' => 'blocklisted_ip', 'severity' => $ipsBlocked ? 'critical' : (string) $ipThreat['severity']];
             }
         }
 
         // 3. Empfänger und Antwortadressen gegen Blocklist
         $recipientThreat = self::checkRecipientBlocklist($mailer);
         if ($recipientThreat !== null) {
-            self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
-            if (in_array($recipientThreat['severity'], ['critical', 'high'], true)) {
-                return 'blocklisted_recipient';
+            $blocks = self::blocksAt((string) $recipientThreat['severity']);
+            self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+            if ($blocks) {
+                return ['reason' => 'blocklisted_recipient', 'severity' => (string) $recipientThreat['severity']];
             }
         }
 
         // 4. Absender-Domain (Konfigurationsfrage der Website – nie eskalieren)
-        $senderThreat = self::validateSenderDomain($mailer);
-        if ($senderThreat !== null) {
-            self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat);
-            if ($senderThreat['severity'] === 'high' || $senderThreat['severity'] === 'critical') {
-                return 'invalid_sender_domain';
+        if ($checkSender) {
+            $senderThreat = self::validateSenderDomain($mailer);
+            if ($senderThreat !== null) {
+                $blocks = self::blocksAt((string) $senderThreat['severity']);
+                self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+                if ($blocks) {
+                    return ['reason' => 'invalid_sender_domain', 'severity' => (string) $senderThreat['severity']];
+                }
             }
         }
 
-        // 5. Header-Injection in Betreff / Namen
-        foreach (['Subject', 'FromName'] as $prop) {
+        // 5. Header-Injection in Betreff / Absendername (immer blockieren)
+        $headerProps = array_merge($checkSubject ? ['Subject'] : [], $checkSender ? ['FromName'] : []);
+        foreach ($headerProps as $prop) {
             $value = isset($mailer->$prop) && is_string($mailer->$prop) ? $mailer->$prop : '';
             if ($value !== '' && preg_match('/[\r\n]/', $value)) {
-                self::logMailThreat('header_injection', $clientIp, ['severity' => 'high', 'pattern' => 'CR/LF in ' . $prop]);
-                return 'header_injection';
+                self::logMailThreat('header_injection', $clientIp, ['severity' => 'critical', 'pattern' => 'CR/LF in ' . $prop, 'action' => 'blocked']);
+                return ['reason' => 'header_injection', 'severity' => 'critical'];
             }
         }
 
-        // Inhaltsprüfungen nur auf Benutzereingaben
-        $userContent = self::collectUserContent($mailer);
+        // Inhaltsprüfungen nur auf Benutzereingaben in den aktivierten Teilen der Mail
+        $parts = array_merge(
+            $checkSubject ? ['Subject'] : [],
+            $checkBody ? ['Body', 'AltBody'] : [],
+            $checkSender ? ['FromName'] : [],
+        );
+        if ($parts === []) {
+            return null;
+        }
+        $userContent = self::collectUserContent($mailer, $parts, $checkSender);
         if ($userContent === '') {
             return null;
         }
@@ -277,49 +344,60 @@ class MailSecurityFilter
         // 6. Code-Injection
         $injectionThreat = self::scanForCodeInjection($userContent);
         if ($injectionThreat !== null) {
-            self::logMailThreat('code_injection_detected', $clientIp, $injectionThreat);
-            if (in_array($injectionThreat['severity'], ['critical', 'high'], true)) {
-                return 'code_injection';
+            $blocks = self::blocksAt((string) $injectionThreat['severity']);
+            self::logMailThreat('code_injection_detected', $clientIp, $injectionThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+            if ($blocks) {
+                return ['reason' => 'code_injection', 'severity' => (string) $injectionThreat['severity']];
             }
+            $findings[] = $injectionThreat;
         }
 
         // 7. Badwords
         $contentThreat = self::scanMailContent($userContent);
         if ($contentThreat !== null) {
-            self::logMailThreat('badword_detected', $clientIp, $contentThreat);
-            if (in_array($contentThreat['severity'], ['critical', 'high'], true)) {
-                return 'badword';
+            $blocks = self::blocksAt((string) $contentThreat['severity']);
+            self::logMailThreat('badword_detected', $clientIp, $contentThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+            if ($blocks) {
+                return ['reason' => 'badword', 'severity' => (string) $contentThreat['severity']];
             }
+            $findings[] = $contentThreat;
         }
 
-        // 8. Spam-Patterns (hoch: ab dem dritten Versuch in 24 h blockieren)
+        // 8. Spam-Patterns ("high" nur mit block_suspicious und erst ab dem dritten Versuch in 24 h)
         $spamThreat = self::checkSpamPatterns($userContent);
         if ($spamThreat !== null) {
-            self::logMailThreat('spam_pattern_detected', $clientIp, $spamThreat);
-            if ($spamThreat['severity'] === 'high' && self::getSpamAttemptCount($clientIp) >= 3) {
-                return 'spam';
+            $blocks = self::blocksAt((string) $spamThreat['severity']) && self::getSpamAttemptCount($clientIp) >= 2;
+            self::logMailThreat('spam_pattern_detected', $clientIp, $spamThreat + ['action' => $blocks ? 'blocked' : 'logged']);
+            if ($blocks) {
+                return ['reason' => 'spam', 'severity' => (string) $spamThreat['severity']];
             }
+            $findings[] = $spamThreat;
         }
 
         return null;
     }
 
     /**
-     * Sammelt Benutzereingaben (POST/GET-Werte), die tatsächlich in der Mail vorkommen.
+     * Sammelt Benutzereingaben (POST/GET-Werte), die tatsächlich in den gewählten Teilen der Mail vorkommen.
      * So werden die eigenen Vorlagen der Website nicht geprüft.
+     *
+     * @param list<string> $parts Eigenschaften des Mailers (Subject, Body, AltBody, FromName)
      */
-    private static function collectUserContent(object $mailer): string
+    private static function collectUserContent(object $mailer, array $parts = ['Subject', 'Body', 'AltBody', 'FromName'], bool $withReplyTo = true): string
     {
         $mailText = '';
-        foreach (['Subject', 'Body', 'AltBody', 'FromName'] as $prop) {
+        foreach ($parts as $prop) {
             if (isset($mailer->$prop) && is_string($mailer->$prop)) {
                 $mailText .= ' ' . $mailer->$prop;
             }
         }
-        if (method_exists($mailer, 'getReplyToAddresses')) {
+        if ($withReplyTo && method_exists($mailer, 'getReplyToAddresses')) {
             foreach ((array) $mailer->getReplyToAddresses() as $entry) {
                 $mailText .= ' ' . implode(' ', array_map('strval', (array) $entry));
             }
+        }
+        if (trim($mailText) === '') {
+            return '';
         }
         $decodedMail = html_entity_decode(strip_tags($mailText), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $rawMail = $mailText;
@@ -380,6 +458,172 @@ class MailSecurityFilter
         // Optional für Formulare: Grund im Request merken
         rex::setProperty('upkeep_mail_blocked', $reason);
         self::debugLog('Mail blocked: ' . $reason);
+    }
+
+    /**
+     * Nach einer Blockierung: Admin benachrichtigen und wiederholte Versuche derselben IP sperren.
+     *
+     * @param array{reason: string, severity: string} $block
+     */
+    private static function afterBlock(string $clientIp, array $block): void
+    {
+        try {
+            self::notifyAdmin($clientIp, $block);
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+        }
+        try {
+            self::trackBlockedAttempt($clientIp, $block['reason']);
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+        }
+    }
+
+    /**
+     * mail_security_max_spam_attempts (3) / mail_security_temp_block_duration (60 Minuten):
+     * Nach N blockierten Mails derselben Client-IP innerhalb von 24 h wird die IP über das IPS
+     * temporär gesperrt (Quelle 'auto', Selbstentsperrung per ALTCHA möglich).
+     * Zähler im JsonStore (nicht in rex_config).
+     */
+    private static function trackBlockedAttempt(string $clientIp, string $reason): void
+    {
+        $addon = self::getAddon();
+        $max = max(1, (int) $addon->getConfig('mail_security_max_spam_attempts', 3));
+        $minutes = max(1, min(10080, (int) $addon->getConfig('mail_security_temp_block_duration', 60)));
+
+        $now = time();
+        $store = new JsonStore('mail_security_attempts', 2000);
+        $attempts = $store->update('ip:' . $clientIp, static function ($list) use ($now): array {
+            $list = array_values(array_filter((array) $list, static fn ($t) => is_int($t) && $t > $now - 86400));
+            $list[] = $now;
+            return array_slice($list, -100);
+        }, 86400);
+
+        if (count((array) $attempts) < $max) {
+            return;
+        }
+        if (IntrusionPrevention::isIpBlocked($clientIp)) {
+            return;
+        }
+        $blocked = IntrusionPrevention::blockIpForSeconds(
+            $clientIp,
+            $minutes * 60,
+            sprintf('Mail security: %d blocked mails in 24 h (last: %s)', count((array) $attempts), $reason),
+            'auto',
+        );
+        if ($blocked) {
+            $store->delete('ip:' . $clientIp);
+            self::logMailThreat('ip_temp_blocked', $clientIp, [
+                'severity' => 'high',
+                'pattern' => $minutes . ' min',
+                'action' => 'ip_blocked',
+            ]);
+        }
+    }
+
+    /**
+     * mail_security_notify_admin (0) + mail_security_admin_email ('' = Fehler-E-Mail von REDAXO)
+     * + mail_security_notification_threshold ('high'): kurze Klartext-Mail bei blockierten Mails
+     * ab der Schwelle, höchstens 10 pro Stunde. Die Benachrichtigung selbst wird nicht gefiltert.
+     *
+     * @param array{reason: string, severity: string} $block
+     */
+    private static function notifyAdmin(string $clientIp, array $block): bool
+    {
+        $addon = self::getAddon();
+        if (!(bool) $addon->getConfig('mail_security_notify_admin', 0)) {
+            return false;
+        }
+        $order = ['low' => 1, 'medium' => 2, 'high' => 3, 'critical' => 4];
+        $threshold = (string) $addon->getConfig('mail_security_notification_threshold', 'high');
+        if (($order[$block['severity']] ?? 2) < ($order[$threshold] ?? 3)) {
+            return false;
+        }
+        $email = trim((string) $addon->getConfig('mail_security_admin_email', ''));
+        if ($email === '') {
+            $email = (string) rex::getErrorEmail();
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || !class_exists(\rex_mailer::class)) {
+            return false;
+        }
+
+        $store = new JsonStore('mail_security_notify', 100);
+        $hourKey = 'notify:' . date('YmdH');
+        if ((int) $store->get($hourKey, 0) >= self::MAX_NOTIFICATIONS_PER_HOUR) {
+            return false;
+        }
+        $store->increment($hourKey, 3600);
+
+        $server = preg_replace('/[\r\n]+/', ' ', (string) rex::getServerName());
+        $lines = [
+            'Upkeep mail security blocked an email.',
+            '',
+            'Time: ' . date('Y-m-d H:i:s'),
+            'Website: ' . $server . ' (' . rex::getServer() . ')',
+            'Client IP: ' . $clientIp,
+            'Reason: ' . $block['reason'],
+            'Severity: ' . $block['severity'],
+            'Request: ' . substr(preg_replace('/[\r\n]+/', ' ', rex_server('REQUEST_URI', 'string', '')) ?? '', 0, 300),
+            '',
+            'Details: REDAXO backend > Upkeep > Protection > Mail.',
+            'At most ' . self::MAX_NOTIFICATIONS_PER_HOUR . ' notifications per hour are sent.',
+        ];
+
+        self::$sendingNotification = true;
+        try {
+            $mail = new \rex_mailer();
+            $mail->isHTML(false);
+            $mail->addAddress($email);
+            $mail->Subject = 'Upkeep: email blocked (' . $block['severity'] . ', ' . $block['reason'] . ') - ' . mb_substr($server, 0, 60);
+            $mail->Body = implode("\n", $lines);
+            $mail->addCustomHeader(self::NOTIFICATION_HEADER, '1');
+            return $mail->send();
+        } finally {
+            self::$sendingNotification = false;
+        }
+    }
+
+    /**
+     * Entschärft Body (HTML) und AltBody des Mailers, siehe sanitizeHtml().
+     */
+    private static function sanitizeMailer(object $mailer): void
+    {
+        if (isset($mailer->Body) && is_string($mailer->Body) && $mailer->Body !== '') {
+            $mailer->Body = self::sanitizeHtml($mailer->Body);
+        }
+        if (isset($mailer->AltBody) && is_string($mailer->AltBody) && $mailer->AltBody !== '') {
+            $mailer->AltBody = self::sanitizeHtml($mailer->AltBody);
+        }
+        self::debugLog('Mail content sanitized');
+    }
+
+    /**
+     * Entfernt gefährliches HTML, lässt das übrige Layout (Tabellen, Bilder, Styles) unverändert:
+     * script/iframe/object/embed/applet/frame/frameset/base-Elemente, on*-Attribute,
+     * javascript:/vbscript:/data:text/html-URLs in href/src/action/... Wird wiederholt, bis sich nichts mehr ändert
+     * (verschachtelte Tricks wie <scr<script>ipt>).
+     */
+    public static function sanitizeHtml(string $html): string
+    {
+        $elements = 'script|iframe|object|embed|applet|frameset|frame|base';
+        for ($i = 0; $i < 5; ++$i) {
+            $before = $html;
+            // Elemente samt Inhalt, dann einzelne/öffnende/schließende Tags
+            $html = (string) preg_replace('#<(' . $elements . ')\b[^>]*>.*?</\1\s*>#is', '', $html);
+            $html = (string) preg_replace('#</?(' . $elements . ')\b[^>]*>?#is', '', $html);
+            // Event-Handler-Attribute (onclick=, onerror= …) in Tags
+            $html = (string) preg_replace('#(<[^>]*?[\s/"\'])on[a-z]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]*)#is', '$1', $html);
+            // Gefährliche URL-Schemata in Attributen
+            $html = (string) preg_replace(
+                '#(<[^>]*?\s(?:href|src|action|formaction|xlink:href|background|poster|data)\s*=\s*)(["\']?)\s*(?:(?:javascript|vbscript|livescript)\s*:|data\s*:\s*text/html)[^"\'\s>]*#is',
+                '$1$2#',
+                $html,
+            );
+            if ($html === $before) {
+                break;
+            }
+        }
+        return $html;
     }
 
     /**

@@ -1959,3 +1959,15 @@ upkeep_bypass_url = Bypass link
 upkeep_bypass_regenerate = Create new bypass link
 upkeep_bypass_regenerate_notice = The previous link and all sessions unlocked with it become invalid.
 upkeep_geoip_cron_param = Update GeoIP database (if older than 35 days)
+
+# upkeep 3 (lead)
+upkeep_set_admin_only = Settings are only available to administrators.
+
+# upkeep 3 (lead)
+upkeep_set_ips_threat_log_retention_days = Keep events (days)
+upkeep_set_ips_cleanup_auto_help = Removes expired blocks and old events in the background, at most once per hour.
+upkeep_set_silent_mode = Silent mode
+upkeep_set_silent_mode_help = Sends only the status code instead of the maintenance page – for APIs or sites without visitors.
+
+# upkeep 3 (dead)
+upkeep_mail_reporting_cronjob_name = Upkeep reports: send bundle report and daily status report (interval from settings)

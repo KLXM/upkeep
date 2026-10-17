@@ -53,6 +53,7 @@ final class SettingsSections
                     ['title' => 'upkeep_set_group_http', 'fields' => [
                         ['key' => 'http_status_code', 'type' => 'select', 'default' => '503', 'options' => ['503' => 'upkeep_http_503', '403' => 'upkeep_http_403']],
                         ['key' => 'retry_after', 'type' => 'number', 'default' => 3600, 'min' => 0, 'max' => 604800],
+                        ['key' => 'silent_mode', 'type' => 'switch', 'default' => 0],
                     ]],
                     ['title' => 'upkeep_set_group_texts', 'fields' => [
                         ['key' => 'multilanguage_enabled', 'type' => 'switch', 'default' => 1],
@@ -89,7 +90,7 @@ final class SettingsSections
                         ['key' => 'ips_burst_window', 'type' => 'number', 'default' => 60, 'min' => 10, 'max' => 3600],
                     ]],
                     ['title' => 'upkeep_set_group_logging', 'fields' => [
-                        ['key' => 'ips_log_retention_days', 'type' => 'number', 'default' => 30, 'min' => 1, 'max' => 730],
+                        ['key' => 'ips_threat_log_retention_days', 'type' => 'number', 'default' => 30, 'min' => 1, 'max' => 365],
                         ['key' => 'ips_cleanup_auto', 'type' => 'switch', 'default' => 1],
                         ['key' => 'ips_disable_system_logging', 'type' => 'switch', 'default' => 0],
                         ['key' => 'ips_fail2ban_logging', 'type' => 'switch', 'default' => 0],

@@ -1974,3 +1974,15 @@ upkeep_bypass_url = Umgehungs-Link
 upkeep_bypass_regenerate = Neuen Umgehungs-Link erzeugen
 upkeep_bypass_regenerate_notice = Der bisherige Link und alle damit freigeschalteten Sitzungen werden ungültig.
 upkeep_geoip_cron_param = GeoIP-Datenbank aktualisieren (wenn älter als 35 Tage)
+
+# upkeep 3 (lead)
+upkeep_set_admin_only = Die Einstellungen stehen nur Admins zur Verfügung.
+
+# upkeep 3 (lead)
+upkeep_set_ips_threat_log_retention_days = Ereignisse aufbewahren (Tage)
+upkeep_set_ips_cleanup_auto_help = Löscht abgelaufene Sperren und alte Ereignisse höchstens einmal pro Stunde im Hintergrund.
+upkeep_set_silent_mode = Stiller Modus
+upkeep_set_silent_mode_help = Statt der Wartungsseite wird nur der Statuscode gesendet – für Schnittstellen oder Seiten ohne Besucher.
+
+# upkeep 3 (dead)
+upkeep_mail_reporting_cronjob_name = Upkeep Berichte: Sammelbericht und täglichen Statusbericht versenden (Intervall aus den Einstellungen)

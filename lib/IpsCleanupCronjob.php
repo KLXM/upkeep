@@ -6,7 +6,7 @@ use KLXM\Upkeep\IntrusionPrevention;
 /**
  * Cronjob für die automatische Bereinigung der IPS-Daten
  * - Entfernt abgelaufene temporäre IP-Sperren und Positivliste-Einträge
- * - Bereinigt alte Einträge aus dem Threat Log (Aufbewahrung einstellbar)
+ * - Bereinigt alte Einträge aus dem Threat Log (Aufbewahrung aus den Einstellungen: ips_threat_log_retention_days)
  * - Entfernt veraltete Rate-Limiting-Einträge (IPS und Mail)
  * - Aktualisiert optional die GeoIP-Datenbank (nur wenn älter als 35 Tage)
  */
@@ -15,8 +15,9 @@ class rex_upkeep_ips_cleanup_cronjob extends rex_cronjob
     public function execute()
     {
         try {
-            $retentionDays = (int) $this->getParam('threat_log_retention_days', 30);
-            $results = IntrusionPrevention::cleanupExpiredData($retentionDays > 0 ? $retentionDays : 30);
+            // 3.0: Aufbewahrung kommt aus den Einstellungen (ips_threat_log_retention_days),
+            // ein früher am Cronjob gespeicherter Wert wird ignoriert.
+            $results = IntrusionPrevention::cleanupExpiredData();
 
             $messages = [];
             $total = array_sum($results);
@@ -43,19 +44,6 @@ class rex_upkeep_ips_cleanup_cronjob extends rex_cronjob
     public function getParamFields()
     {
         return [
-            [
-                'label' => 'Threat Log Aufbewahrung (Tage)',
-                'name' => 'threat_log_retention_days',
-                'type' => 'select',
-                'options' => [
-                    '7' => '7 Tage',
-                    '14' => '14 Tage',
-                    '30' => '30 Tage (Standard)',
-                    '60' => '60 Tage',
-                    '90' => '90 Tage',
-                ],
-                'default' => '30',
-            ],
             [
                 'label' => 'GeoIP-Datenbank aktualisieren (wenn älter als 35 Tage)',
                 'name' => 'geoip_update',

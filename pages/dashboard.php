@@ -21,7 +21,7 @@ $can = static fn (string $perm) => $user->hasPerm('upkeep[' . $perm . ']');
 $csrf = rex_csrf_token::factory('upkeep_dashboard');
 
 // ---------- Aktionen ----------
-if ('POST' === rex_request_method() && '' !== rex_post('upk_action', 'string', '')) {
+if ('post' === rex_request_method() && '' !== rex_post('upk_action', 'string', '')) {
     if (!$csrf->isValid()) {
         echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {

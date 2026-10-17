@@ -11,6 +11,10 @@ use KLXM\Upkeep\SettingsSections;
 use KLXM\Upkeep\Ui;
 
 $addon = rex_addon::get('upkeep');
+if (!rex::requireUser()->isAdmin()) {
+    echo rex_view::error(rex_escape(rex_i18n::rawMsg('upkeep_set_admin_only')));
+    return;
+}
 $sections = SettingsSections::all();
 $section = rex_request('section', 'string', 'general');
 if (!isset($sections[$section])) {
@@ -45,7 +49,7 @@ $validateList = static function (string $raw, string $type): ?string {
 
 // ---------- Speichern ----------
 $messages = [];
-if ('POST' === rex_request_method()) {
+if ('post' === rex_request_method()) {
     if (!$csrf->isValid()) {
         $messages[] = rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } elseif (rex_post('upk_save', 'bool')) {

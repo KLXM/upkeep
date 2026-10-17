@@ -62,10 +62,10 @@ final class Ui
             . '<span></span></span>';
     }
 
-    /** Formular mit einem Knopf (POST + CSRF) – für Aktionen in Listen und Kacheln */
+    /** Formular mit einem Knopf (POST + CSRF) – für Aktionen in Listen und Kacheln. $url kommt fertig escaped aus rex_url. */
     public static function postButton(string $action, string $label, string $tokenName, array $extra = [], string $btnClass = 'btn-default btn-xs', string $confirm = '', string $faIcon = '', string $url = ''): string
     {
-        $html = '<form method="post" class="upk-inline-form"' . ('' !== $url ? ' action="' . rex_escape($url) . '"' : '') . '>'
+        $html = '<form method="post" class="upk-inline-form"' . ('' !== $url ? ' action="' . $url . '"' : '') . '>'
             . rex_csrf_token::factory($tokenName)->getHiddenField()
             . '<input type="hidden" name="upk_action" value="' . rex_escape($action) . '">';
         foreach ($extra as $k => $v) {

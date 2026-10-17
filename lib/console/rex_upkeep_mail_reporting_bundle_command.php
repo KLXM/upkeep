@@ -18,7 +18,7 @@ class rex_upkeep_mail_reporting_bundle_command extends rex_console_command
         $this
             ->setName('upkeep:mail-reporting:send-bundle')
             ->setDescription('Send bundled Upkeep reports via email')
-            ->addOption('interval', 'i', InputOption::VALUE_OPTIONAL, 'Time interval in seconds for bundling reports', 3600)
+            ->addOption('interval', 'i', InputOption::VALUE_REQUIRED, 'Time interval in seconds for bundling reports (default: setting mail_reporting_bundle_interval)')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Force sending even if mail reporting is disabled')
             ->addOption('test', 't', InputOption::VALUE_NONE, 'Send test email instead of bundle')
             ->setHelp('This command sends bundled reports from Upkeep Mail Reporting system');
@@ -46,7 +46,7 @@ class rex_upkeep_mail_reporting_bundle_command extends rex_console_command
         $io->text('Sending test email...');
         
         try {
-            if (MailReporting::sendStatusReport()) {
+            if (MailReporting::sendTestEmail()) {
                 $io->success('Test email sent successfully to: ' . MailReporting::getEmail());
                 return 0;
             } else {
@@ -61,7 +61,8 @@ class rex_upkeep_mail_reporting_bundle_command extends rex_console_command
     
     private function sendBundleReport(InputInterface $input, $io): int
     {
-        $interval = (int) $input->getOption('interval');
+        $option = $input->getOption('interval');
+        $interval = ($option === null || $option === '') ? MailReporting::getBundleInterval() : (int) $option;
         
         if ($interval < 300) {
             $io->error('Interval must be at least 300 seconds (5 minutes)');
@@ -81,6 +82,12 @@ class rex_upkeep_mail_reporting_bundle_command extends rex_console_command
             }
         }
         
+        // Täglicher Statusbericht (nur wenn mail_reporting_status_reports aktiv und fällig)
+        $status = MailReporting::maybeSendStatusReport();
+        if ($status !== null) {
+            $status ? $io->text('Status report sent.') : $io->warning('Status report could not be sent.');
+        }
+
         if (empty($relevantFiles)) {
             $io->text('No reports found for the specified interval.');
             return 0;

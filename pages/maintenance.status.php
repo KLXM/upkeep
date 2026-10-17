@@ -11,7 +11,7 @@ $addon = rex_addon::get('upkeep');
 $user = rex::requireUser();
 $csrf = rex_csrf_token::factory('upkeep_maintenance');
 
-if ('POST' === rex_request_method() && rex_post('upk_save', 'bool')) {
+if ('post' === rex_request_method() && rex_post('upk_save', 'bool')) {
     if (!$csrf->isValid()) {
         echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {

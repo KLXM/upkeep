@@ -166,6 +166,11 @@ final class Migration
             $addon->setConfig('ips_unlock_hours', max(1, (int) $addon->getConfig('ips_captcha_trust_duration')));
         }
         $addon->removeConfig('ips_captcha_trust_duration');
+        // Aufbewahrungsdauer: frühere Doku nannte ips_log_retention_days
+        if ($addon->hasConfig('ips_log_retention_days') && !$addon->hasConfig('ips_threat_log_retention_days')) {
+            $addon->setConfig('ips_threat_log_retention_days', max(1, min(365, (int) $addon->getConfig('ips_log_retention_days'))));
+        }
+        $addon->removeConfig('ips_log_retention_days');
         // Ergebnis-Zeitpunkt des Advisors unter neuem Namen
         if ($addon->hasConfig('security_advisor_last_check') && !$addon->hasConfig('advisor_last_check')) {
             $addon->setConfig('advisor_last_check', (int) $addon->getConfig('security_advisor_last_check'));

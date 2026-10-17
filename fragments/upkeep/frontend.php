@@ -36,6 +36,57 @@ if ($multilanguageEnabled && !empty($languageTexts)) {
         }
     } elseif (is_string($cookieLang = $_COOKIE['upkeep_lang'] ?? '') && isset($languagesByCode[$cookieLang])) {
         $currentLanguage = $cookieLang;
+    } else {
+        // Reihenfolge: Browsersprache (Accept-Language) -> multilanguage_default -> erster Eintrag
+        $findCode = static function (string $wanted) use ($languagesByCode): ?string {
+            $wanted = strtolower(str_replace('-', '_', trim($wanted)));
+            if ($wanted === '') {
+                return null;
+            }
+            $primary = explode('_', $wanted)[0];
+            $primaryMatch = null;
+            foreach (array_keys($languagesByCode) as $code) {
+                $normalized = strtolower(str_replace('-', '_', (string) $code));
+                if ($normalized === $wanted) {
+                    return (string) $code;
+                }
+                if ($primaryMatch === null && explode('_', $normalized)[0] === $primary) {
+                    $primaryMatch = (string) $code;
+                }
+            }
+            return $primaryMatch;
+        };
+
+        $detected = null;
+        $acceptLanguage = substr(rex_server('HTTP_ACCEPT_LANGUAGE', 'string', ''), 0, 500);
+        if ($acceptLanguage !== '') {
+            $candidates = [];
+            foreach (explode(',', $acceptLanguage) as $i => $part) {
+                $pieces = explode(';', trim($part));
+                $tag = trim($pieces[0]);
+                if ($tag === '' || $tag === '*' || !preg_match('/^[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*$/', $tag)) {
+                    continue;
+                }
+                $q = 1.0;
+                if (isset($pieces[1]) && preg_match('/^\s*q\s*=\s*([01](?:\.\d{0,3})?)\s*$/i', $pieces[1], $m)) {
+                    $q = (float) $m[1];
+                }
+                if ($q > 0) {
+                    $candidates[] = [$tag, $q, $i];
+                }
+                if (count($candidates) >= 20) {
+                    break;
+                }
+            }
+            usort($candidates, static fn ($a, $b) => [$b[1], $a[2]] <=> [$a[1], $b[2]]);
+            foreach ($candidates as [$tag]) {
+                $detected = $findCode($tag);
+                if ($detected !== null) {
+                    break;
+                }
+            }
+        }
+        $currentLanguage = $detected ?? $findCode((string) $addon->getConfig('multilanguage_default', 'de')) ?? $currentLanguage;
     }
     if (!isset($languagesByCode[$currentLanguage])) {
         $currentLanguage = (string) array_key_first($languagesByCode);

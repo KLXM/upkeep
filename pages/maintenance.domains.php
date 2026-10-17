@@ -16,7 +16,7 @@ if (!rex_addon::get('yrewrite')->isAvailable()) {
 $csrf = rex_csrf_token::factory('upkeep_domains');
 $domains = array_filter(rex_yrewrite::getDomains(), static fn ($d) => 'default' !== $d->getName());
 
-if ('POST' === rex_request_method() && rex_post('upk_save', 'bool')) {
+if ('post' === rex_request_method() && rex_post('upk_save', 'bool')) {
     if (!$csrf->isValid()) {
         echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {

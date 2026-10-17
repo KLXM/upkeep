@@ -84,6 +84,9 @@ class MailReporting
 
         rex_extension::register('UPKEEP_SECURITY_SCAN_COMPLETED', static function (rex_extension_point $ep) {
             self::safe(static function () use ($ep) {
+                if (!self::isTypeEnabled(self::TYPE_SECURITY_ADVISOR)) {
+                    return;
+                }
                 $results = (array) $ep->getSubject();
                 if (self::shouldSendImmediate(self::TYPE_SECURITY_ADVISOR)) {
                     self::sendSecurityAdvisorReport($results);
@@ -95,6 +98,9 @@ class MailReporting
 
         rex_extension::register('UPKEEP_IPS_THREAT_DETECTED', static function (rex_extension_point $ep) {
             self::safe(static function () use ($ep) {
+                if (!self::isTypeEnabled(self::TYPE_IPS_THREAT)) {
+                    return;
+                }
                 $data = (array) $ep->getSubject();
                 $severity = strtolower((string) ($data['severity'] ?? ''));
                 if (self::shouldSendImmediate(self::TYPE_IPS_THREAT, $severity) && self::allowImmediateThreatMail($data)) {
@@ -107,6 +113,9 @@ class MailReporting
 
         rex_extension::register('UPKEEP_MAINTENANCE_CHANGED', static function (rex_extension_point $ep) {
             self::safe(static function () use ($ep) {
+                if (!self::isTypeEnabled(self::TYPE_MAINTENANCE)) {
+                    return;
+                }
                 $data = (array) $ep->getSubject();
                 if (self::shouldSendImmediate(self::TYPE_MAINTENANCE)) {
                     self::sendMaintenanceNotification($data);
@@ -132,6 +141,34 @@ class MailReporting
     public static function isEnabled(): bool
     {
         return (bool) self::addon()->getConfig('mail_reporting_enabled', 0);
+    }
+
+    /**
+     * Ereignis-Schalter der Einstellungen (Abschnitt Berichte):
+     * - mail_reporting_ips_threats (1): IPS-Ereignisse (Sofort-Mail, Sammelbericht, Statusbericht-Zeilen)
+     * - mail_reporting_maintenance (1): Wartungsmodus-Änderungen
+     * - mail_reporting_security_advisor (1): Empfehlungen (Security Advisor)
+     * - mail_reporting_phpmailer_errors (1): Fehler aus dem Systemlog im Sammelbericht
+     * - mail_reporting_status_reports (0): täglicher Statusbericht im Sammellauf (Cronjob/Konsole)
+     * Unbekannte Typen (z. B. status, error) sind immer erlaubt.
+     */
+    public static function isTypeEnabled(string $type): bool
+    {
+        $key = match ($type) {
+            self::TYPE_IPS_THREAT => 'mail_reporting_ips_threats',
+            self::TYPE_MAINTENANCE => 'mail_reporting_maintenance',
+            self::TYPE_SECURITY_ADVISOR => 'mail_reporting_security_advisor',
+            default => null,
+        };
+        return $key === null || (bool) self::addon()->getConfig($key, 1);
+    }
+
+    /**
+     * Standard-Intervall für den Sammelversand in Sekunden (mail_reporting_bundle_interval, 300–86400)
+     */
+    public static function getBundleInterval(): int
+    {
+        return max(300, min(86400, (int) self::addon()->getConfig('mail_reporting_bundle_interval', 3600)));
     }
 
     public static function getEmail(): string
@@ -430,6 +467,11 @@ class MailReporting
         $fromTime = time() - max(300, $interval);
         $sendFiles = [];
         foreach (self::getLogFiles() as $file) {
+            // Abgeschaltete Ereignisarten werden nicht versendet und verworfen
+            if (preg_match('/^\d+_([a-z_]+?)(?:_[0-9a-f]{6})?\.log\.json$/', $file, $m) && !self::isTypeEnabled($m[1])) {
+                rex_file::delete(self::getDataPath($file));
+                continue;
+            }
             $ts = (int) strtok($file, '_');
             // Stundendateien beginnen vor dem Intervall, enthalten aber neue Einträge
             if ($ts > $fromTime - 3600) {
@@ -471,6 +513,57 @@ class MailReporting
             self::logError('Bundle Report failed', $e);
             return false;
         }
+    }
+
+    /**
+     * Geplanter Sammellauf (Cronjob-Typ „Upkeep: Berichte versenden“).
+     * Der Cronjob darf häufiger laufen als das Intervall: gesendet wird erst, wenn seit dem letzten
+     * Versand mail_reporting_bundle_interval Sekunden vergangen sind; der Bericht umfasst dann alles
+     * seit dem letzten Versand. Zusätzlich ggf. der tägliche Statusbericht.
+     *
+     * @return array{bundle: bool|null, status: bool|null} null = nicht fällig/abgeschaltet
+     */
+    public static function runScheduled(): array
+    {
+        $result = ['bundle' => null, 'status' => null];
+        if (!self::isEnabled()) {
+            return $result;
+        }
+        $interval = self::getBundleInterval();
+        $last = (int) self::addon()->getConfig('mail_reporting_last_bundle', 0);
+        // auch im Sofort-Modus: gedrosselte IPS-Ereignisse landen in den Protokolldateien
+        if (time() - $last >= $interval) {
+            $window = $last > 0 ? max($interval, time() - $last) : $interval;
+            $result['bundle'] = self::sendBundleReport(min($window, 30 * 86400));
+            if ($result['bundle']) {
+                // auch ohne Inhalt als Versand-Zeitpunkt merken, sonst prüft jeder Lauf erneut
+                self::addon()->setConfig('mail_reporting_last_bundle', time());
+            }
+        }
+        $result['status'] = self::maybeSendStatusReport();
+        return $result;
+    }
+
+    /**
+     * Statusbericht höchstens einmal pro 24 h, nur wenn mail_reporting_status_reports aktiv ist.
+     * Merker: Konfiguration mail_reporting_last_status (ein Wert, kein Schlüssel pro IP).
+     *
+     * @return bool|null null = abgeschaltet oder noch nicht fällig
+     */
+    public static function maybeSendStatusReport(bool $force = false): ?bool
+    {
+        if (!(bool) self::addon()->getConfig('mail_reporting_status_reports', 0)) {
+            return null;
+        }
+        $last = (int) self::addon()->getConfig('mail_reporting_last_status', 0);
+        if (!$force && time() - $last < 86400) {
+            return null;
+        }
+        $sent = self::sendStatusReport();
+        if ($sent) {
+            self::addon()->setConfig('mail_reporting_last_status', time());
+        }
+        return $sent;
     }
 
     /**
@@ -624,14 +717,20 @@ class MailReporting
         $md .= "| Component | Status |\n|-----------|--------|\n";
         $md .= '| **Report Key** | ' . self::cell(self::getKey()) . " |\n";
         $md .= '| **Timestamp** | ' . date('Y-m-d H:i:s', (int) $data['timestamp']) . " |\n";
-        $md .= '| **Frontend Maintenance** | ' . ($data['maintenance']['frontend'] ? 'Active' : 'Inactive') . " |\n";
-        $md .= '| **Backend Maintenance** | ' . ($data['maintenance']['backend'] ? 'Active' : 'Inactive') . " |\n";
+        if (self::isTypeEnabled(self::TYPE_MAINTENANCE)) {
+            $md .= '| **Frontend Maintenance** | ' . ($data['maintenance']['frontend'] ? 'Active' : 'Inactive') . " |\n";
+            $md .= '| **Backend Maintenance** | ' . ($data['maintenance']['backend'] ? 'Active' : 'Inactive') . " |\n";
+        }
         $md .= '| **IPS Protection** | ' . ($data['ips']['active'] ? 'Active' : 'Inactive') . ($data['ips']['monitor_only'] ? ' (Monitor Only)' : '') . " |\n";
-        $md .= '| **Blocked IPs** | ' . (int) $data['ips']['blocked_ips_count'] . " |\n";
-        $md .= '| **Threats (24h)** | ' . count($data['ips']['recent_threats']) . " |\n";
-        $lastScan = $data['security_advisor']['last_scan'] > 0 ? date('Y-m-d H:i:s', (int) $data['security_advisor']['last_scan']) : 'Never';
-        $md .= '| **Security Score** | ' . (int) $data['security_advisor']['score'] . '% (' . self::cell($data['security_advisor']['grade']) . ") |\n";
-        $md .= '| **Last Check** | ' . $lastScan . " |\n";
+        if (self::isTypeEnabled(self::TYPE_IPS_THREAT)) {
+            $md .= '| **Blocked IPs** | ' . (int) $data['ips']['blocked_ips_count'] . " |\n";
+            $md .= '| **Threats (24h)** | ' . count($data['ips']['recent_threats']) . " |\n";
+        }
+        if (self::isTypeEnabled(self::TYPE_SECURITY_ADVISOR)) {
+            $lastScan = $data['security_advisor']['last_scan'] > 0 ? date('Y-m-d H:i:s', (int) $data['security_advisor']['last_scan']) : 'Never';
+            $md .= '| **Security Score** | ' . (int) $data['security_advisor']['score'] . '% (' . self::cell($data['security_advisor']['grade']) . ") |\n";
+            $md .= '| **Last Check** | ' . $lastScan . " |\n";
+        }
 
         $issues = [];
         if ($data['maintenance']['frontend'] || $data['maintenance']['backend']) {
@@ -640,7 +739,7 @@ class MailReporting
         if (!$data['ips']['active']) {
             $issues[] = 'IPS protection disabled';
         }
-        if (count($data['ips']['recent_threats']) > 10) {
+        if (self::isTypeEnabled(self::TYPE_IPS_THREAT) && count($data['ips']['recent_threats']) > 10) {
             $issues[] = 'High threat activity';
         }
 

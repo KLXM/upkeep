@@ -22,7 +22,7 @@ $fixes = [
     'session_security' => ['method' => 'enableSessionSecurity', 'label' => 'upkeep_advisor_fix_session', 'confirm' => ''],
 ];
 
-if ('POST' === rex_request_method() && '' !== rex_post('upk_action', 'string', '')) {
+if ('post' === rex_request_method() && '' !== rex_post('upk_action', 'string', '')) {
     if (!$csrf->isValid()) {
         echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
     } else {
