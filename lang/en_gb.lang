@@ -1971,3 +1971,9 @@ upkeep_set_silent_mode_help = Sends only the status code instead of the maintena
 
 # upkeep 3 (dead)
 upkeep_mail_reporting_cronjob_name = Upkeep reports: send bundle report and daily status report (interval from settings)
+upkeep_storage_site = Website
+upkeep_storage_used = {0} used
+upkeep_storage_disk_free = {0} of {1} free on the server
+upkeep_storage_server = Server
+upkeep_storage_breakdown = Breakdown
+upkeep_storage_empty_categories = Empty categories ({0})

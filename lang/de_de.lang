@@ -1986,3 +1986,9 @@ upkeep_set_silent_mode_help = Statt der Wartungsseite wird nur der Statuscode ge
 
 # upkeep 3 (dead)
 upkeep_mail_reporting_cronjob_name = Upkeep Berichte: Sammelbericht und täglichen Statusbericht versenden (Intervall aus den Einstellungen)
+upkeep_storage_site = Website
+upkeep_storage_used = {0} belegt
+upkeep_storage_disk_free = {0} von {1} frei auf dem Server
+upkeep_storage_server = Server
+upkeep_storage_breakdown = Aufschlüsselung
+upkeep_storage_empty_categories = Leere Bereiche ({0})

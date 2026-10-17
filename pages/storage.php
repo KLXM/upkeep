@@ -8,7 +8,6 @@
 use KLXM\Upkeep\Storage;
 
 $addon = rex_addon::get('upkeep');
-rex_view::addCssFile($addon->getAssetsUrl('css/storage.css'));
 
 $csrf = rex_csrf_token::factory('upkeep_storage');
 if ($result = Storage::handlePost($csrf)) {
@@ -21,7 +20,4 @@ $fragment->setVar('canRefresh', rex::requireUser()->isAdmin(), false);
 $fragment->setVar('csrf', $csrf, false);
 $fragment->setVar('action', rex_url::currentBackendPage(), false);
 
-$section = new rex_fragment();
-$section->setVar('title', $addon->i18n('upkeep_storage_title'), false);
-$section->setVar('body', $fragment->parse('upkeep/storage.php'), false);
-echo $section->parse('core/page/section.php');
+echo $fragment->parse('upkeep/storage.php');
