@@ -12,8 +12,9 @@ body {
     --upk-sep: #e9ecf0;
     --upk-text: #324050;
     --upk-muted: #5f6d7c;
-    --upk-accent: #3b84c4;
+    --upk-accent: #2a6aa8;
     --upk-accent-text: #fff;
+    --upk-link: #1f5f9e;
     --upk-ok: #23733c;
     --upk-ok-bg: #e6f4ea;
     --upk-warn: #845700;
@@ -29,13 +30,14 @@ body {
 }
 
 body.rex-theme-dark {
+    --upk-link: #8cc4f2;
     --upk-bg: #222c37;
     --upk-bg-soft: #1b232c;
     --upk-border: #36414d;
     --upk-sep: #2e3944;
     --upk-text: rgba(255, 255, 255, .87);
     --upk-muted: rgba(255, 255, 255, .62);
-    --upk-accent: #3b84c4;
+    --upk-accent: #2a6aa8;
     --upk-ok: #7ad69a;
     --upk-ok-bg: rgba(47, 138, 76, .22);
     --upk-warn: #f1c26b;
@@ -50,13 +52,14 @@ body.rex-theme-dark {
 
 @media (prefers-color-scheme: dark) {
     body:not(.rex-theme-light) {
+        --upk-link: #8cc4f2;
         --upk-bg: #222c37;
         --upk-bg-soft: #1b232c;
         --upk-border: #36414d;
         --upk-sep: #2e3944;
         --upk-text: rgba(255, 255, 255, .87);
         --upk-muted: rgba(255, 255, 255, .62);
-        --upk-accent: #3b84c4;
+        --upk-accent: #2a6aa8;
         --upk-ok: #7ad69a;
         --upk-ok-bg: rgba(47, 138, 76, .22);
         --upk-warn: #f1c26b;
@@ -212,7 +215,7 @@ body.rex-theme-dark {
     border: 1px solid var(--upk-border);
     border-radius: var(--upk-radius);
 }
-.upk-sidebar a {
+.upk-settings .upk-sidebar a {
     display: flex;
     gap: 10px;
     align-items: center;
@@ -221,8 +224,8 @@ body.rex-theme-dark {
     color: var(--upk-text);
     text-decoration: none;
 }
-.upk-sidebar a:hover, .upk-sidebar a:focus { background: var(--upk-bg-soft); text-decoration: none; color: var(--upk-text); }
-.upk-sidebar a.active, .upk-sidebar a.active:hover { background: var(--upk-accent); color: var(--upk-accent-text); }
+.upk-settings .upk-sidebar a:hover, .upk-settings .upk-sidebar a:focus { background: var(--upk-bg-soft); text-decoration: none; color: var(--upk-text); }
+.upk-settings .upk-sidebar a.active, .upk-settings .upk-sidebar a.active:hover { background: var(--upk-accent); color: var(--upk-accent-text); }
 .upk-sidebar a .upk-row-icon { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
 .upk-sidebar .upk-state { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--upk-switch-off); }
 .upk-sidebar .upk-state--on { background: var(--upk-switch-on); }
@@ -516,3 +519,7 @@ details.upk-group[open] > summary { border-bottom: 1px solid var(--upk-sep); }
     .upk-row-control textarea.form-control { min-width: 0; }
     .upk-row--detail .upk-row-control { justify-content: flex-start; text-align: left; }
 }
+
+/* ---------- Links in eigenen Bausteinen (Kontrast >= 4.5:1, Kern-Links bleiben unverändert) ---------- */
+.upk-tile a:not(.btn), .upk-row a:not(.btn), .upk-hero a:not(.btn), .upk-group a:not(.btn), .upk-link.btn-link, .upkeep-storage a:not(.btn) { color: var(--upk-link); }
+.upk-tile a:not(.btn):hover, .upk-row a:not(.btn):hover, .upk-group a:not(.btn):hover, .upkeep-storage a:not(.btn):hover { color: var(--upk-text); }

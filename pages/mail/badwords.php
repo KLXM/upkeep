@@ -232,7 +232,7 @@ $filter .= '<span class="upk-filterbar-end">';
 if ($filterParams) {
     $filter .= '<a class="upk-filterbar-reset" href="' . $tabUrl() . '">' . rex_escape($t('upkeep_reset')) . '</a>';
 }
-$filter .= '<button type="submit" class="btn btn-primary"><i class="rex-icon fa-search" aria-hidden="true"></i> ' . rex_escape($t('upkeep_filter')) . '</button></span>';
+$filter .= '<button type="submit" class="btn btn-default"><i class="rex-icon fa-search" aria-hidden="true"></i> ' . rex_escape($t('upkeep_filter')) . '</button></span>';
 $filter .= '</form>';
 echo $filter;
 

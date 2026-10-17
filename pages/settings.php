@@ -240,7 +240,7 @@ $renderField = static function (array $field) use ($addon, $label, $help, $secti
         case 'switch':
             $control = Ui::switch($key, (bool) $value, $id);
             if (isset($field['link'])) {
-                $control = '<a class="btn btn-link btn-xs" href="' . $url($field['link']) . '">' . rex_escape(rex_i18n::rawMsg('upkeep_set_more')) . '</a>' . $control;
+                $control = '<a class="btn btn-link btn-xs upk-link" href="' . $url($field['link']) . '">' . rex_escape(rex_i18n::rawMsg('upkeep_set_more')) . '</a>' . $control;
             }
             return Ui::row($label($key), $control, $help($key), $id, $iconHtml);
         case 'number':

@@ -105,7 +105,7 @@ $renderItem = static function (array $item, bool $hidden) use ($addon, $isAdmin,
     if ($isAdmin) {
         if (!$hidden && isset($fixes[$item['key']])) {
             $fix = $fixes[$item['key']];
-            $actions .= Ui::postButton('fix', rex_i18n::rawMsg($fix['label']), 'upkeep_advisor', ['check' => $item['key']], 'btn-primary btn-xs', '' !== $fix['confirm'] ? rex_i18n::rawMsg($fix['confirm']) : '');
+            $actions .= Ui::postButton('fix', rex_i18n::rawMsg($fix['label']), 'upkeep_advisor', ['check' => $item['key']], 'btn-default btn-xs', '' !== $fix['confirm'] ? rex_i18n::rawMsg($fix['confirm']) : '');
         }
         $actions .= $hidden
             ? Ui::postButton('unhide', rex_i18n::rawMsg('upkeep_advisor_unhide'), 'upkeep_advisor', ['check' => $item['key']])
