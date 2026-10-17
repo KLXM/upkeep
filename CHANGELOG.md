@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.0 (2026-10-17)
+
+- Formularschutz: Bei „Ausgenommene Formulare“ wird erklärt, was der Formularname ist, wie man ihn vergibt und wie man ein Formular direkt ausnimmt; bisher erkannte Formularnamen werden angezeigt. Warnung, wenn der Standardname „formular“ eingetragen wird.
+
 ## 3.0.0-beta1 (2026-10-17)
 
 Komplett überarbeitet: Sicherheit nach aktuellem Stand, neue Oberfläche, Formularschutz für YForm, Speicherübersicht. Das Update von 2.x übernimmt Einstellungen, Rechte und Daten automatisch.
