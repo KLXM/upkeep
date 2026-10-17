@@ -1,12 +1,10 @@
 <?php
+
 /**
- * Hauptseite des Upkeep AddOns
+ * Rahmen aller upkeep-Seiten: Titel, Styles, Unterseite.
  */
 
-use KLXM\Upkeep\Upkeep;
+$addon = rex_addon::get('upkeep');
+echo rex_view::title($addon->i18n('upkeep_title'));
 
-$addon = Upkeep::getAddon();
-echo rex_view::title($addon->i18n('title'));
-
-// Subpage einbinden
 rex_be_controller::includeCurrentPageSubPath();

@@ -8,12 +8,12 @@ use KLXM\Upkeep\Upkeep;
 $addon = Upkeep::getAddon();
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= rex_escape(substr((string) rex_i18n::getLanguage(), 0, 2)) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= rex::getServerName() ?> - <?= $addon->i18n('upkeep_backend_maintenance') ?></title>
+    <title><?= rex_escape(rex::getServerName()) ?> - <?= rex_escape($addon->i18n('upkeep_backend_maintenance')) ?></title>
     <style>
         :root {
             --primary-color: #c33534;
@@ -113,10 +113,10 @@ $addon = Upkeep::getAddon();
             <line x1="23" y1="11" x2="17" y2="11"></line>
         </svg>
         
-        <h1 class="maintenance-title"><?= $addon->i18n('upkeep_backend_maintenance') ?></h1>
+        <h1 class="maintenance-title"><?= rex_escape($addon->i18n('upkeep_backend_maintenance')) ?></h1>
         <div class="maintenance-message">
-            <p><?= $addon->i18n('upkeep_backend_maintenance_message') ?></p>
-            <p><?= $addon->i18n('upkeep_contact_admin') ?></p>
+            <p><?= rex_escape($addon->i18n('upkeep_backend_maintenance_message')) ?></p>
+            <p><?= rex_escape($addon->i18n('upkeep_contact_admin')) ?></p>
         </div>
         
         <div style="margin-top: 2rem;">
@@ -126,8 +126,8 @@ $addon = Upkeep::getAddon();
                 '_csrf_token' => rex_csrf_token::factory('backend_logout')->getValue()
             ]);
             ?>
-            <a href="<?= $logoutUrl ?>" class="maintenance-button" style="margin-right: 1rem;"><?= $addon->i18n('upkeep_logout') ?></a>
-            <a href="<?= rex_url::frontend() ?>" class="maintenance-button"><?= $addon->i18n('upkeep_back_to_website') ?></a>
+            <a href="<?= rex_escape($logoutUrl) ?>" class="maintenance-button" style="margin-right: 1rem;"><?= rex_escape($addon->i18n('upkeep_logout')) ?></a>
+            <a href="<?= rex_escape(rex_url::frontend()) ?>" class="maintenance-button"><?= rex_escape($addon->i18n('upkeep_back_to_website')) ?></a>
         </div>
     </div>
 </body>

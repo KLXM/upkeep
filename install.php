@@ -5,38 +5,24 @@
 
 $addon = rex_addon::get('upkeep');
 
-// AddOn in Setup-AddOns in der config.yml aufnehmen
-$configFile = rex_path::coreData('config.yml');
-$config = rex_file::getConfig($configFile);
-if (array_key_exists('setup_addons', $config) && !in_array('upkeep', $config['setup_addons'], true)) {
-    $config['setup_addons'][] = 'upkeep';
-    rex_file::putConfig($configFile, $config);
-}
-
 // Eigene IP-Adresse automatisch in die erlaubte IP-Liste aufnehmen
 $currentIp = rex_server('REMOTE_ADDR', 'string', '');
+$currentIp = filter_var($currentIp, FILTER_VALIDATE_IP) ? $currentIp : '';
 $allowedIps = $addon->getConfig('allowed_ips', '');
 
 if ($currentIp && $allowedIps === '') {
     $addon->setConfig('allowed_ips', $currentIp);
 }
 
-// Standard-Passwort generieren, wenn keines gesetzt ist
-if ($addon->getConfig('frontend_password', '') === '') {
-    $randomPassword = bin2hex(random_bytes(4)); // 8 Zeichen langes zufälliges Passwort
-    
-    $addon->setConfig('frontend_password', $randomPassword);
-    
-    // Hinweis mit dem Passwort anzeigen (nur bei Installation)
-    rex_extension::register('OUTPUT_FILTER', function(rex_extension_point $ep) use ($randomPassword) {
-        $content = $ep->getSubject();
-        $message = '<div class="alert alert-info">';
-        $message .= 'Ein zufälliges Passwort wurde für den Frontend-Zugang generiert: <strong>' . $randomPassword . '</strong><br>';
-        $message .= 'Bitte notieren Sie sich dieses Passwort oder ändern Sie es in den Einstellungen.';
-        $message .= '</div>';
-        
-        $content = str_replace('</body>', $message . '</body>', $content);
-        $ep->setSubject($content);
+// Neuinstallation: zufälliges Passwort für die Wartungsseite (wird nur als Hash gespeichert)
+if ('' === (string) $addon->getConfig('frontend_password_hash', '') && '' === (string) $addon->getConfig('frontend_password', '')) {
+    $randomPassword = bin2hex(random_bytes(8));
+    $addon->setConfig('frontend_password_hash', password_hash($randomPassword, PASSWORD_DEFAULT));
+
+    // Einmalig nach der Installation anzeigen
+    rex_extension::register('OUTPUT_FILTER', static function (rex_extension_point $ep) use ($addon, $randomPassword) {
+        $message = '<div class="alert alert-info">' . rex_escape(rex_i18n::rawMsg('upkeep_install_password', $randomPassword)) . '</div>';
+        return str_replace('</body>', $message . '</body>', $ep->getSubject());
     });
 }
 
@@ -196,11 +182,6 @@ if ($addon->getConfig('multilanguage_texts', '') === '') {
 // Rate-Limiting standardmäßig DEAKTIVIERT (Webserver sollte das machen)
 if ($addon->getConfig('ips_rate_limiting_enabled') === null) {
     $addon->setConfig('ips_rate_limiting_enabled', false);
-}
-
-// CAPTCHA-Vertrauensdauer konfigurieren (Standard: 24 Stunden)
-if ($addon->getConfig('ips_captcha_trust_duration') === null) {
-    $addon->setConfig('ips_captcha_trust_duration', 24);
 }
 
 // Rate-Limiting Konfiguration (sehr hoch - nur für DoS-Schutz)
@@ -883,3 +864,14 @@ if ($existingPatterns === 0) {
         }
     }
 }
+
+// Tabellen der Module von 3.x (idempotent)
+foreach (['SecuritySchema', 'FormProtectionSchema'] as $schema) {
+    require_once __DIR__ . '/lib/Schema/' . $schema . '.php';
+    $class = 'KLXM\\Upkeep\\Schema\\' . $schema;
+    $class::ensure();
+}
+
+// Einstellungen, Rechte und Passwörter aus 2.x übernehmen (idempotent, nach allen Standardwerten)
+require_once __DIR__ . '/lib/Migration.php';
+KLXM\Upkeep\Migration::run();

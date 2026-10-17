@@ -4,180 +4,238 @@ namespace KLXM\Upkeep;
 
 use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
-use MaxMind\Db\Reader\InvalidDatabaseException;
+use rex_addon;
+use rex_dir;
+use rex_file;
+use rex_logger;
+use rex_path;
+use rex_socket;
+use Throwable;
 
 /**
  * GeoIP-Funktionalität für das Upkeep AddOn
- * 
- * Nutzt die kostenlose DB-IP.com Datenbank für Länderidentifikation
+ *
+ * Nutzt die kostenlose DB-IP.com Datenbank (Country Lite) für die Länderzuordnung.
+ * 3.0: Kein Download beim Seitenaufruf. Die Datenbank wird nur über
+ * updateDatabase() (Button, Cronjob) geladen. Fehlende Datenbank = "Unbekannt".
  */
 class GeoIP
 {
+    private const FILE = 'ip2geo.mmdb';
+
     private static ?Reader $reader = null;
-    private static string $databasePath = '';
-    
+
+    /** Negativ-Cache pro Request: Reader konnte nicht geöffnet werden */
+    private static bool $readerFailed = false;
+
+    /** @var array<string, array{code: string, name: string}> */
+    private static array $cache = [];
+
+    public static function getDatabasePath(): string
+    {
+        return rex_path::addonData('upkeep', self::FILE);
+    }
+
     /**
-     * Initialisiert den GeoIP-Reader
+     * Initialisiert den GeoIP-Reader (nur lokale Datei)
      */
     private static function initReader(): bool
     {
         if (self::$reader !== null) {
             return true;
         }
-        
-        // Verwende eigene Datenbank im Upkeep AddOn
-        $upkeepPath = \rex_path::addonData('upkeep', 'ip2geo.mmdb');
-        
-        if (!file_exists($upkeepPath)) {
-            // Versuche Datenbank zu downloaden
-            if (!self::downloadDatabase()) {
-                return false;
-            }
+        if (self::$readerFailed) {
+            return false;
         }
-        
-        self::$databasePath = $upkeepPath;
-        
+
+        $path = self::getDatabasePath();
+        if (!is_file($path)) {
+            self::$readerFailed = true;
+            return false;
+        }
+
         try {
-            self::$reader = new Reader(self::$databasePath);
+            self::$reader = new Reader($path);
             return true;
-        } catch (InvalidDatabaseException $e) {
-            \rex_logger::logException($e);
+        } catch (Throwable $e) {
+            rex_logger::logException($e);
+            self::$readerFailed = true;
             return false;
         }
     }
-    
+
     /**
-     * Ermittelt das Land einer IP-Adresse
-     * 
-     * @param string $ip IP-Adresse
-     * @return array{code: string, name: string} Land-Information oder Fallback
+     * Ermittelt das Land einer IP-Adresse (pro Request gecacht)
+     *
+     * @return array{code: string, name: string}
      */
     public static function getCountry(string $ip): array
     {
-        // Fallback für lokale/private IPs
+        if (isset(self::$cache[$ip])) {
+            return self::$cache[$ip];
+        }
+        if (count(self::$cache) > 5000) {
+            self::$cache = [];
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            return self::$cache[$ip] = ['code' => 'UNKNOWN', 'name' => 'Unbekannt'];
+        }
         if (self::isPrivateIP($ip)) {
-            return [
-                'code' => 'LOCAL',
-                'name' => 'Lokales Netzwerk'
-            ];
+            return self::$cache[$ip] = ['code' => 'LOCAL', 'name' => 'Lokales Netzwerk'];
         }
-        
         if (!self::initReader()) {
-            return [
-                'code' => 'UNKNOWN',
-                'name' => 'Unbekannt'
-            ];
+            return self::$cache[$ip] = ['code' => 'UNKNOWN', 'name' => 'Unbekannt'];
         }
-        
+
         try {
             $record = self::$reader->country($ip);
-            return [
-                'code' => $record->country->isoCode ?? 'UNKNOWN',
-                'name' => $record->country->name ?? 'Unbekannt'
+            return self::$cache[$ip] = [
+                'code' => (string) ($record->country->isoCode ?? 'UNKNOWN'),
+                'name' => (string) ($record->country->name ?? 'Unbekannt'),
             ];
-        } catch (AddressNotFoundException $e) {
-            return [
-                'code' => 'UNKNOWN', 
-                'name' => 'Unbekannt'
-            ];
-        } catch (\Exception $e) {
-            \rex_logger::logException($e);
-            return [
-                'code' => 'ERROR',
-                'name' => 'Fehler'
-            ];
+        } catch (AddressNotFoundException) {
+            return self::$cache[$ip] = ['code' => 'UNKNOWN', 'name' => 'Unbekannt'];
+        } catch (Throwable $e) {
+            rex_logger::logException($e);
+            return self::$cache[$ip] = ['code' => 'ERROR', 'name' => 'Fehler'];
         }
     }
-    
+
     /**
      * Prüft ob IP privat/lokal ist
      */
     private static function isPrivateIP(string $ip): bool
     {
-        return !filter_var(
-            $ip,
-            FILTER_VALIDATE_IP,
-            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-        );
+        return !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
     }
-    
+
     /**
-     * Lädt GeoIP-Datenbank von DB-IP.com herunter
-     */
-    private static function downloadDatabase(): bool
-    {
-        $today = new \DateTimeImmutable();
-        $dbUrl = "https://download.db-ip.com/free/dbip-country-lite-{$today->format('Y-m')}.mmdb.gz";
-        $targetPath = \rex_path::addonData('upkeep', 'ip2geo.mmdb');
-        
-        try {
-            // Erstelle data-Verzeichnis falls nötig
-            $dataDir = dirname($targetPath);
-            if (!is_dir($dataDir)) {
-                \rex_dir::create($dataDir);
-            }
-            
-            $socket = \rex_socket::factoryUrl($dbUrl);
-            $response = $socket->doGet();
-            
-            if ($response->isOk()) {
-                $body = $response->getBody();
-                $decompressed = gzdecode($body);
-                
-                if ($decompressed === false) {
-                    \rex_logger::factory()->log('error', 'Upkeep GeoIP: Fehler beim Dekomprimieren der Datenbank', []);
-                    return false;
-                }
-                
-                \rex_file::put($targetPath, $decompressed);
-                
-                // Info-Logging nur wenn IPS System-Logging nicht deaktiviert ist
-                $addon = \rex_addon::get('upkeep');
-                if (!$addon->getConfig('ips_disable_system_logging', false)) {
-                    \rex_logger::factory()->log('info', 'Upkeep GeoIP: Datenbank erfolgreich heruntergeladen', []);
-                }
-                return true;
-            }
-            
-            \rex_logger::factory()->log('error', 'Upkeep GeoIP: Download fehlgeschlagen - HTTP ' . $response->getStatusCode(), []);
-            return false;
-            
-        } catch (\rex_socket_exception $e) {
-            \rex_logger::logException($e);
-            return false;
-        }
-    }
-    
-    /**
-     * Aktualisiert die GeoIP-Datenbank
+     * Lädt die GeoIP-Datenbank von DB-IP.com (aktueller, sonst Vormonat), prüft sie
+     * und ersetzt die vorhandene Datei atomar. Nur für Button/Cronjob/Konsole.
      */
     public static function updateDatabase(): bool
     {
-        // Reset Reader für Reload
         self::$reader = null;
-        return self::downloadDatabase();
+        self::$readerFailed = false;
+        self::$cache = [];
+
+        $target = self::getDatabasePath();
+        try {
+            if (!is_dir(dirname($target))) {
+                rex_dir::create(dirname($target));
+            }
+
+            $months = [new \DateTimeImmutable('first day of this month'), new \DateTimeImmutable('first day of last month')];
+            foreach ($months as $month) {
+                $url = 'https://download.db-ip.com/free/dbip-country-lite-' . $month->format('Y-m') . '.mmdb.gz';
+                try {
+                    $socket = rex_socket::factoryUrl($url);
+                    $socket->setTimeout(30);
+                    $response = $socket->doGet();
+                } catch (Throwable $e) {
+                    rex_logger::logException($e);
+                    continue;
+                }
+                if (!$response->isOk()) {
+                    continue;
+                }
+
+                $body = $response->getBody();
+                if (strlen($body) < 1024 || strlen($body) > 200 * 1024 * 1024) {
+                    continue;
+                }
+                $decompressed = @gzdecode($body);
+                if ($decompressed === false || strlen($decompressed) < 1024) {
+                    rex_logger::factory()->log('error', 'Upkeep GeoIP: Fehler beim Dekomprimieren der Datenbank');
+                    continue;
+                }
+
+                $tmp = $target . '.tmp';
+                if (!rex_file::put($tmp, $decompressed)) {
+                    return false;
+                }
+                if (!self::isValidDatabase($tmp)) {
+                    rex_file::delete($tmp);
+                    rex_logger::factory()->log('error', 'Upkeep GeoIP: heruntergeladene Datenbank ist ungültig');
+                    continue;
+                }
+                if (!@rename($tmp, $target)) {
+                    rex_file::delete($tmp);
+                    return false;
+                }
+
+                rex_addon::get('upkeep')->setConfig('geoip_last_update', time());
+                if (!rex_addon::get('upkeep')->getConfig('ips_disable_system_logging', false)) {
+                    rex_logger::factory()->log('info', 'Upkeep GeoIP: Datenbank aktualisiert (' . $month->format('Y-m') . ')');
+                }
+                return true;
+            }
+
+            rex_logger::factory()->log('error', 'Upkeep GeoIP: Download fehlgeschlagen');
+            return false;
+        } catch (Throwable $e) {
+            rex_logger::logException($e);
+            return false;
+        }
     }
-    
+
+    /**
+     * Aktualisiert die Datenbank nur, wenn sie fehlt oder älter als $maxAgeDays ist (für Cronjobs).
+     */
+    public static function updateIfOutdated(int $maxAgeDays = 35): bool
+    {
+        $path = self::getDatabasePath();
+        if (is_file($path) && (time() - (int) filemtime($path)) < $maxAgeDays * 86400) {
+            return true;
+        }
+        return self::updateDatabase();
+    }
+
+    /**
+     * Prüft, ob eine Datei eine lesbare Country-Datenbank ist.
+     */
+    private static function isValidDatabase(string $file): bool
+    {
+        try {
+            $reader = new Reader($file);
+            $type = (string) $reader->metadata()->databaseType;
+            // Testabfrage einer öffentlichen Adresse
+            try {
+                $reader->country('8.8.8.8');
+            } catch (AddressNotFoundException) {
+            }
+            $reader->close();
+            return stripos($type, 'country') !== false;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     /**
      * Status der GeoIP-Datenbank
+     *
+     * @return array{available: bool, source: string, file_date: string|null, file_size: int, outdated: bool}
      */
     public static function getDatabaseStatus(): array
     {
-        $upkeepPath = \rex_path::addonData('upkeep', 'ip2geo.mmdb');
-        
+        $path = self::getDatabasePath();
         $status = [
             'available' => false,
             'source' => 'upkeep',
             'file_date' => null,
-            'file_size' => 0
+            'file_size' => 0,
+            'outdated' => true,
         ];
-        
-        if (file_exists($upkeepPath)) {
+
+        if (is_file($path)) {
+            $mtime = (int) filemtime($path);
             $status['available'] = true;
-            $status['file_date'] = date('Y-m-d H:i:s', filemtime($upkeepPath));
-            $status['file_size'] = filesize($upkeepPath);
+            $status['file_date'] = date('Y-m-d H:i:s', $mtime);
+            $status['file_size'] = (int) filesize($path);
+            $status['outdated'] = (time() - $mtime) > 35 * 86400;
         }
-        
+
         return $status;
     }
 }

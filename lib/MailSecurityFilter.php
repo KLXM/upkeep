@@ -36,7 +36,7 @@ class MailSecurityFilter
     }
 
     /**
-     * Holt Standard-Mail-Patterns aus der Datenbank
+     * Holt Standard-Mail-Patterns aus der Datenbank (pro Request gecacht, fail open)
      */
     public static function getDefaultMailPatterns(): array
     {
@@ -44,20 +44,14 @@ class MailSecurityFilter
 
         if ($patterns === null) {
             $patterns = [];
-            $sql = rex_sql::factory();
-            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_default_patterns') . " WHERE status = 1 ORDER BY category, severity DESC");
-
-            while ($sql->hasNext()) {
-                $category = $sql->getValue('category');
-                $pattern = $sql->getValue('pattern');
-                $severity = $sql->getValue('severity');
-
-                if (!isset($patterns[$category])) {
-                    $patterns[$category] = [];
+            try {
+                $sql = rex_sql::factory();
+                $sql->setQuery('SELECT category, pattern FROM ' . rex::getTable('upkeep_mail_default_patterns') . ' WHERE status = 1 ORDER BY category, severity DESC');
+                foreach ($sql as $row) {
+                    $patterns[(string) $row->getValue('category')][] = (string) $row->getValue('pattern');
                 }
-
-                $patterns[$category][] = $pattern;
-                $sql->next();
+            } catch (\Throwable $e) {
+                rex_logger::logException($e);
             }
         }
 
@@ -65,7 +59,7 @@ class MailSecurityFilter
     }
 
     /**
-     * Holt benutzerdefinierte Mail-Patterns aus der Datenbank
+     * Holt benutzerdefinierte Mail-Patterns aus der Datenbank (fail open)
      */
     public static function getCustomMailPatterns(): array
     {
@@ -73,17 +67,19 @@ class MailSecurityFilter
 
         if ($patterns === null) {
             $patterns = [];
-            $sql = rex_sql::factory();
-            $sql->setQuery("SELECT * FROM " . rex::getTable('upkeep_mail_custom_patterns') . " WHERE status = 1 ORDER BY severity DESC");
-
-            while ($sql->hasNext()) {
-                $patterns[] = [
-                    'pattern' => $sql->getValue('pattern'),
-                    'description' => $sql->getValue('description'),
-                    'severity' => $sql->getValue('severity'),
-                    'is_regex' => (bool) $sql->getValue('is_regex')
-                ];
-                $sql->next();
+            try {
+                $sql = rex_sql::factory();
+                $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_mail_custom_patterns') . ' WHERE status = 1 ORDER BY severity DESC');
+                foreach ($sql as $row) {
+                    $patterns[] = [
+                        'pattern' => $row->getValue('pattern'),
+                        'description' => $row->getValue('description'),
+                        'severity' => $row->getValue('severity'),
+                        'is_regex' => (bool) $row->getValue('is_regex'),
+                    ];
+                }
+            } catch (\Throwable) {
+                $patterns = [];
             }
         }
 
@@ -169,129 +165,221 @@ class MailSecurityFilter
     }
 
     /**
-     * Hauptfilter-Funktion für PHPMailer PHPMAILER_PRE_SEND Extension Point
-     * 
-     * @param rex_extension_point $ep Extension Point mit PHPMailer-Instanz
-     * @return mixed Kann den Versand durch Werfen einer Exception stoppen
+     * Hauptfilter-Funktion für den Extension Point PHPMAILER_PRE_SEND.
+     *
+     * 3.0:
+     * - nur im Web-Frontend (nicht CLI/Cronjob), echte Client-IP über ClientIp
+     * - Inhaltsprüfungen nur auf Benutzereingaben (POST/GET-Werte, die in der Mail vorkommen),
+     *   nicht auf die Vorlagen der Website
+     * - reine Inhaltstreffer werden nie an das IPS eskaliert
+     * - blockierte Mails werden abgebrochen (Empfänger entfernt, send() liefert false),
+     *   der Request läuft weiter (kein exit mitten in einer YForm-Aktion)
+     * - Fehler im Filter: Mail wird normal versendet (fail open), Fehler wird geloggt
+     *
+     * @param rex_extension_point<mixed> $ep
      */
     public static function filterMail(rex_extension_point $ep): mixed
     {
-        if (!self::isMailSecurityActive()) {
-            return $ep->getSubject();
-        }
-
         $mailer = $ep->getSubject();
-        $clientIp = self::getClientIp();
-        
+
         try {
-            // 1. Rate-Limiting prüfen
-            if (self::isMailRateLimitExceeded($clientIp)) {
-                self::logMailThreat('rate_limit_exceeded', $clientIp, [
-                    'severity' => 'high',
-                    'pattern' => 'Email rate limit exceeded',
-                    'action' => 'blocked'
-                ]);
-                
-                throw new \Exception('E-Mail-Rate-Limit überschritten. Versuchen Sie es später erneut.');
+            if (!self::isMailSecurityActive() || PHP_SAPI === 'cli' || !is_object($mailer)) {
+                return $mailer;
             }
 
-                        // 2. IP-Blocklist prüfen
-            $ipThreat = self::checkIpBlocklist($clientIp);
-            if ($ipThreat) {
-                self::logMailThreat('blocklisted_ip', $clientIp, $ipThreat);
-                
-                if ($ipThreat['severity'] === 'critical' || $ipThreat['severity'] === 'high') {
-                    throw new \Exception('Ihre IP-Adresse ist gesperrt: ' . $ipThreat['reason']);
-                }
+            $clientIp = ClientIp::get();
+            if ($clientIp === '0.0.0.0') {
+                return $mailer;
             }
 
-            // 3. Empfänger-Blocklist prüfen
-            $recipientThreat = self::checkRecipientBlocklist($mailer);
-            if ($recipientThreat) {
-                self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
-                
-                if ($recipientThreat['severity'] === 'critical') {
-                    // An IPS weiterleiten und zur Sperrseite weiterleiten
-                    self::escalateToIPS($clientIp, $recipientThreat);
-                    self::redirectToBlockedPage('Empfänger auf Blocklist', $clientIp);
-                }
+            // Vertrauenswürdige Absender-IPs (z. B. eigener Server, Monitoring)
+            $trusted = (string) self::getAddon()->getConfig('mail_allowed_sender_ips', '');
+            if ($trusted !== '' && ClientIp::inList($clientIp, $trusted)) {
+                return $mailer;
             }
 
-            // 3. Absender-Domain validieren
-            $senderThreat = self::validateSenderDomain($mailer);
-            if ($senderThreat) {
-                self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat);
-                
-                if ($senderThreat['severity'] === 'high') {
-                    // An IPS weiterleiten und zur Sperrseite weiterleiten
-                    self::escalateToIPS($clientIp, $senderThreat);
-                    self::redirectToBlockedPage('Ungültige Absender-Domain', $clientIp);
-                }
+            $block = self::evaluate($mailer, $clientIp);
+            if ($block !== null) {
+                self::cancelMail($mailer, $block);
+                $ep->setSubject($mailer);
+                return $mailer;
             }
 
-            // 4. Code-Injection-Schutz (JavaScript, PHP, SQL, etc.)
-            $injectionThreat = self::scanForCodeInjection($mailer);
-            if ($injectionThreat) {
-                self::logMailThreat('code_injection_detected', $clientIp, $injectionThreat);
-                
-                // Bei Code-Injection sofort blockieren und IP zur IPS-Bedrohung hinzufügen
-                self::escalateToIPS($clientIp, $injectionThreat);
-                
-                // Direkt zur IPS-Sperrseite weiterleiten
-                self::redirectToBlockedPage('Code-Injection in E-Mail erkannt', $clientIp);
-            }
-
-            // 5. Badword-Filter auf E-Mail-Inhalt anwenden
-            $contentThreat = self::scanMailContent($mailer);
-            if ($contentThreat) {
-                self::logMailThreat('badword_detected', $clientIp, $contentThreat);
-                
-                if ($contentThreat['severity'] === 'critical') {
-                    // Kritische Badwords auch an IPS eskalieren
-                    self::escalateToIPS($clientIp, $contentThreat);
-                    self::redirectToBlockedPage('Kritische Inhalte in E-Mail erkannt', $clientIp);
-                } elseif ($contentThreat['severity'] === 'high') {
-                    // Hohe Bedrohungen auch an IPS weiterleiten
-                    self::escalateToIPS($clientIp, $contentThreat);
-                    self::redirectToBlockedPage('Bedenkliche Inhalte in E-Mail erkannt', $clientIp);
-                } else {
-                    // Medium/Low: Nur loggen, weiterleiten
-                    self::debugLog("Mail content flagged but allowed: " . $contentThreat['pattern']);
-                }
-            }
-
-            // 6. Spam-Patterns prüfen
-            $spamThreat = self::checkSpamPatterns($mailer);
-            if ($spamThreat) {
-                self::logMailThreat('spam_pattern_detected', $clientIp, $spamThreat);
-                
-                if ($spamThreat['severity'] === 'high') {
-                    // Wiederholte Spam-Versuche an IPS eskalieren
-                    if (self::getSpamAttemptCount($clientIp) >= 3) {
-                        self::escalateToIPS($clientIp, $spamThreat);
-                        self::redirectToBlockedPage('Wiederholte Spam-Versuche erkannt', $clientIp);
-                    }
-                    // Ersten/zweiten Spam-Versuch: Nur loggen, aber nicht blockieren
-                    self::debugLog("Spam pattern detected but not yet escalated: " . $spamThreat['pattern']);
-                }
-            }
-
-            // 7. Rate-Limiting Counter aktualisieren (nur bei erfolgreichen Prüfungen)
             if (self::isMailRateLimitingEnabled()) {
                 self::updateMailRateLimit($clientIp);
             }
-
-            // 8. Erfolgreiche Filterung loggen (nur bei Debug-Modus)
-            if (self::getAddon()->getConfig('mail_security_debug', false)) {
-                self::debugLog("Mail security check passed for IP: {$clientIp}");
-            }
-
-        } catch (Exception $e) {
-            // Exception weiterwerfen - stoppt den E-Mail-Versand
-            throw $e;
+            self::debugLog("Mail security check passed for IP: {$clientIp}");
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
         }
 
         return $mailer;
+    }
+
+    /**
+     * Führt alle Prüfungen aus. Liefert einen Grund, wenn die Mail blockiert werden soll.
+     */
+    private static function evaluate(object $mailer, string $clientIp): ?string
+    {
+        // 1. Rate-Limiting (wiederholtes Überschreiten wird als "medium" ans IPS gemeldet)
+        if (self::isMailRateLimitExceeded($clientIp)) {
+            self::logMailThreat('rate_limit_exceeded', $clientIp, [
+                'severity' => 'high',
+                'pattern' => 'Email rate limit exceeded',
+                'action' => 'blocked',
+            ]);
+            IntrusionPrevention::reportExternalThreat('mail_rate_limit', 'medium', 'Email rate limit exceeded', $clientIp);
+            return 'rate_limit';
+        }
+
+        // 2. IP-Blocklist (Mail-Blocklist oder IPS-Sperre)
+        $ipThreat = self::checkIpBlocklist($clientIp);
+        if ($ipThreat !== null) {
+            self::logMailThreat('blocklisted_ip', $clientIp, $ipThreat);
+            if (in_array($ipThreat['severity'], ['critical', 'high'], true)) {
+                return 'blocklisted_ip';
+            }
+        }
+
+        // 3. Empfänger und Antwortadressen gegen Blocklist
+        $recipientThreat = self::checkRecipientBlocklist($mailer);
+        if ($recipientThreat !== null) {
+            self::logMailThreat('blocklisted_recipient', $clientIp, $recipientThreat);
+            if (in_array($recipientThreat['severity'], ['critical', 'high'], true)) {
+                return 'blocklisted_recipient';
+            }
+        }
+
+        // 4. Absender-Domain (Konfigurationsfrage der Website – nie eskalieren)
+        $senderThreat = self::validateSenderDomain($mailer);
+        if ($senderThreat !== null) {
+            self::logMailThreat('invalid_sender_domain', $clientIp, $senderThreat);
+            if ($senderThreat['severity'] === 'high' || $senderThreat['severity'] === 'critical') {
+                return 'invalid_sender_domain';
+            }
+        }
+
+        // 5. Header-Injection in Betreff / Namen
+        foreach (['Subject', 'FromName'] as $prop) {
+            $value = isset($mailer->$prop) && is_string($mailer->$prop) ? $mailer->$prop : '';
+            if ($value !== '' && preg_match('/[\r\n]/', $value)) {
+                self::logMailThreat('header_injection', $clientIp, ['severity' => 'high', 'pattern' => 'CR/LF in ' . $prop]);
+                return 'header_injection';
+            }
+        }
+
+        // Inhaltsprüfungen nur auf Benutzereingaben
+        $userContent = self::collectUserContent($mailer);
+        if ($userContent === '') {
+            return null;
+        }
+
+        // 6. Code-Injection
+        $injectionThreat = self::scanForCodeInjection($userContent);
+        if ($injectionThreat !== null) {
+            self::logMailThreat('code_injection_detected', $clientIp, $injectionThreat);
+            if (in_array($injectionThreat['severity'], ['critical', 'high'], true)) {
+                return 'code_injection';
+            }
+        }
+
+        // 7. Badwords
+        $contentThreat = self::scanMailContent($userContent);
+        if ($contentThreat !== null) {
+            self::logMailThreat('badword_detected', $clientIp, $contentThreat);
+            if (in_array($contentThreat['severity'], ['critical', 'high'], true)) {
+                return 'badword';
+            }
+        }
+
+        // 8. Spam-Patterns (hoch: ab dem dritten Versuch in 24 h blockieren)
+        $spamThreat = self::checkSpamPatterns($userContent);
+        if ($spamThreat !== null) {
+            self::logMailThreat('spam_pattern_detected', $clientIp, $spamThreat);
+            if ($spamThreat['severity'] === 'high' && self::getSpamAttemptCount($clientIp) >= 3) {
+                return 'spam';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Sammelt Benutzereingaben (POST/GET-Werte), die tatsächlich in der Mail vorkommen.
+     * So werden die eigenen Vorlagen der Website nicht geprüft.
+     */
+    private static function collectUserContent(object $mailer): string
+    {
+        $mailText = '';
+        foreach (['Subject', 'Body', 'AltBody', 'FromName'] as $prop) {
+            if (isset($mailer->$prop) && is_string($mailer->$prop)) {
+                $mailText .= ' ' . $mailer->$prop;
+            }
+        }
+        if (method_exists($mailer, 'getReplyToAddresses')) {
+            foreach ((array) $mailer->getReplyToAddresses() as $entry) {
+                $mailText .= ' ' . implode(' ', array_map('strval', (array) $entry));
+            }
+        }
+        $decodedMail = html_entity_decode(strip_tags($mailText), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $rawMail = $mailText;
+
+        $values = [];
+        $collect = static function ($data, int $depth = 0) use (&$collect, &$values): void {
+            if ($depth > 5 || count($values) > 200) {
+                return;
+            }
+            foreach ((array) $data as $key => $value) {
+                if (is_array($value)) {
+                    $collect($value, $depth + 1);
+                } elseif (is_string($value)) {
+                    $key = (string) $key;
+                    // Technische Felder auslassen
+                    if (preg_match('/(csrf|token|captcha|altcha|^_|password)/i', $key)) {
+                        continue;
+                    }
+                    $value = trim($value);
+                    if (strlen($value) >= 3) {
+                        $values[] = substr($value, 0, 20000);
+                    }
+                }
+            }
+        };
+        $collect($_POST);
+        $collect($_GET);
+
+        $content = '';
+        foreach ($values as $value) {
+            $plain = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if (str_contains($rawMail, $value) || ($plain !== '' && str_contains($decodedMail, $plain))
+                || str_contains($rawMail, htmlspecialchars($value, ENT_QUOTES))) {
+                $content .= "\n" . $value;
+            }
+            if (strlen($content) > 65536) {
+                break;
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Bricht den Versand ab, ohne den Request zu beenden: alle Empfänger werden entfernt,
+     * rex_mailer::send() liefert dadurch false.
+     */
+    private static function cancelMail(object $mailer, string $reason): void
+    {
+        foreach (['clearAllRecipients', 'clearReplyTos', 'clearAttachments'] as $method) {
+            if (method_exists($mailer, $method)) {
+                $mailer->$method();
+            }
+        }
+        if (property_exists($mailer, 'ErrorInfo')) {
+            $mailer->ErrorInfo = 'Blocked by upkeep mail security (' . $reason . ')';
+        }
+        // Optional für Formulare: Grund im Request merken
+        rex::setProperty('upkeep_mail_blocked', $reason);
+        self::debugLog('Mail blocked: ' . $reason);
     }
 
     /**
@@ -311,7 +399,7 @@ class MailSecurityFilter
     }
 
     /**
-     * Prüft Rate-Limit für E-Mail-Versand
+     * Prüft Rate-Limit für E-Mail-Versand (eine Abfrage für alle Zeitfenster)
      */
     private static function isMailRateLimitExceeded(string $ip): bool
     {
@@ -319,96 +407,70 @@ class MailSecurityFilter
             return false;
         }
 
-        $sql = rex_sql::factory();
-        $now = new DateTime();
-        
-        // Limits aus Config laden (mit Standardwerten)
-        $perMinute = (int) self::getAddon()->getConfig('mail_rate_limit_per_minute', 10);
-        $perHour = (int) self::getAddon()->getConfig('mail_rate_limit_per_hour', 50);
-        $perDay = (int) self::getAddon()->getConfig('mail_rate_limit_per_day', 200);
+        $perMinute = max(1, (int) self::getAddon()->getConfig('mail_rate_limit_per_minute', 10));
+        $perHour = max(1, (int) self::getAddon()->getConfig('mail_rate_limit_per_hour', 50));
+        $perDay = max(1, (int) self::getAddon()->getConfig('mail_rate_limit_per_day', 200));
+        $now = time();
 
-        // Prüfe verschiedene Zeitfenster
-        $timeWindows = [
-            'minute' => [$perMinute, '-1 minute'],
-            'hour' => [$perHour, '-1 hour'],
-            'day' => [$perDay, '-1 day']
-        ];
-
-        foreach ($timeWindows as $window => [$limit, $timeModifier]) {
-            $windowStart = (clone $now)->modify($timeModifier)->format('Y-m-d H:i:s');
-            
-            $query = "SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_rate_limit') . " 
-                      WHERE ip_address = ? AND created_at >= ?";
-            
-            $sql->setQuery($query, [$ip, $windowStart]);
-            $count = (int) $sql->getValue('count');
-            
-            if ($count >= $limit) {
-                self::debugLog("Mail rate limit exceeded for {$ip}: {$count}/{$limit} in {$window}");
-                return true;
-            }
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT
+                    SUM(created_at >= ?) AS m,
+                    SUM(created_at >= ?) AS h,
+                    COUNT(*) AS d
+                 FROM ' . rex::getTable('upkeep_mail_rate_limit') . '
+                 WHERE ip_address = ? AND created_at >= ?',
+                [date('Y-m-d H:i:s', $now - 60), date('Y-m-d H:i:s', $now - 3600), $ip, date('Y-m-d H:i:s', $now - 86400)],
+            );
+            return (int) $sql->getValue('m') >= $perMinute
+                || (int) $sql->getValue('h') >= $perHour
+                || (int) $sql->getValue('d') >= $perDay;
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+            return false;
         }
-
-        return false;
     }
 
     /**
-     * Aktualisiert Mail-Rate-Limit Counter
+     * Aktualisiert Mail-Rate-Limit Counter (Bereinigung über IntrusionPrevention::cleanupExpiredData)
      */
     private static function updateMailRateLimit(string $ip): void
     {
-        $sql = rex_sql::factory();
-        $sql->setTable(rex::getTable('upkeep_mail_rate_limit'));
-        $sql->setValue('ip_address', $ip);
-        $sql->setValue('created_at', date('Y-m-d H:i:s'));
-        $sql->insert();
-
-        // Alte Einträge aufräumen (älter als 24 Stunden)
-        $cleanupTime = (new DateTime())->modify('-24 hours')->format('Y-m-d H:i:s');
-        $sql->setQuery("DELETE FROM " . rex::getTable('upkeep_mail_rate_limit') . " WHERE created_at < ?", [$cleanupTime]);
+        try {
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('upkeep_mail_rate_limit'));
+            $sql->setValue('ip_address', $ip);
+            $sql->setValue('created_at', date('Y-m-d H:i:s'));
+            $sql->insert();
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+        }
     }
 
     /**
-     * Prüft Empfänger gegen Blocklist
+     * Prüft Empfänger (To/Cc/Bcc) und Antwortadressen gegen die Blocklist
      */
-    private static function checkRecipientBlocklist($mailer): ?array
+    private static function checkRecipientBlocklist(object $mailer): ?array
     {
-        $recipients = [];
-        
-        // Alle Empfänger-Typen sammeln
-        foreach (['getAllRecipientAddresses'] as $method) {
-            if (method_exists($mailer, $method)) {
-                $recipients = array_merge($recipients, $mailer->$method());
-            }
+        $addresses = [];
+        if (method_exists($mailer, 'getAllRecipientAddresses')) {
+            $addresses = array_keys((array) $mailer->getAllRecipientAddresses());
         }
-        
-        // Alternativ: Direkt auf Properties zugreifen falls Methoden nicht verfügbar
-        if (empty($recipients)) {
-            if (isset($mailer->to) && is_array($mailer->to)) {
-                foreach ($mailer->to as $recipient) {
-                    $recipients[] = isset($recipient[0]) ? $recipient[0] : $recipient;
-                }
-            }
-            if (isset($mailer->cc) && is_array($mailer->cc)) {
-                foreach ($mailer->cc as $recipient) {
-                    $recipients[] = isset($recipient[0]) ? $recipient[0] : $recipient;
-                }
-            }
-            if (isset($mailer->bcc) && is_array($mailer->bcc)) {
-                foreach ($mailer->bcc as $recipient) {
-                    $recipients[] = isset($recipient[0]) ? $recipient[0] : $recipient;
+        foreach (['getToAddresses', 'getCcAddresses', 'getBccAddresses', 'getReplyToAddresses'] as $method) {
+            if (method_exists($mailer, $method)) {
+                foreach ((array) $mailer->$method() as $key => $entry) {
+                    $addresses[] = is_array($entry) ? (string) ($entry[0] ?? '') : (string) $key;
                 }
             }
         }
 
-        // Prüfe jeden Empfänger gegen Blocklist
-        foreach ($recipients as $email) {
-            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        foreach (array_unique(array_map('strtolower', $addresses)) as $email) {
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
-
             $threat = self::checkEmailBlocklist($email);
-            if ($threat) {
+            if ($threat !== null) {
                 $threat['email'] = $email;
                 return $threat;
             }
@@ -422,76 +484,66 @@ class MailSecurityFilter
      */
     private static function checkEmailBlocklist(string $email): ?array
     {
-        $sql = rex_sql::factory();
-        
-        // Domain extrahieren
-        $domain = substr(strrchr($email, "@"), 1);
-        
-        // Prüfe gegen E-Mail-Blocklist
-        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " 
-                  WHERE (email_address = ? OR domain = ? OR pattern = ?) 
-                  AND status = 1 
-                  AND (expires_at IS NULL OR expires_at > NOW())
-                  ORDER BY severity DESC LIMIT 1";
-        
-        $sql->setQuery($query, [$email, $domain, $domain]);
-        
-        if ($sql->getRows() > 0) {
-            return [
-                'type' => 'blocklisted_' . $sql->getValue('blocklist_type'),
-                'severity' => $sql->getValue('severity'),
-                'pattern' => $sql->getValue('email_address') ?: $sql->getValue('domain'),
-                'reason' => $sql->getValue('reason')
-            ];
+        try {
+            $domain = strtolower((string) substr((string) strrchr($email, '@'), 1));
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT * FROM ' . rex::getTable('upkeep_mail_blocklist') . "
+                 WHERE (email_address = ? OR domain = ? OR pattern = ?)
+                   AND status = 1 AND (expires_at IS NULL OR expires_at > NOW())
+                 ORDER BY FIELD(severity, 'critical', 'high', 'medium', 'low') LIMIT 1",
+                [$email, $domain, $domain],
+            );
+            if ($sql->getRows() > 0) {
+                return [
+                    'type' => 'blocklisted_' . $sql->getValue('blocklist_type'),
+                    'severity' => (string) $sql->getValue('severity'),
+                    'pattern' => $sql->getValue('email_address') ?: $sql->getValue('domain'),
+                    'reason' => $sql->getValue('reason'),
+                ];
+            }
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
         }
-
         return null;
     }
 
     /**
-     * Prüft IP-Adresse gegen Blocklist
+     * Prüft IP-Adresse gegen Mail-Blocklist und IPS-Sperrliste
      */
     private static function checkIpBlocklist(string $clientIp): ?array
     {
-        $sql = rex_sql::factory();
-        
-        // Direkte IP-Prüfung und Pattern-Matching
-        $query = "SELECT * FROM " . rex::getTable('upkeep_mail_blocklist') . " 
-                  WHERE blocklist_type = 'ip' 
-                  AND (ip_address = ? OR ? LIKE REPLACE(pattern, '*', '%'))
-                  AND status = 1 
-                  AND (expires_at IS NULL OR expires_at > NOW())
-                  ORDER BY severity DESC LIMIT 1";
-        
-        $sql->setQuery($query, [$clientIp, $clientIp]);
-        
-        if ($sql->getRows() > 0) {
-            return [
-                'type' => 'blocklisted_ip',
-                'severity' => $sql->getValue('severity'),
-                'pattern' => $sql->getValue('ip_address') ?: $sql->getValue('pattern'),
-                'reason' => $sql->getValue('reason') ?: 'IP-Adresse ist gesperrt',
-                'ip' => $clientIp
-            ];
-        }
-
-        // Zusätzlich prüfen ob IP bereits im IPS-System gesperrt ist
-        $ipsBlockedQuery = "SELECT severity, reason FROM " . rex::getTable('upkeep_ips_blocked_ips') . " 
-                            WHERE ip_address = ? AND status = 1";
-        
         try {
-            $sql->setQuery($ipsBlockedQuery, [$clientIp]);
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT * FROM ' . rex::getTable('upkeep_mail_blocklist') . "
+                 WHERE blocklist_type = 'ip'
+                   AND (ip_address = ? OR (pattern IS NOT NULL AND pattern != '' AND ? LIKE REPLACE(pattern, '*', '%')))
+                   AND status = 1 AND (expires_at IS NULL OR expires_at > NOW())
+                 ORDER BY FIELD(severity, 'critical', 'high', 'medium', 'low') LIMIT 1",
+                [$clientIp, $clientIp],
+            );
             if ($sql->getRows() > 0) {
                 return [
-                    'type' => 'ips_blocked_ip',
-                    'severity' => $sql->getValue('severity') ?: 'high',
-                    'pattern' => $clientIp,
-                    'reason' => $sql->getValue('reason') ?: 'IP durch IPS-System gesperrt',
-                    'ip' => $clientIp
+                    'type' => 'blocklisted_ip',
+                    'severity' => (string) $sql->getValue('severity'),
+                    'pattern' => $sql->getValue('ip_address') ?: $sql->getValue('pattern'),
+                    'reason' => $sql->getValue('reason') ?: 'IP-Adresse ist gesperrt',
+                    'ip' => $clientIp,
                 ];
             }
-        } catch (Exception $e) {
-            // IPS-Tabelle existiert möglicherweise nicht - ignorieren
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+        }
+
+        if (IntrusionPrevention::isIpBlocked($clientIp)) {
+            return [
+                'type' => 'ips_blocked_ip',
+                'severity' => 'high',
+                'pattern' => $clientIp,
+                'reason' => 'IP durch IPS-System gesperrt',
+                'ip' => $clientIp,
+            ];
         }
 
         return null;
@@ -500,33 +552,22 @@ class MailSecurityFilter
     /**
      * Validiert Absender-Domain
      */
-    private static function validateSenderDomain($mailer): ?array
+    private static function validateSenderDomain(object $mailer): ?array
     {
-        $fromEmail = $mailer->From;
-        
-        if (empty($fromEmail) || !filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
-            return [
-                'type' => 'invalid_sender_format',
-                'severity' => 'medium',
-                'pattern' => $fromEmail
-            ];
+        $fromEmail = isset($mailer->From) ? (string) $mailer->From : '';
+
+        if ($fromEmail === '' || !filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+            return ['type' => 'invalid_sender_format', 'severity' => 'medium', 'pattern' => $fromEmail];
         }
 
-        $domain = substr(strrchr($fromEmail, "@"), 1);
-        
-        // Prüfe gegen erlaubte Domains (Whitelist-Modus)
-        $allowedDomains = self::getAllowedSenderDomains();
-        if (!empty($allowedDomains) && !in_array($domain, $allowedDomains)) {
-            return [
-                'type' => 'unauthorized_sender_domain',  
-                'severity' => 'high',
-                'pattern' => $domain
-            ];
+        $domain = strtolower((string) substr((string) strrchr($fromEmail, '@'), 1));
+        $allowedDomains = array_map('strtolower', self::getAllowedSenderDomains());
+        if ($allowedDomains !== [] && !in_array($domain, $allowedDomains, true)) {
+            return ['type' => 'unauthorized_sender_domain', 'severity' => 'high', 'pattern' => $domain];
         }
 
-        // Prüfe gegen Domain-Blocklist
         $threat = self::checkEmailBlocklist($fromEmail);
-        if ($threat) {
+        if ($threat !== null) {
             $threat['type'] = 'blocklisted_sender_domain';
             return $threat;
         }
@@ -535,96 +576,58 @@ class MailSecurityFilter
     }
 
     /**
-     * Holt erlaubte Absender-Domains aus Config
+     * Holt erlaubte Absender-Domains aus Config (Zeilenumbruch oder Komma getrennt)
      */
     private static function getAllowedSenderDomains(): array
     {
-        $domains = self::getAddon()->getConfig('mail_allowed_sender_domains', '');
-        if (empty($domains)) {
-            return []; // Leere Liste = alle Domains erlaubt
+        $domains = (string) self::getAddon()->getConfig('mail_allowed_sender_domains', '');
+        if (trim($domains) === '') {
+            return [];
         }
-        
-        return array_filter(array_map('trim', explode("\n", $domains)));
+        return array_values(array_filter(array_map('trim', preg_split('/[\s,;]+/', $domains) ?: [])));
     }
 
     /**
-     * Scannt E-Mail-Inhalt auf Badwords
+     * Scannt Benutzereingaben auf Badwords
      */
-    private static function scanMailContent($mailer): ?array
+    private static function scanMailContent(string $content): ?array
     {
-        $content = '';
-        
-        // Alle Inhalte sammeln
-        $content .= $mailer->Subject . ' ';
-        $content .= $mailer->Body . ' ';
-        $content .= $mailer->AltBody . ' ';
-        
-        // HTML-Tags entfernen für bessere Analyse
-        $cleanContent = strip_tags(html_entity_decode($content));
-        
-        // Badwords aus Datenbank laden und prüfen
-        $badwords = self::getBadwords();
-        
-        foreach ($badwords as $badword) {
-            $pattern = $badword['pattern'];
-            $isMatch = false;
-            
-            if ($badword['is_regex']) {
-                // RegEx-Pattern
-                if (@preg_match($pattern, $cleanContent)) {
-                    $isMatch = true;
-                }
-            } else {
-                // Einfacher String-Match (case-insensitive)
-                if (stripos($cleanContent, $pattern) !== false) {
-                    $isMatch = true;
-                }
+        $cleanContent = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        foreach (self::getBadwords() as $badword) {
+            $pattern = (string) $badword['pattern'];
+            if ($pattern === '') {
+                continue;
             }
-            
+            $isMatch = $badword['is_regex']
+                ? (PatternValidator::match($pattern, $cleanContent) === true)
+                : stripos($cleanContent, $pattern) !== false;
+
             if ($isMatch) {
                 return [
                     'type' => 'badword_match',
                     'severity' => $badword['severity'],
                     'pattern' => $pattern,
-                    'category' => $badword['category'] ?? 'content'
+                    'category' => $badword['category'] ?? 'content',
                 ];
             }
         }
-        
+
         return null;
     }
 
     /**
-     * Prüft E-Mail auf Spam-Patterns
+     * Prüft Benutzereingaben auf Spam-Patterns
      */
-    private static function checkSpamPatterns($mailer): ?array
+    private static function checkSpamPatterns(string $content): ?array
     {
-        $content = $mailer->Subject . ' ' . $mailer->Body . ' ' . $mailer->AltBody;
-        $cleanContent = strip_tags(html_entity_decode($content));
-
-        // Patterns aus Datenbank laden
+        $cleanContent = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $spamPatterns = self::getDefaultMailPatterns();
 
-        // Prüfe nach Kategorien
-        $categories = ['high_spam', 'medium_spam', 'low_spam'];
-        foreach ($categories as $category) {
-            if (isset($spamPatterns[$category])) {
-                foreach ($spamPatterns[$category] as $pattern) {
-                    if (preg_match($pattern, $cleanContent)) {
-                        $severity = match($category) {
-                            'high_spam' => 'high',
-                            'medium_spam' => 'medium',
-                            'low_spam' => 'low',
-                            default => 'medium'
-                        };
-
-                        return [
-                            'type' => 'spam_pattern',
-                            'severity' => $severity,
-                            'pattern' => $pattern,
-                            'category' => $category
-                        ];
-                    }
+        foreach (['high_spam' => 'high', 'medium_spam' => 'medium', 'low_spam' => 'low'] as $category => $severity) {
+            foreach ($spamPatterns[$category] ?? [] as $pattern) {
+                if (PatternValidator::match($pattern, $cleanContent) === true) {
+                    return ['type' => 'spam_pattern', 'severity' => $severity, 'pattern' => $pattern, 'category' => $category];
                 }
             }
         }
@@ -683,25 +686,27 @@ class MailSecurityFilter
     }
 
     /**
-     * Loggt Mail-Bedrohung in Threat-System
+     * Loggt Mail-Bedrohung in das gemeinsame Threat-Log (ohne Eskalation)
      */
     private static function logMailThreat(string $threatType, string $ip, array $threatData): void
     {
-        // In bestehende Threat-Log-Tabelle eintragen
-        $sql = rex_sql::factory();
-        $sql->setTable(rex::getTable('upkeep_ips_threat_log'));
-        $sql->setValue('ip_address', $ip);
-        $sql->setValue('request_uri', rex_server('REQUEST_URI', 'string', '/mail-security'));
-        $sql->setValue('user_agent', rex_server('HTTP_USER_AGENT', 'string', 'Mail Security Filter'));
-        $sql->setValue('threat_type', 'mail_' . $threatType);
-        $sql->setValue('threat_category', $threatData['category'] ?? 'mail_security');
-        $sql->setValue('pattern_matched', $threatData['pattern'] ?? '');
-        $sql->setValue('severity', $threatData['severity'] ?? 'medium');
-        $sql->setValue('action_taken', $threatData['action'] ?? 'blocked');
-        $sql->setValue('created_at', date('Y-m-d H:i:s'));
-        $sql->insert();
+        try {
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('upkeep_ips_threat_log'));
+            $sql->setValue('ip_address', $ip);
+            $sql->setValue('request_uri', substr(rex_server('REQUEST_URI', 'string', '/mail-security'), 0, 2000));
+            $sql->setValue('user_agent', substr(rex_server('HTTP_USER_AGENT', 'string', 'Mail Security Filter'), 0, 500));
+            $sql->setValue('threat_type', 'mail_' . $threatType);
+            $sql->setValue('threat_category', substr((string) ($threatData['category'] ?? 'mail_security'), 0, 100));
+            $sql->setValue('pattern_matched', substr((string) ($threatData['pattern'] ?? ''), 0, 500));
+            $sql->setValue('severity', in_array($threatData['severity'] ?? '', ['low', 'medium', 'high', 'critical'], true) ? $threatData['severity'] : 'medium');
+            $sql->setValue('action_taken', (string) ($threatData['action'] ?? 'logged'));
+            $sql->setValue('created_at', date('Y-m-d H:i:s'));
+            $sql->insert();
+        } catch (\Throwable $e) {
+            rex_logger::logException($e);
+        }
 
-        // Zusätzlich in Mail-spezifisches Log (optional)
         if (self::getAddon()->getConfig('mail_security_detailed_logging', false)) {
             self::logDetailedMailThreat($threatType, $ip, $threatData);
         }
@@ -753,37 +758,11 @@ class MailSecurityFilter
     }
 
     /**
-     * Holt Client-IP (auch hinter Proxy/CDN) - kopiert von IntrusionPrevention
+     * Client-IP (echte IP über ClientIp, Proxy-Header nur bei vertrauenswürdigen Proxies)
      */
     private static function getClientIp(): string
     {
-        // Prüfe verschiedene Headers für echte IP
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',     // Cloudflare
-            'HTTP_X_FORWARDED_FOR',      // Standard Proxy
-            'HTTP_X_REAL_IP',            // Nginx
-            'HTTP_X_FORWARDED',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR'                // Fallback
-        ];
-        
-        foreach ($headers as $header) {
-            $ip = rex_server($header, 'string', '');
-            if (!empty($ip)) {
-                // Bei mehreren IPs (X-Forwarded-For) die erste nehmen
-                if (str_contains($ip, ',')) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                
-                // IP validieren
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return $ip;
-                }
-            }
-        }
-        
-        return rex_server('REMOTE_ADDR', 'string', '');
+        return ClientIp::get();
     }
 
     /**
@@ -797,45 +776,28 @@ class MailSecurityFilter
     }
 
     /**
-     * Scannt E-Mail-Inhalt auf Code-Injection (JavaScript, PHP, SQL, etc.)
+     * Scannt Benutzereingaben auf Code-Injection (JavaScript, PHP, SQL, etc.)
      */
-    private static function scanForCodeInjection($mailer): ?array
+    private static function scanForCodeInjection(string $content): ?array
     {
-        $content = '';
-
-        // Alle Inhalte sammeln (auch Anhang-Namen falls verfügbar)
-        $content .= $mailer->Subject . ' ';
-        $content .= $mailer->Body . ' ';
-        $content .= $mailer->AltBody . ' ';
-
-        // Auch Absender und Empfänger prüfen
-        $content .= $mailer->From . ' ';
-        $content .= $mailer->FromName . ' ';
-
-        // Patterns aus Datenbank laden
         $injectionPatterns = self::getDefaultMailPatterns();
 
-        // Prüfe nach Kategorien (kritisch zuerst)
-        $categories = ['critical_injection', 'high_injection', 'medium_injection'];
-        foreach ($categories as $category) {
-            if (isset($injectionPatterns[$category])) {
-                foreach ($injectionPatterns[$category] as $pattern) {
-                    if (preg_match($pattern, $content, $matches)) {
-                        $severity = match($category) {
-                            'critical_injection' => 'critical',
-                            'high_injection' => 'high',
-                            'medium_injection' => 'medium',
-                            default => 'medium'
-                        };
-
-                        return [
-                            'type' => 'code_injection',
-                            'severity' => $severity,
-                            'pattern' => $pattern,
-                            'matched_content' => substr($matches[0], 0, 100), // Erste 100 Zeichen des Matches
-                            'injection_type' => self::getInjectionType($pattern)
-                        ];
-                    }
+        foreach (['critical_injection' => 'critical', 'high_injection' => 'high', 'medium_injection' => 'medium'] as $category => $severity) {
+            foreach ($injectionPatterns[$category] ?? [] as $pattern) {
+                set_error_handler(static fn (): bool => true);
+                try {
+                    $res = preg_match($pattern, $content, $matches);
+                } finally {
+                    restore_error_handler();
+                }
+                if ($res === 1) {
+                    return [
+                        'type' => 'code_injection',
+                        'severity' => $severity,
+                        'pattern' => $pattern,
+                        'matched_content' => substr((string) ($matches[0] ?? ''), 0, 100),
+                        'injection_type' => self::getInjectionType($pattern),
+                    ];
                 }
             }
         }
@@ -862,61 +824,18 @@ class MailSecurityFilter
     }
 
     /**
-     * Eskaliert Bedrohung an das IPS-System
+     * Meldet eine Bedrohung an das IPS (nur für Nicht-Inhalts-Treffer verwenden)
      */
     private static function escalateToIPS(string $ip, array $threatData): void
     {
-        try {
-            // Füge zur IPS-Threat-Log-Tabelle hinzu
-            $sql = rex_sql::factory();
-            $sql->setTable(rex::getTable('upkeep_ips_threat_log'));
-            $sql->setValue('ip_address', $ip);
-            $sql->setValue('request_uri', '/mail-security-escalation');
-            $sql->setValue('user_agent', 'Mail Security Filter - Escalated Threat');
-            $sql->setValue('threat_type', 'mail_escalated_' . $threatData['type']);
-            $sql->setValue('threat_category', 'mail_security_critical');
-            $sql->setValue('pattern_matched', $threatData['pattern'] ?? '');
-            $sql->setValue('severity', 'critical'); // Eskalierte Bedrohungen sind immer kritisch
-            $sql->setValue('action_taken', 'escalated_to_ips');
-            $sql->setValue('created_at', date('Y-m-d H:i:s'));
-            $sql->insert();
-
-            // Bei kritischen Code-Injections: IP sofort temporär blockieren
-            if ($threatData['severity'] === 'critical') {
-                self::temporaryBlockIp($ip, 'Mail Security: Critical code injection detected');
-            }
-
-            self::debugLog("Threat escalated to IPS for IP {$ip}: {$threatData['type']}");
-            
-        } catch (Exception $e) {
-            self::debugLog("Failed to escalate threat to IPS: " . $e->getMessage());
-        }
+        IntrusionPrevention::reportExternalThreat(
+            'mail_escalated_' . ($threatData['type'] ?? 'threat'),
+            (string) ($threatData['severity'] ?? 'medium'),
+            (string) ($threatData['pattern'] ?? ''),
+            $ip,
+        );
     }
 
-    /**
-     * Blockiert IP temporär (1 Stunde) bei kritischen Mail-Bedrohungen
-     */
-    private static function temporaryBlockIp(string $ip, string $reason): void
-    {
-        try {
-            $sql = rex_sql::factory();
-            $expiresAt = (new DateTime())->modify('+1 hour')->format('Y-m-d H:i:s');
-            
-            $sql->setTable(rex::getTable('upkeep_ips_blocked_ips'));
-            $sql->setValue('ip_address', $ip);
-            $sql->setValue('block_type', 'temporary');
-            $sql->setValue('expires_at', $expiresAt);
-            $sql->setValue('reason', $reason);
-            $sql->setValue('threat_level', 'critical');
-            $sql->setValue('created_at', date('Y-m-d H:i:s'));
-            $sql->insert();
-            
-            self::debugLog("IP {$ip} temporarily blocked for 1 hour: {$reason}");
-            
-        } catch (Exception $e) {
-            self::debugLog("Failed to block IP {$ip}: " . $e->getMessage());
-        }
-    }
 
     /**
      * Bereinigt/Sanitized E-Mail-Inhalt von potentiell schädlichem Code
@@ -954,41 +873,33 @@ class MailSecurityFilter
     }
 
     /**
-     * Fügt ein neues Badword hinzu
-     * 
-     * @param string $pattern     Das zu sperrende Wort oder Muster
-     * @param string $severity    Schweregrad (low, medium, high, critical)
-     * @param string $category    Kategorie (general, spam, phishing, etc.)
-     * @param bool $isRegex       Ob es sich um einen regulären Ausdruck handelt
-     * @param string $description Beschreibung des Badwords
-     * 
-     * @return bool               Erfolgsstatus
+     * Fügt ein neues Badword hinzu (RegEx wird validiert)
      */
     public static function addBadword(string $pattern, string $severity = 'medium', string $category = 'general', bool $isRegex = false, string $description = ''): bool
     {
+        $pattern = trim($pattern);
+        if ($pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+            return false;
+        }
         try {
             $sql = rex_sql::factory();
             $sql->setTable(rex::getTable('upkeep_mail_badwords'));
             $sql->setValue('pattern', $pattern);
             $sql->setValue('description', $description);
             $sql->setValue('category', $category);
-            $sql->setValue('severity', $severity);
+            $sql->setValue('severity', self::normalizeSeverity($severity));
             $sql->setValue('is_regex', $isRegex ? 1 : 0);
             $sql->setValue('status', 1);
-            $sql->setValue('is_default', 0); // Benutzerdefiniertes Badword, kein Standard
-            $sql->setValue('is_editable', 1); // Bearbeitbar
+            $sql->setValue('is_default', 0);
+            $sql->setValue('is_editable', 1);
             $sql->setValue('created_at', date('Y-m-d H:i:s'));
             $sql->setValue('updated_at', date('Y-m-d H:i:s'));
             $sql->setValue('edited_by', rex::getUser() ? rex::getUser()->getLogin() : '');
             $sql->insert();
-            
-            // Cache leeren
             self::clearBadwordsCache();
-            
             return true;
-        } catch (Exception $e) {
-            // Log to REDAXO system log for debugging
-            rex_logger::factory()->log('error', "Mail Security addBadword failed: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            rex_logger::factory()->log('error', 'Mail Security addBadword failed: ' . $e->getMessage());
             return false;
         }
     }
@@ -1101,55 +1012,42 @@ class MailSecurityFilter
     
     /**
      * Aktualisiert ein Badword
-     * 
-     * @param int $id           Die ID des zu aktualisierenden Badwords
-     * @param string $pattern   Das neue Muster
-     * @param string $description Die neue Beschreibung
-     * @param string $category  Die neue Kategorie
-     * @param string $severity  Der neue Schweregrad
-     * @param bool $status      Der neue Status
-     * 
-     * @return bool             Erfolgsstatus
+     *
+     * @param bool|null $isRegex null = unverändert lassen
      */
-    public static function updateBadword(int $id, string $pattern, string $description, string $category, string $severity, bool $status): bool
+    public static function updateBadword(int $id, string $pattern, string $description, string $category, string $severity, bool $status, ?bool $isRegex = null): bool
     {
         try {
-            // Prüfen ob das Badword bearbeitbar ist
             $sql = rex_sql::factory();
-            $sql->setQuery("SELECT is_editable FROM " . rex::getTable('upkeep_mail_badwords') . " WHERE id = ?", [$id]);
-            
-            if ($sql->getRows() > 0) {
-                $isEditable = (bool) $sql->getValue('is_editable');
-                
-                // Bei nicht bearbeitbaren Badwords nur den Status ändern
-                if (!$isEditable) {
-                    return self::toggleBadwordStatus($id);
-                }
-                
-                // Ansonsten vollständiges Update
-                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_badwords') . " SET 
-                               pattern = ?, 
-                               description = ?, 
-                               category = ?, 
-                               severity = ?, 
-                               status = ?, 
-                               updated_at = NOW(),
-                               edited_by = ? 
-                               WHERE id = ?", 
-                               [$pattern, $description, $category, $severity, $status ? 1 : 0, 
-                                rex::getUser() ? rex::getUser()->getLogin() : '', $id]);
-                
-                // Cache leeren
-                self::clearBadwordsCache();
-                
-                return true;
+            $sql->setQuery('SELECT is_editable, is_regex FROM ' . rex::getTable('upkeep_mail_badwords') . ' WHERE id = ?', [$id]);
+            if ($sql->getRows() === 0) {
+                return false;
             }
-            
-            return false;
-        } catch (Exception $e) {
-            self::debugLog("Failed to update badword: " . $e->getMessage());
+            if (!(bool) $sql->getValue('is_editable')) {
+                return self::toggleBadwordStatus($id);
+            }
+
+            $isRegex ??= (bool) $sql->getValue('is_regex');
+            $pattern = trim($pattern);
+            if ($pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+                return false;
+            }
+
+            $sql->setQuery(
+                'UPDATE ' . rex::getTable('upkeep_mail_badwords') . ' SET pattern = ?, description = ?, category = ?, severity = ?, is_regex = ?, status = ?, updated_at = NOW(), edited_by = ? WHERE id = ?',
+                [$pattern, $description, $category, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, rex::getUser() ? rex::getUser()->getLogin() : '', $id],
+            );
+            self::clearBadwordsCache();
+            return true;
+        } catch (\Throwable $e) {
+            self::debugLog('Failed to update badword: ' . $e->getMessage());
             return false;
         }
+    }
+
+    private static function normalizeSeverity(string $severity): string
+    {
+        return in_array($severity, ['low', 'medium', 'high', 'critical'], true) ? $severity : 'medium';
     }
     
     /**
@@ -1233,20 +1131,6 @@ class MailSecurityFilter
         }
     }
 
-    /**
-     * Leitet direkt zur IPS-Sperrseite weiter
-     */
-    private static function redirectToBlockedPage(string $reason, string $ip): void
-    {
-        // Importiere IntrusionPrevention Klasse
-        if (class_exists('\KLXM\Upkeep\IntrusionPrevention')) {
-            // Verwende die öffentliche showBlockedPage Methode des IPS-Systems
-            \KLXM\Upkeep\IntrusionPrevention::showBlockedPage($reason, $ip);
-        } else {
-            // Fallback: Exception werfen wenn IPS nicht verfügbar
-            throw new \Exception('Mail blockiert: ' . $reason);
-        }
-    }
 
     /**
      * Schaltet den Status eines Standard-Patterns um
@@ -1277,28 +1161,24 @@ class MailSecurityFilter
     }
 
     /**
-     * Aktualisiert ein Standard-Pattern
+     * Aktualisiert ein Standard-Pattern (RegEx wird validiert)
      */
     public static function updateDefaultPattern(int $id, string $pattern, string $description, string $severity, bool $isRegex, bool $status): bool
     {
+        $pattern = trim($pattern);
+        if ($pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+            return false;
+        }
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_default_patterns') . " SET 
-                           pattern = ?, 
-                           description = ?, 
-                           severity = ?, 
-                           is_regex = ?, 
-                           status = ?, 
-                           updated_at = NOW() 
-                           WHERE id = ?", 
-                           [$pattern, $description, $severity, $isRegex ? 1 : 0, $status ? 1 : 0, $id]);
-            
-            // Cache leeren
+            $sql->setQuery(
+                'UPDATE ' . rex::getTable('upkeep_mail_default_patterns') . ' SET pattern = ?, description = ?, severity = ?, is_regex = ?, status = ?, updated_at = NOW() WHERE id = ?',
+                [$pattern, $description, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, $id],
+            );
             self::clearDefaultPatternsCache();
-            
-            return true;
-        } catch (Exception $e) {
-            self::debugLog("Failed to update default pattern: " . $e->getMessage());
+            return $sql->getRows() >= 0;
+        } catch (\Throwable $e) {
+            self::debugLog('Failed to update default pattern: ' . $e->getMessage());
             return false;
         }
     }

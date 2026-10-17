@@ -65,7 +65,7 @@ class rex_upkeep_mode_command extends rex_console_command
         }
         
         // Status ändern
-        $addon->setConfig($configKey, $newState);
+        Upkeep::setMaintenance($target, $newState, 'console');
         
         // Erfolg melden
         $stateText = $newState ? 'aktiviert' : 'deaktiviert';
