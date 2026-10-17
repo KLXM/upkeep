@@ -206,6 +206,14 @@ class IntrusionPrevention
         $decodedUri = rawurldecode($uri);
         $path = (string) (parse_url($uri, PHP_URL_PATH) ?? '');
 
+        // Eigener Einstieg der Website (das Skript, das diese Anfrage ausführt, z. B. /index.php):
+        // nur die Parameter prüfen, nicht den Dateinamen – sonst schlägt das Endungs-Muster \.php$
+        // bei jedem Aufruf von /index.php an.
+        if (self::isOwnEntryScript(rawurldecode($path))) {
+            $query = (string) (parse_url($uri, PHP_URL_QUERY) ?? '');
+            $decodedUri = '' !== $query ? '?' . rawurldecode($query) : '';
+        }
+
         $threat = null;
 
         // WordPress XML-RPC: immer permanente Sperre
@@ -303,6 +311,16 @@ class IntrusionPrevention
     /**
      * Legitime CMS-URLs (streng verankert auf den Pfad, Query nur aus harmlosen Zeichen).
      */
+    /**
+     * Ist der Pfad der eigene Einstieg der Website? Das ist genau das PHP-Skript, das diese Anfrage
+     * gerade ausführt (in der Regel index.php der Installation, auch in Unterordnern).
+     */
+    private static function isOwnEntryScript(string $path): bool
+    {
+        $script = (string) rex_server('SCRIPT_NAME', 'string', '');
+        return '' !== $script && str_ends_with($script, '.php') && $path === $script;
+    }
+
     private static function isLegitimateUrl(string $uri): bool
     {
         $parts = parse_url($uri);
