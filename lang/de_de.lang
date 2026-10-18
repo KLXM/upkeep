@@ -1729,7 +1729,8 @@ upkeep_set_ips_monitor_only = Nur beobachten
 upkeep_set_ips_monitor_only_help = Angriffe werden protokolliert, aber niemand wird gesperrt – gut zum Testen.
 upkeep_set_ips_unlock_max = Selbst-Entsperrungen pro Tag
 upkeep_set_ips_unlock_max_help = Wie oft sich eine gesperrte Adresse auf dem Sperrbildschirm selbst freischalten darf. 0 schaltet das aus.
-upkeep_set_ips_unlock_hours = Freigabe gilt für (Stunden)
+upkeep_set_ips_unlock_hours = Nach Selbst-Entsperrung strenger (Stunden)
+upkeep_set_ips_unlock_hours_help = So lange bleibt eine selbst entsperrte Adresse markiert. Sie wird weiter vollständig überwacht; eine neue Sperre in dieser Zeit lässt sich nicht noch einmal selbst aufheben.
 upkeep_set_ips_contact_info = Kontakt auf dem Sperrbildschirm
 upkeep_set_ips_contact_info_help = Zum Beispiel eine E-Mail-Adresse für Rückfragen.
 upkeep_set_ips_rate_limiting_enabled = Anfragen begrenzen
@@ -2015,3 +2016,12 @@ upkeep_set_exclude_explain_php = Im PHP-Code:
 upkeep_set_exclude_explain_direct = Oder Sie nehmen ein Formular direkt im Formular selbst aus – dann ist hier kein Eintrag nötig:
 upkeep_set_exclude_explain_seen = Bisher erkannte Formularnamen auf dieser Website:
 upkeep_set_exclude_warn_default = „formular“ ist der Standardname aller Formulare ohne eigenen Namen. Damit sind alle diese Formulare ungeschützt.
+
+# 3.0.2: Selbst-Entsperrung ist keine Positivliste, Bereichsgrenzen, Mindestlänge für Muster
+upkeep_allowlist_unlocked_title = Selbst entsperrt – weiter überwacht
+upkeep_allowlist_unlocked_badge = Selbst entsperrt – keine Positivliste
+upkeep_allowlist_unlocked_until = Markierung bis
+upkeep_allowlist_unlocked_expired = abgelaufen
+upkeep_allowlist_unlocked_note = Diese Adressen stehen nicht auf der Positivliste. Sie haben eine automatische Sperre auf dem Sperrbildschirm selbst aufgehoben und werden weiter vollständig überwacht. Eine neue Sperre in diesem Zeitraum lässt sich nicht noch einmal selbst aufheben.
+upkeep_allowlist_range_too_wide = Der IP-Bereich ist zu groß. Erlaubt sind höchstens /16 bei IPv4 und /32 bei IPv6. Bitte tragen Sie kleinere Bereiche einzeln ein.
+upkeep_patterns_too_short = Das Muster ist zu kurz. Es muss mindestens 3 Zeichen haben, sonst trifft es fast jede Adresse.

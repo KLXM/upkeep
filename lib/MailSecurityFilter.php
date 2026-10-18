@@ -113,14 +113,14 @@ class MailSecurityFilter
         try {
             // Mail-Bedrohungen der letzten 24h
             $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                           WHERE threat_type LIKE 'mail_%' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+                           WHERE threat_type LIKE 'mail_%' AND created_at >= ?", [date('Y-m-d H:i:s', time() - 86400)]);
             if ($sql->getRows() > 0) {
                 $stats['threats_24h'] = (int) $sql->getValue('count');
             }
 
             // Blockierte E-Mails durch Rate-Limiting (24h)
             $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_rate_limit') . " 
-                           WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+                           WHERE created_at >= ?", [date('Y-m-d H:i:s', time() - 86400)]);
             if ($sql->getRows() > 0) {
                 $stats['rate_limit_blocks_24h'] = (int) $sql->getValue('count');
             }
@@ -133,7 +133,7 @@ class MailSecurityFilter
 
             // Aktive Blocklist-Einträge
             $sql->setQuery("SELECT COUNT(*) as count FROM " . rex::getTable('upkeep_mail_blocklist') . " 
-                           WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW())");
+                           WHERE status = 1 AND (expires_at IS NULL OR expires_at > ?)", [date('Y-m-d H:i:s')]);
             if ($sql->getRows() > 0) {
                 $stats['blocklist_count'] = (int) $sql->getValue('count');
             }
@@ -145,10 +145,10 @@ class MailSecurityFilter
                                severity,
                                MAX(created_at) as last_occurrence
                            FROM " . rex::getTable('upkeep_ips_threat_log') . " 
-                           WHERE threat_type LIKE 'mail_%' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                           WHERE threat_type LIKE 'mail_%' AND created_at >= ?
                            GROUP BY threat_type, severity
                            ORDER BY count DESC, severity DESC 
-                           LIMIT 5");
+                           LIMIT 5", [date('Y-m-d H:i:s', time() - 7 * 86400)]);
             
             while ($sql->hasNext()) {
                 $threatType = str_replace('mail_', '', $sql->getValue('threat_type'));
@@ -493,7 +493,7 @@ class MailSecurityFilter
 
         $now = time();
         $store = new JsonStore('mail_security_attempts', 2000);
-        $attempts = $store->update('ip:' . $clientIp, static function ($list) use ($now): array {
+        $attempts = $store->update('ip:' . ClientIp::bucket($clientIp), static function ($list) use ($now): array {
             $list = array_values(array_filter((array) $list, static fn ($t) => is_int($t) && $t > $now - 86400));
             $list[] = $now;
             return array_slice($list, -100);
@@ -734,9 +734,9 @@ class MailSecurityFilter
             $sql->setQuery(
                 'SELECT * FROM ' . rex::getTable('upkeep_mail_blocklist') . "
                  WHERE (email_address = ? OR domain = ? OR pattern = ?)
-                   AND status = 1 AND (expires_at IS NULL OR expires_at > NOW())
+                   AND status = 1 AND (expires_at IS NULL OR expires_at > ?)
                  ORDER BY FIELD(severity, 'critical', 'high', 'medium', 'low') LIMIT 1",
-                [$email, $domain, $domain],
+                [$email, $domain, $domain, date('Y-m-d H:i:s')],
             );
             if ($sql->getRows() > 0) {
                 return [
@@ -763,9 +763,9 @@ class MailSecurityFilter
                 'SELECT * FROM ' . rex::getTable('upkeep_mail_blocklist') . "
                  WHERE blocklist_type = 'ip'
                    AND (ip_address = ? OR (pattern IS NOT NULL AND pattern != '' AND ? LIKE REPLACE(pattern, '*', '%')))
-                   AND status = 1 AND (expires_at IS NULL OR expires_at > NOW())
+                   AND status = 1 AND (expires_at IS NULL OR expires_at > ?)
                  ORDER BY FIELD(severity, 'critical', 'high', 'medium', 'low') LIMIT 1",
-                [$clientIp, $clientIp],
+                [$clientIp, $clientIp, date('Y-m-d H:i:s')],
             );
             if ($sql->getRows() > 0) {
                 return [
@@ -1236,10 +1236,10 @@ class MailSecurityFilter
                 
                 $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_badwords') . " SET 
                                status = ?, 
-                               updated_at = NOW(), 
+                               updated_at = ?, 
                                edited_by = ? 
                                WHERE id = ?", 
-                               [$newStatus, rex::getUser() ? rex::getUser()->getLogin() : '', $id]);
+                               [$newStatus, date('Y-m-d H:i:s'), rex::getUser() ? rex::getUser()->getLogin() : '', $id]);
                 
                 // Cache leeren
                 self::clearBadwordsCache();
@@ -1278,8 +1278,8 @@ class MailSecurityFilter
             }
 
             $sql->setQuery(
-                'UPDATE ' . rex::getTable('upkeep_mail_badwords') . ' SET pattern = ?, description = ?, category = ?, severity = ?, is_regex = ?, status = ?, updated_at = NOW(), edited_by = ? WHERE id = ?',
-                [$pattern, $description, $category, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, rex::getUser() ? rex::getUser()->getLogin() : '', $id],
+                'UPDATE ' . rex::getTable('upkeep_mail_badwords') . ' SET pattern = ?, description = ?, category = ?, severity = ?, is_regex = ?, status = ?, updated_at = ?, edited_by = ? WHERE id = ?',
+                [$pattern, $description, $category, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, date('Y-m-d H:i:s'), rex::getUser() ? rex::getUser()->getLogin() : '', $id],
             );
             self::clearBadwordsCache();
             return true;
@@ -1321,10 +1321,10 @@ class MailSecurityFilter
                     severity
                 FROM " . rex::getTable('upkeep_ips_threat_log') . " 
                 WHERE threat_type LIKE 'mail_%' 
-                AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                AND created_at >= ?
                 GROUP BY threat_type, severity
                 ORDER BY count DESC
-            ");
+            ", [date('Y-m-d H:i:s', time() - 86400)]);
             
             $threats = [];
             while ($sql->hasNext()) {
@@ -1342,8 +1342,8 @@ class MailSecurityFilter
                     COUNT(DISTINCT ip_address) as unique_ips,
                     COUNT(*) as total_mails
                 FROM " . rex::getTable('upkeep_mail_rate_limit') . "
-                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-            ");
+                WHERE created_at >= ?
+            ", [date('Y-m-d H:i:s', time() - 86400)]);
             
             $rateStats = [
                 'unique_ips' => 0,
@@ -1389,7 +1389,7 @@ class MailSecurityFilter
                 $currentStatus = (bool) $sql->getValue('status');
                 $newStatus = $currentStatus ? 0 : 1;
                 
-                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_default_patterns') . " SET status = ?, updated_at = NOW() WHERE id = ?", [$newStatus, $id]);
+                $sql->setQuery("UPDATE " . rex::getTable('upkeep_mail_default_patterns') . " SET status = ?, updated_at = ? WHERE id = ?", [$newStatus, date('Y-m-d H:i:s'), $id]);
                 
                 // Cache leeren
                 self::clearDefaultPatternsCache();
@@ -1416,8 +1416,8 @@ class MailSecurityFilter
         try {
             $sql = rex_sql::factory();
             $sql->setQuery(
-                'UPDATE ' . rex::getTable('upkeep_mail_default_patterns') . ' SET pattern = ?, description = ?, severity = ?, is_regex = ?, status = ?, updated_at = NOW() WHERE id = ?',
-                [$pattern, $description, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, $id],
+                'UPDATE ' . rex::getTable('upkeep_mail_default_patterns') . ' SET pattern = ?, description = ?, severity = ?, is_regex = ?, status = ?, updated_at = ? WHERE id = ?',
+                [$pattern, $description, self::normalizeSeverity($severity), $isRegex ? 1 : 0, $status ? 1 : 0, date('Y-m-d H:i:s'), $id],
             );
             self::clearDefaultPatternsCache();
             return $sql->getRows() >= 0;

@@ -40,7 +40,7 @@ class rex_api_upkeep extends rex_api_function
         $addon = rex_addon::get('upkeep');
 
         $store = new JsonStore('api_auth_failures', 2000);
-        $ipKey = 'upkeep_api:' . ClientIp::get();
+        $ipKey = 'upkeep_api:' . ClientIp::bucket(ClientIp::get());
         if ((int) $store->get($ipKey, 0) >= self::MAX_FAILED) {
             $this->sendJsonResponse(['success' => false, 'error' => 'Too many requests'], 429, ['Retry-After' => (string) self::FAILED_WINDOW]);
         }

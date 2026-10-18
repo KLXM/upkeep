@@ -120,7 +120,7 @@ rex_sql_table::get(rex::getTable('upkeep_ips_positivliste'))
     ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
     ->ensureColumn(new rex_sql_column('ip_range', 'varchar(50)', true)) // CIDR-Notation für IP-Bereiche
     ->ensureColumn(new rex_sql_column('description', 'varchar(255)', true))
-    ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted","captcha_verified_temp")', false, 'trusted'))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(50)', false, 'trusted')) // wie SecuritySchema (3.0.2: kein enum mehr)
     ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent, sonst Ablaufzeit
     ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
     ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
@@ -455,6 +455,18 @@ if ($existingPatterns === 0) {
             $sql->insert();
         }
     }
+}
+
+// 3.0.2: Das Muster "/*" (SQL-Kommentar) traf auch harmlose Adressen. Es wird auf einen vollständigen
+// Kommentarblock (/* … */) eingeengt. Nur unveränderte Zeilen (Text "/*", kein RegEx) werden angepasst –
+// Schweregrad und Status, die Nutzer geändert haben, bleiben erhalten.
+try {
+    rex_sql::factory()->setQuery(
+        'UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . " SET pattern = ?, is_regex = 1, description = ?, updated_at = ? WHERE pattern = '/*' AND is_regex = 0 AND is_default = 1",
+        ['#/\*.*?\*/#s', 'SQL Comment Block (/* … */)', date('Y-m-d H:i:s')],
+    );
+} catch (Throwable $e) {
+    rex_logger::logException($e);
 }
 
 // Mail Security Tabellen erstellen
@@ -871,6 +883,20 @@ foreach (['SecuritySchema', 'FormProtectionSchema'] as $schema) {
     $class = 'KLXM\\Upkeep\\Schema\\' . $schema;
     $class::ensure();
 }
+
+// 3.0.2: Selbst-Entsperrungen standen bisher als volle Positivliste (Prüfungen aus). Sie werden zur Schonfrist.
+try {
+    rex_sql::factory()->setQuery(
+        'UPDATE ' . rex::getTable('upkeep_ips_positivliste') . " SET category = 'self_unlock' WHERE category = 'captcha_verified_temp' AND expires_at IS NOT NULL",
+    );
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+
+// Listen-Cache verwerfen (neuer Stand + Datei löschen). Bewusst ohne Klassenmethode:
+// beim Update sind noch die Klassen der alten Version geladen.
+rex_config::set('upkeep', 'ips_list_generation', bin2hex(random_bytes(8)));
+rex_file::delete(rex_path::addonCache('upkeep', 'ips_lists.json'));
 
 // Einstellungen, Rechte und Passwörter aus 2.x übernehmen (idempotent, nach allen Standardwerten)
 require_once __DIR__ . '/lib/Migration.php';

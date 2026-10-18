@@ -82,7 +82,7 @@ try {
     $stats['today'] = (int) $sql->getValue('c');
     $sql->setQuery('SELECT COUNT(*) AS c FROM ' . $table . ' WHERE created_at >= ?', [date('Y-m-d 00:00:00', strtotime('-6 days'))]);
     $stats['week'] = (int) $sql->getValue('c');
-    $sql->setQuery('SELECT COUNT(*) AS c FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+    $sql->setQuery('SELECT COUNT(*) AS c FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > ?', [date('Y-m-d H:i:s')]);
     $stats['blocked'] = (int) $sql->getValue('c');
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);

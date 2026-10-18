@@ -37,7 +37,7 @@ class rex_api_upkeep_system_health extends rex_api_function
         $addon = rex_addon::get('upkeep');
 
         $store = new JsonStore('api_auth_failures', 2000);
-        $ipKey = 'health_api:' . ClientIp::get();
+        $ipKey = 'health_api:' . ClientIp::bucket(ClientIp::get());
         if ((int) $store->get($ipKey, 0) >= self::MAX_FAILED) {
             self::send(['status' => 'forbidden', 'error' => 'Too many requests'], 429);
         }

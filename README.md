@@ -69,16 +69,46 @@ Alle Einstellungen liegen an einer Stelle (Upkeep > Einstellungen, nur Admins) �
 - **Backend:** Nur Admins können sich anmelden. Admins, die als Redakteur angemeldet sind, sehen einen Hinweis.
 - **Domains:** Mit YRewrite einzelne Domains oder alle sperren.
 - Die Wartungsseite ist mehrsprachig; Texte je Sprache pflegen Sie unter Einstellungen > Wartung.
-- Das Passwort lässt nur fünf Fehlversuche je IP in 15 Minuten zu und wird nur per POST angenommen.
+- Das Passwort lässt nur fünf Fehlversuche je IP (bei IPv6 je /64-Netz) in 15 Minuten zu und wird nur per POST angenommen. Nach 50 Fehlversuchen insgesamt in 15 Minuten nimmt die Seite vorübergehend gar kein Passwort an.
+- Freigegebene IP-Adressen der Wartung umgehen auch die Prüfungen des IPS (sie gelten wie die Positivliste). Tragen Sie dort nur Adressen ein, denen Sie voll vertrauen.
 
 ### Schutz (IPS)
 
 Das IPS prüft jede Anfrage im Frontend auf bekannte Angriffsmuster (SQL-Injection, Pfad-Manipulation, Zugriffe auf Schwachstellen anderer Systeme usw.). Je nach Schwere wird die Anfrage protokolliert oder die Adresse gesperrt. „Nur beobachten“ protokolliert, ohne zu sperren.
 
-- **Ereignisse, gesperrte IPs, Positivliste, Muster:** unter Upkeep > Schutz. Eigene Muster werden beim Speichern geprüft, auch auf zu aufwendige Ausdrücke.
-- **Sperrbildschirm:** zeigt den Grund (allgemein), die eigene IP, den Zeitpunkt und den Kontakt. Bei automatischen, zeitlich begrenzten Sperren kann sich ein Mensch mit ALTCHA selbst freischalten – nur die eigene IP, höchstens `ips_unlock_max`-mal am Tag. Danach steht die IP für `ips_unlock_hours` auf der Positivliste. Manuelle und dauerhafte Sperren lassen sich nicht selbst aufheben. Das Widget braucht HTTPS.
+- **Sperrstufen:** Hoch: 1 Stunde. Kritisch: 24 Stunden. Dauerhaft erst, wenn dieselbe Adresse innerhalb von 7 Tagen dreimal kritisch auffällt – ein einzelner Treffer sperrt nie dauerhaft. Mittel: ab drei Treffern in 24 Stunden 30 Minuten.
+- **Anfragen fremder Websites:** Bindet eine andere Website eine Adresse Ihrer Seite ein (Bild, Skript, Stylesheet), schickt der Browser des Besuchers die Anfrage, nicht der Besucher selbst. Solche Anfragen (Kopfzeile `Sec-Fetch-Site: cross-site`, kein Seitenaufruf, kein POST) werden nur protokolliert, nie gesperrt, und nicht an fail2ban gegeben. So kann niemand fremde Besucher per eingebettetem Bild sperren lassen.
+- **Ereignisse, gesperrte IPs, Positivliste, Muster:** unter Upkeep > Schutz. Eigene Muster werden beim Speichern geprüft, auch auf zu aufwendige Ausdrücke, und brauchen mindestens 3 Zeichen. Bereiche auf der Positivliste dürfen höchstens /16 (IPv4) bzw. /32 (IPv6) groß sein.
+- **Sperrbildschirm:** zeigt den Grund (allgemein), die eigene IP, den Zeitpunkt und den Kontakt. Das Widget braucht HTTPS.
 - **Fehlertolerant:** Fehlt eine Tabelle oder tritt ein Fehler auf, bleibt die Website erreichbar; der Fehler steht im System-Log.
-- **fail2ban:** Sperren können in eine Logdatei im REDAXO-Logordner geschrieben werden.
+- **Zeit:** Alle Ablaufzeiten werden mit der Uhr von PHP geschrieben und verglichen. Unterschiedliche Zeitzonen von PHP und Datenbank verlängern oder verkürzen Sperren nicht mehr.
+
+#### Selbst entsperren – und weiter überwacht
+
+Entsperren heißt nicht, dass eine Adresse nicht mehr überwacht wird.
+
+- Selbst entsperren kann sich nur, wer gerade eine eigene automatische, zeitlich begrenzte Sperre hat. Ohne Sperre gibt es keine Rechenaufgabe und keine Entsperrung.
+- Nur die eigene IP, höchstens `ips_unlock_max`-mal in 24 Stunden (bei IPv6 je /64-Netz); `0` schaltet die Selbst-Entsperrung aus. Ist das Limit erreicht, zeigt der Sperrbildschirm keine Rechenaufgabe mehr.
+- Nicht selbst aufheben lassen sich manuelle Sperren, dauerhafte Sperren und Sperren ganzer Bereiche.
+- Nach dem Entsperren wird die Adresse für `ips_unlock_hours` nur **markiert**. Sie kommt **nicht** auf die Positivliste und wird weiter vollständig geprüft. Jede neue Sperre in dieser Zeit (Muster, Scanner, Häufung, Anfragen-Limit, Formular- und E-Mail-Schutz) lässt sich nicht noch einmal selbst aufheben.
+- Die Markierungen stehen unter Schutz > Positivliste in einer eigenen Liste „Selbst entsperrt – weiter überwacht“.
+- Einträge aus 3.0.0/3.0.1 (Kategorie `captcha_verified_temp`) werden beim Update zu Markierungen.
+
+#### fail2ban
+
+Sperren können in eine Logdatei im REDAXO-Logordner geschrieben werden (Einstellungen > Schutz). Eine Zeile sieht so aus:
+
+```text
+2026-10-18 12:00:00 [REDAXO-IPS] HIGH threat from 203.0.113.7: "suspicious_user_agent" (URI: "/", Pattern: "sqlmap", Action: temporary_block)
+```
+
+URI, Muster und Typ stehen in Anführungszeichen; Steuerzeichen, Anführungszeichen und Nicht-ASCII-Zeichen sind maskiert. Verankern Sie den `failregex` trotzdem auf den Zeilenanfang, damit nur die echte Adresse direkt hinter `threat from` zählt:
+
+```ini
+[Definition]
+failregex = ^(?:\S+ \S+ )?\s*\[REDAXO-IPS\] (?:CRITICAL|HIGH) threat from <HOST>: "
+datepattern = {^LN-BEG}%%Y-%%m-%%d %%H:%%M:%%S
+```
 
 ### Formularschutz (YForm)
 
@@ -151,7 +181,7 @@ Cronjob-Typen (AddOn Cronjob): „Upkeep IPS: Bereinigung veralteter Sicherheits
 
 ## Schnittstellen
 
-Alle Schnittstellen antworten mit JSON. Token und Schlüssel werden mit konstanter Laufzeit verglichen, Fehlversuche werden begrenzt (HTTP 429).
+Alle Schnittstellen antworten mit JSON. Token und Schlüssel werden mit konstanter Laufzeit verglichen, Fehlversuche werden begrenzt (HTTP 429; bei IPv6 je /64-Netz).
 
 ### Wartungs-API
 
@@ -165,7 +195,7 @@ curl -H "Authorization: Bearer <token>" "https://example.org/index.php?rex-api-c
 curl -X POST -H "Authorization: Bearer <token>" -d "action=set_frontend&status=1" "https://example.org/index.php?rex-api-call=upkeep"
 ```
 
-Alternativ Header `X-Upkeep-Token` oder (veraltet) Parameter `token`.
+Alternativ Header `X-Upkeep-Token`. Der Parameter `token` in der Adresse funktioniert noch, ist aber **veraltet** und wird in einer späteren Version entfernt: Adressen mit Token landen in Server-Logs, Verläufen und Referrern. Bitte auf einen der Header umstellen.
 
 ### System-Health-API
 
@@ -198,7 +228,7 @@ Datenbank-Zugangsdaten, E-Mail-Adressen und Server-Software werden nicht ausgege
 ```php
 rex_extension::register('UPKEEP_ALLOWED_PATHS', static function (rex_extension_point $ep) {
     $paths = $ep->getSubject();
-    $paths[] = '/api/'; // Pfad-Präfix, relativ zur Installation
+    $paths[] = '/api/'; // Pfad-Präfix an Pfadgrenzen, relativ zur Installation (/api gibt /api/… frei, nicht /api-x)
     return $paths;
 });
 ```

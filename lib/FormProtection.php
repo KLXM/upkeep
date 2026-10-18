@@ -203,7 +203,7 @@ final class FormProtection
             }
             if (0 === count($params['warning'] ?? []) && 0 === count($params['warning_messages'] ?? [])) {
                 $formName = (string) ($params['form_name'] ?? 'formular');
-                Altcha::throttle('form', Altcha::clientIp() . '|' . $formName, (int) self::config('rate_limit'), (int) self::config('rate_window'));
+                Altcha::throttle('form', ClientIp::bucket(Altcha::clientIp()) . '|' . $formName, (int) self::config('rate_limit'), (int) self::config('rate_window'));
             }
         } catch (Throwable $e) {
             rex_logger::logException($e);
@@ -307,7 +307,7 @@ final class FormProtection
         }
 
         // 7. rate limit (checked here, counted in countSubmission())
-        if (!Altcha::throttle('form', Altcha::clientIp() . '|' . $formName, (int) self::config('rate_limit'), (int) self::config('rate_window'), false)) {
+        if (!Altcha::throttle('form', ClientIp::bucket(Altcha::clientIp()) . '|' . $formName, (int) self::config('rate_limit'), (int) self::config('rate_window'), false)) {
             $add('rate_limit', 100);
         }
 

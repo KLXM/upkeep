@@ -29,6 +29,12 @@ class Upkeep
     /** Zeitfenster für Fehlversuche (Sekunden) */
     public const PASSWORD_LOCK_SECONDS = 900;
 
+    /** Fehlversuche für das Wartungspasswort über alle Adressen im Zeitfenster */
+    public const PASSWORD_GLOBAL_MAX = 50;
+
+    /** Zeitfenster für die globale Obergrenze (Sekunden) */
+    public const PASSWORD_GLOBAL_WINDOW = 900;
+
     private static ?rex_addon $addon = null;
 
     /** Fehlerzustand des Passwortformulars: null | 'invalid' | 'locked' */
@@ -132,14 +138,22 @@ class Upkeep
         $input = substr($input, 0, 512);
 
         $store = new JsonStore('maintenance_attempts', 2000);
-        $ipKey = 'pw:' . ClientIp::get();
+        $ipKey = 'pw:' . ClientIp::bucket(ClientIp::get());
         if ((int) $store->get($ipKey, 0) >= self::PASSWORD_MAX_ATTEMPTS) {
             self::$passwordError = 'locked';
             return false;
         }
 
+        // Obergrenze über alle Adressen (verteilte Versuche): Anmeldung vorübergehend aus, normale Fehlermeldung
+        $globalKey = 'pw:global:' . intdiv(time(), self::PASSWORD_GLOBAL_WINDOW);
+        if ((int) $store->get($globalKey, 0) >= self::PASSWORD_GLOBAL_MAX) {
+            self::$passwordError = 'invalid';
+            return false;
+        }
+
         if (!self::verifyFrontendPassword($input)) {
             $store->increment($ipKey, self::PASSWORD_LOCK_SECONDS);
+            $store->increment($globalKey, self::PASSWORD_GLOBAL_WINDOW);
             self::$passwordError = 'invalid';
             return false;
         }
@@ -408,11 +422,22 @@ class Upkeep
                 continue;
             }
             $allowed = '/' . ltrim(trim($allowed), '/');
-            if (str_starts_with($relative, $allowed) || str_starts_with($path, $allowed)) {
+            if (self::pathHasPrefix($relative, $allowed) || self::pathHasPrefix($path, $allowed)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Präfix-Vergleich nur an Pfadgrenzen: /media erlaubt /media und /media/…, aber nicht /media-x.
+     */
+    private static function pathHasPrefix(string $path, string $prefix): bool
+    {
+        if ($prefix === '/' || str_ends_with($prefix, '/')) {
+            return str_starts_with($path, $prefix);
+        }
+        return $path === $prefix || str_starts_with($path, $prefix . '/');
     }
 
     private static function sendMaintenancePage(): never

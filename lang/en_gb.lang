@@ -1714,7 +1714,8 @@ upkeep_set_ips_monitor_only = Monitor only
 upkeep_set_ips_monitor_only_help = Attacks are logged, but nobody is blocked – good for testing.
 upkeep_set_ips_unlock_max = Self-unlocks per day
 upkeep_set_ips_unlock_max_help = How often a blocked address may unlock itself on the block screen. 0 turns this off.
-upkeep_set_ips_unlock_hours = Unlock lasts for (hours)
+upkeep_set_ips_unlock_hours = Stricter after self-unlock (hours)
+upkeep_set_ips_unlock_hours_help = How long a self-unlocked address stays marked. It remains fully monitored; a new block during this time cannot be lifted by self-unlock again.
 upkeep_set_ips_contact_info = Contact on the block screen
 upkeep_set_ips_contact_info_help = For example an email address for enquiries.
 upkeep_set_ips_rate_limiting_enabled = Limit requests
@@ -2000,3 +2001,12 @@ upkeep_set_exclude_explain_php = In PHP code:
 upkeep_set_exclude_explain_direct = Or exclude a form directly in the form itself – then no entry is needed here:
 upkeep_set_exclude_explain_seen = Form names seen on this website so far:
 upkeep_set_exclude_warn_default = "formular" is the default name of all forms without their own name. All of these forms are now unprotected.
+
+# 3.0.2: self-unlock is not an allowlist, range limits, minimum pattern length
+upkeep_allowlist_unlocked_title = Self-unlocked – still monitored
+upkeep_allowlist_unlocked_badge = Self-unlocked – not allowlisted
+upkeep_allowlist_unlocked_until = Marked until
+upkeep_allowlist_unlocked_expired = expired
+upkeep_allowlist_unlocked_note = These addresses are not on the allowlist. They lifted an automatic block themselves on the block screen and remain fully monitored. A new block during this time cannot be lifted by self-unlock again.
+upkeep_allowlist_range_too_wide = The IP range is too large. At most /16 for IPv4 and /32 for IPv6 are allowed. Please add smaller ranges one by one.
+upkeep_patterns_too_short = The pattern is too short. It needs at least 3 characters, otherwise it matches almost every address.

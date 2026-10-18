@@ -32,6 +32,30 @@ use Throwable;
  */
 class IntrusionPrevention
 {
+    /** Kategorie der Markierung „selbst entsperrt“ in der Positivlisten-Tabelle (wirkt NICHT als Positivliste) */
+    public const SELF_UNLOCK_CATEGORY = 'self_unlock';
+
+    /** Herkunft einer schweren Sperre kurz nach einer Selbst-Entsperrung – nicht noch einmal selbst aufhebbar */
+    public const SOURCE_AFTER_UNLOCK = 'after_unlock';
+
+    /** rex_config-Schlüssel mit dem Stand der Listen (Positivliste, Sperren); jede Änderung erzeugt einen neuen Stand */
+    public const LIST_GENERATION_KEY = 'ips_list_generation';
+
+    /** Dauer der Sperre bei einem einzelnen kritischen Treffer (Sekunden) */
+    private const CRITICAL_BLOCK_SECONDS = 86400;
+
+    /** Kritische Treffer derselben Adresse im Zeitfenster, ab denen dauerhaft gesperrt wird */
+    private const CRITICAL_PERMANENT_HITS = 3;
+
+    /** Zeitfenster für die kritischen Treffer (Sekunden) */
+    private const CRITICAL_PERMANENT_WINDOW = 7 * 86400;
+
+    /** Mindestlänge eigener Muster (kürzere treffen fast jede Adresse) */
+    public const MIN_PATTERN_LENGTH = 3;
+
+    /** Ab so vielen eingebetteten Fremd-Anfragen mit Treffer in 10 Minuten wird zeitweise gesperrt */
+    private const CROSS_SITE_BLOCK_HITS = 20;
+
     /** Zeitfenster für das Zusammenfassen gleichartiger Ereignisse (Sekunden) */
     private const AGGREGATE_WINDOW = 600;
 
@@ -179,9 +203,13 @@ class IntrusionPrevention
             self::blockRequest('IP bereits gesperrt', $clientIp, $requestUri);
         }
 
+        // Selbst entsperrte Adressen werden weiter überwacht wie alle anderen. Sperrt sie ein schwerer Treffer
+        // innerhalb von ips_unlock_hours erneut, lässt sich diese Sperre nicht noch einmal selbst aufheben.
+        $recentlyUnlocked = self::wasRecentlyUnlocked($clientIp);
+
         $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
         if ($threat !== null) {
-            self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
+            self::handleThreat($threat, $clientIp, $requestUri, $userAgent, $recentlyUnlocked);
         }
 
         if (self::isRateLimitingEnabled() && self::isRateLimitExceeded($clientIp)) {
@@ -189,8 +217,32 @@ class IntrusionPrevention
                 'type' => 'rate_limit',
                 'severity' => 'medium',
                 'pattern' => 'Too many requests',
-            ], $clientIp, $requestUri, $userAgent);
+            ], $clientIp, $requestUri, $userAgent, $recentlyUnlocked);
         }
+    }
+
+    /**
+     * Aktuelle Zeit nach der PHP-Uhr. Alle Zeitvergleiche in SQL nutzen diesen Wert als Parameter,
+     * weil Sperren und Ablaufzeiten mit date() geschrieben werden (Datenbank-Uhr kann eine andere Zeitzone haben).
+     */
+    private static function now(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * Unterressource einer fremden Website (z. B. <img src="…"> auf einer anderen Seite)?
+     * Solche Anfragen löst der Browser des Besuchers aus, nicht der Besucher selbst –
+     * sie werden nur protokolliert, nie gesperrt. Formular-POSTs zählen nicht dazu.
+     */
+    private static function isCrossSiteSubresource(): bool
+    {
+        if ('POST' === strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'))) {
+            return false;
+        }
+        $site = strtolower(trim(rex_server('HTTP_SEC_FETCH_SITE', 'string', '')));
+        $dest = strtolower(trim(rex_server('HTTP_SEC_FETCH_DEST', 'string', '')));
+        return 'cross-site' === $site && '' !== $dest && !in_array($dest, ['document', 'iframe', 'frame'], true);
     }
 
     /**
@@ -274,9 +326,9 @@ class IntrusionPrevention
             return null;
         }
 
-        // Legitime CMS-URL: Schweregrad höchstens "medium" (keine Sofortsperre)
+        // Legitime CMS-URL: "high" wird zu "medium" (keine Sofortsperre). Kritische Treffer werden nie abgestuft.
         if (($threat['category'] ?? '') !== 'immediate_block' && self::isLegitimateUrl($uri)) {
-            if (in_array($threat['severity'], ['critical', 'high'], true)) {
+            if ('high' === $threat['severity']) {
                 $threat['severity'] = 'medium';
                 $threat['downgraded'] = true;
             }
@@ -309,9 +361,6 @@ class IntrusionPrevention
     }
 
     /**
-     * Legitime CMS-URLs (streng verankert auf den Pfad, Query nur aus harmlosen Zeichen).
-     */
-    /**
      * Ist der Pfad der eigene Einstieg der Website? Das ist genau das PHP-Skript, das diese Anfrage
      * gerade ausführt (in der Regel index.php der Installation, auch in Unterordnern).
      */
@@ -321,6 +370,10 @@ class IntrusionPrevention
         return '' !== $script && str_ends_with($script, '.php') && $path === $script;
     }
 
+    /**
+     * Legitime CMS-URLs (streng verankert auf den Pfad, Query nur aus harmlosen Zeichen).
+     * Kodierte Zeichen (%) in der Query zählen nicht als harmlos – dahinter kann sich alles verbergen.
+     */
     private static function isLegitimateUrl(string $uri): bool
     {
         $parts = parse_url($uri);
@@ -330,7 +383,7 @@ class IntrusionPrevention
         $path = rawurldecode((string) ($parts['path'] ?? ''));
         $query = (string) ($parts['query'] ?? '');
 
-        if ($query !== '' && !preg_match('/^[a-zA-Z0-9_=&\-.%]{0,200}$/', $query)) {
+        if ($query !== '' && !preg_match('/^[a-zA-Z0-9_=&\-.]{0,200}$/', $query)) {
             return false;
         }
 
@@ -351,39 +404,90 @@ class IntrusionPrevention
      *
      * @param array<string, mixed> $threat
      */
-    private static function handleThreat(array $threat, string $ip, string $uri, string $userAgent): void
+    private static function handleThreat(array $threat, string $ip, string $uri, string $userAgent, bool $afterUnlock = false): void
     {
-        $isNew = self::logThreat($threat, $ip, $uri, $userAgent);
+        $critical = 'critical' === $threat['severity'] || 'immediate_block' === ($threat['category'] ?? '');
+        if ($critical) {
+            $threat['severity'] = 'critical';
+        }
 
-        self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew);
+        // Von einer fremden Seite eingebettete Anfrage: nur protokollieren (Dritte sollen niemanden sperren lassen).
+        // Scanner-Kennungen im User-Agent kann eine fremde Seite nicht setzen – die werden weiter behandelt.
+        $crossSite = 'suspicious_user_agent' !== $threat['type'] && self::isCrossSiteSubresource();
+
+        $action = self::getActionForSeverity((string) $threat['severity']);
+        if ($crossSite) {
+            $action = 'logged_cross_site';
+            $threat['cross_site'] = true;
+        } elseif ($critical && 'logged' !== $action) {
+            // Dauerhaft erst bei wiederholten kritischen Treffern derselben Adresse (dieser Treffer zählt mit)
+            $action = self::getCriticalHitCount($ip) + 1 >= self::CRITICAL_PERMANENT_HITS ? 'permanent_block' : 'temporary_block';
+        }
+
+        $isNew = self::logThreat($threat, $ip, $uri, $userAgent, $action);
+
+        self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew, $action);
 
         if (self::isMonitorOnlyMode()) {
             self::debugLog("IPS: Monitor-Only mode - threat logged but not blocked: {$threat['type']} from {$ip}");
             return;
         }
+        // Kurz nach einer Selbst-Entsperrung ist jede neue Sperre nicht noch einmal selbst aufhebbar
+        $source = $afterUnlock ? self::SOURCE_AFTER_UNLOCK : 'auto';
 
-        if (($threat['category'] ?? '') === 'immediate_block') {
-            self::blockIpPermanently($ip, 'Malicious activity detected - permanent block');
-            self::blockRequest('Malicious activity detected', $ip, $uri);
+        if ($crossSite) {
+            // Die Kopfzeilen kann ein Scanner fälschen: viele solcher Treffer in kurzer Zeit sperren deshalb zeitweise
+            // (selbst aufhebbar). Ein eingebettetes Bild in Forum oder Newsletter bleibt ein einzelner Treffer.
+            if (self::getCrossSiteHitCount($ip) >= self::CROSS_SITE_BLOCK_HITS) {
+                self::blockIpTemporarily($ip, 3600, 'Repeated cross-site threats', $source);
+                self::blockRequest('Repeated violations', $ip, $uri);
+            }
+            self::debugLog("IPS: cross-site subresource - threat logged but not blocked: {$threat['type']} from {$ip}");
+            return;
+        }
+
+        if ($critical) {
+            if ('permanent_block' === $action) {
+                self::blockIpPermanently($ip, 'Repeated critical threats - permanent block');
+            } else {
+                self::blockIpTemporarily($ip, self::CRITICAL_BLOCK_SECONDS, 'Critical threat detected', $source);
+            }
+            self::blockRequest('Critical threat detected', $ip, $uri);
         }
 
         switch ($threat['severity']) {
-            case 'critical':
-                self::blockIpPermanently($ip, 'Critical threat detected - permanent block');
-                self::blockRequest('Critical threat detected', $ip, $uri);
-                // no break (blockRequest beendet den Request)
             case 'high':
-                self::blockIpTemporarily($ip, 3600);
+                self::blockIpTemporarily($ip, 3600, '', $source);
                 self::blockRequest('High threat detected', $ip, $uri);
                 // no break
             case 'medium':
                 if (self::getViolationCount($ip) >= 3) {
-                    self::blockIpTemporarily($ip, 1800);
+                    self::blockIpTemporarily($ip, 1800, '', $source);
                     self::blockRequest('Repeated violations', $ip, $uri);
                 }
                 break;
             default:
                 break;
+        }
+    }
+
+    /**
+     * Anzahl kritischer Treffer (mit Sperrwirkung) einer Adresse im Zeitfenster.
+     * Nur protokollierte Treffer (Monitor-Modus, fremde Seiten) und Meldungen anderer Module zählen nicht.
+     */
+    private static function getCriticalHitCount(string $ip): int
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT SUM(' . self::hitExpression() . ') AS count FROM ' . rex::getTable('upkeep_ips_threat_log')
+                . " WHERE ip_address = ? AND severity = 'critical' AND action_taken IN ('temporary_block', 'permanent_block') AND created_at >= ?",
+                [$ip, date('Y-m-d H:i:s', time() - self::CRITICAL_PERMANENT_WINDOW)],
+            );
+            return (int) $sql->getValue('count');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            return 0;
         }
     }
 
@@ -419,17 +523,19 @@ class IntrusionPrevention
             if (!self::isActive() || self::isMonitorOnlyMode() || self::isOnPositivliste($ip) || self::isBlocked($ip)) {
                 return;
             }
+            // Nach Selbst-Entsperrung: schwere Treffer sperren so, dass keine erneute Selbst-Entsperrung möglich ist
+            $source = self::wasRecentlyUnlocked($ip) ? self::SOURCE_AFTER_UNLOCK : 'external';
 
             switch ($severity) {
                 case 'critical':
-                    self::blockIpTemporarily($ip, 86400, 'External report: ' . $type, 'external');
+                    self::blockIpTemporarily($ip, 86400, 'External report: ' . $type, $source);
                     break;
                 case 'high':
-                    self::blockIpTemporarily($ip, 3600, 'External report: ' . $type, 'external');
+                    self::blockIpTemporarily($ip, 3600, 'External report: ' . $type, $source);
                     break;
                 case 'medium':
                     if (self::getViolationCount($ip) >= 3) {
-                        self::blockIpTemporarily($ip, 1800, 'Repeated violations: ' . $type, 'external');
+                        self::blockIpTemporarily($ip, 1800, 'Repeated violations: ' . $type, $source);
                     }
                     break;
             }
@@ -443,7 +549,7 @@ class IntrusionPrevention
      *
      * @param array<string, mixed> $threat
      */
-    private static function callExternalLogging(array $threat, string $ip, string $uri, string $userAgent, bool $isNew = true): void
+    private static function callExternalLogging(array $threat, string $ip, string $uri, string $userAgent, bool $isNew = true, ?string $action = null): void
     {
         $logData = [
             'timestamp' => date('Y-m-d H:i:s'),
@@ -455,8 +561,9 @@ class IntrusionPrevention
             'threat_category' => $threat['category'] ?? $threat['type'],
             'pattern' => $threat['pattern'],
             'severity' => $threat['severity'],
-            'action' => self::getActionForSeverity($threat['severity']),
+            'action' => $action ?? self::getActionForSeverity((string) $threat['severity']),
             'monitor_only' => self::isMonitorOnlyMode(),
+            'cross_site' => (bool) ($threat['cross_site'] ?? false),
             'first_in_window' => $isNew,
         ];
 
@@ -466,7 +573,8 @@ class IntrusionPrevention
             self::exceptionLog($e);
         }
 
-        if (self::getAddon()->getConfig('ips_fail2ban_logging', false)) {
+        // Von fremden Seiten ausgelöste Anfragen nicht an fail2ban geben – sonst sperrt die Firewall das Opfer
+        if (self::getAddon()->getConfig('ips_fail2ban_logging', false) && !$logData['cross_site']) {
             self::logForFail2ban($logData);
         }
     }
@@ -480,16 +588,20 @@ class IntrusionPrevention
     {
         $logFile = self::getFail2banLogFile();
 
-        $clean = static fn ($v): string => str_replace(["\r", "\n"], ' ', (string) $v);
+        // Freitext (URI, Muster, Typ) als JSON-String in Anführungszeichen: Steuerzeichen, Anführungszeichen und
+        // Nicht-ASCII werden maskiert, damit kein Text eine zweite "threat from x.x.x.x"-Angabe vortäuschen kann.
+        // Die IP steht direkt hinter "threat from" und ist geprüft (filter_var) – darauf verankert der failregex.
+        $quote = static fn ($v): string => (string) json_encode(substr((string) $v, 0, 2000), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        $ip = filter_var((string) $logData['ip'], FILTER_VALIDATE_IP) !== false ? (string) $logData['ip'] : '0.0.0.0';
         $message = sprintf(
             '%s [REDAXO-IPS] %s threat from %s: %s (URI: %s, Pattern: %s, Action: %s)',
             $logData['timestamp'],
             strtoupper((string) $logData['severity']),
-            $logData['ip'],
-            $clean($logData['threat_type']),
-            $clean($logData['uri']),
-            $clean($logData['pattern']),
-            $logData['action'],
+            $ip,
+            $quote($logData['threat_type']),
+            $quote($logData['uri']),
+            $quote($logData['pattern']),
+            preg_replace('/[^a-z_]/', '', (string) $logData['action']),
         );
 
         try {
@@ -543,11 +655,11 @@ class IntrusionPrevention
                     SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT t.threat_type ORDER BY t.created_at DESC), ",", 3) as recent_threats
                 FROM ' . rex::getTable('upkeep_ips_threat_log') . ' t
                 LEFT JOIN ' . rex::getTable('upkeep_ips_blocked_ips') . ' b
-                    ON b.ip_address = t.ip_address AND (b.expires_at IS NULL OR b.expires_at > NOW())
+                    ON b.ip_address = t.ip_address AND (b.expires_at IS NULL OR b.expires_at > ?)
                 WHERE t.created_at >= ? AND b.id IS NULL
                 GROUP BY t.ip_address
                 ORDER BY threat_count DESC, last_threat DESC
-                LIMIT ' . max(1, min(100, $limit)), [date('Y-m-d H:i:s', time() - 86400)]);
+                LIMIT ' . max(1, min(100, $limit)), [self::now(), date('Y-m-d H:i:s', time() - 86400)]);
 
             $threatIps = [];
             foreach ($sql as $row) {
@@ -686,6 +798,20 @@ class IntrusionPrevention
     }
 
     /**
+     * Wurde die Adresse innerhalb von ips_unlock_hours selbst entsperrt? (eigene Liste, keine Positivliste – siehe getListCache)
+     */
+    public static function wasRecentlyUnlocked(string $ip): bool
+    {
+        $now = time();
+        foreach (self::getListCache()['unlocked'] ?? [] as $entry) {
+            if (($entry['exp'] === 0 || $entry['exp'] >= $now) && $entry['ip'] !== '' && ClientIp::inList($ip, [$entry['ip']])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Prüft ob IP gesperrt ist (exakt per Index, CIDR-Bereiche aus dem Cache)
      */
     private static function isBlocked(string $ip): bool
@@ -696,8 +822,8 @@ class IntrusionPrevention
 
         $sql = rex_sql::factory();
         $sql->setQuery(
-            'SELECT 1 FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1',
-            [$ip],
+            'SELECT 1 FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1',
+            [$ip, self::now()],
         );
         if ($sql->getRows() > 0) {
             return self::$blockedCache[$ip] = true;
@@ -727,20 +853,25 @@ class IntrusionPrevention
             return self::$listCache;
         }
 
+        // Stand vor dem Lesen der Datenbank merken: eine Datei, die ein paralleler Request mit alten Daten
+        // nach einer Änderung schreibt, trägt den alten Stand und wird verworfen.
+        $generation = self::listGeneration();
         $file = self::listCacheFile();
         if (is_file($file) && (time() - (int) @filemtime($file)) < self::LIST_CACHE_TTL) {
             $data = json_decode((string) @file_get_contents($file), true);
-            if (is_array($data) && isset($data['positive'], $data['blocked_cidr'])) {
+            if (is_array($data) && isset($data['positive'], $data['unlocked'], $data['blocked_cidr'], $data['gen']) && $data['gen'] === $generation) {
                 return self::$listCache = $data;
             }
         }
 
-        $data = ['positive' => [], 'blocked_cidr' => []];
+        $data = ['gen' => $generation, 'positive' => [], 'unlocked' => [], 'blocked_cidr' => []];
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, ip_range, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 5000');
+            $sql->setQuery('SELECT ip_address, ip_range, expires_at, category FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1 AND (expires_at IS NULL OR expires_at > ?) LIMIT 5000', [self::now()]);
             foreach ($sql as $row) {
-                $data['positive'][] = [
+                // Selbst-Entsperrung: nur Markierung, keine Positivliste (Prüfungen laufen weiter)
+                $list = self::SELF_UNLOCK_CATEGORY === (string) $row->getValue('category') ? 'unlocked' : 'positive';
+                $data[$list][] = [
                     'ip' => trim((string) $row->getValue('ip_address')),
                     'range' => trim((string) $row->getValue('ip_range')),
                     'exp' => $row->getValue('expires_at') ? (int) strtotime((string) $row->getValue('expires_at')) : 0,
@@ -751,7 +882,7 @@ class IntrusionPrevention
         }
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address LIKE '%/%' AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 5000");
+            $sql->setQuery('SELECT ip_address, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address LIKE '%/%' AND (expires_at IS NULL OR expires_at > ?) LIMIT 5000", [self::now()]);
             foreach ($sql as $row) {
                 $data['blocked_cidr'][] = [
                     'cidr' => trim((string) $row->getValue('ip_address')),
@@ -777,6 +908,22 @@ class IntrusionPrevention
     }
 
     /**
+     * Aktueller Stand der Listen (direkt aus der Datenbank, nicht aus dem rex_config-Speicher dieses Requests).
+     */
+    private static function listGeneration(): string
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery('SELECT value FROM ' . rex::getTable('config') . ' WHERE namespace = ? AND `key` = ?', ['upkeep', self::LIST_GENERATION_KEY]);
+            if ($sql->getRows() > 0) {
+                return (string) json_decode((string) $sql->getValue('value'), true);
+            }
+        } catch (Throwable) {
+        }
+        return '';
+    }
+
+    /**
      * Verwirft alle Caches (nach Änderungen an Positiv- oder Sperrliste).
      */
     public static function invalidateCache(): void
@@ -784,6 +931,13 @@ class IntrusionPrevention
         self::$listCache = null;
         self::$blockedCache = [];
         self::$allowCache = [];
+        // Neuer Stand sofort in der Datenbank (nicht erst am Request-Ende), damit andere Requests ihn sehen
+        try {
+            rex_config::set('upkeep', self::LIST_GENERATION_KEY, bin2hex(random_bytes(8)));
+            rex_config::save();
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
         try {
             $file = self::listCacheFile();
             if (is_file($file)) {
@@ -1113,8 +1267,8 @@ class IntrusionPrevention
         $windowStart = date('Y-m-d H:i:00');
         $sql = rex_sql::factory();
         $sql->setQuery(
-            'UPDATE ' . rex::getTable('upkeep_ips_rate_limit') . ' SET request_count = request_count + 1, last_request = NOW() WHERE ip_address = ? AND window_start = ?',
-            [$ip, $windowStart],
+            'UPDATE ' . rex::getTable('upkeep_ips_rate_limit') . ' SET request_count = request_count + 1, last_request = ? WHERE ip_address = ? AND window_start = ?',
+            [self::now(), $ip, $windowStart],
         );
 
         if ($sql->getRows() === 0) {
@@ -1188,12 +1342,28 @@ class IntrusionPrevention
     /**
      * Holt Anzahl der Verstöße für IP (24 h, inkl. zusammengefasster Treffer)
      */
+    /** Treffer aus eingebetteten Fremd-Anfragen der letzten 10 Minuten (inkl. des aktuellen) */
+    private static function getCrossSiteHitCount(string $ip): int
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken = 'logged_cross_site'",
+                [$ip, date('Y-m-d H:i:s', time() - 600)],
+            );
+            return (int) $sql->getValue('count');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            return 0;
+        }
+    }
+
     private static function getViolationCount(string $ip): int
     {
         try {
             $sql = rex_sql::factory();
             $sql->setQuery(
-                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE ip_address = ? AND created_at >= ?',
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken <> 'logged_cross_site'",
                 [$ip, date('Y-m-d H:i:s', time() - 86400)],
             );
             return (int) $sql->getValue('count');
@@ -1210,19 +1380,20 @@ class IntrusionPrevention
      * @param array<string, mixed> $threat
      * @return bool true wenn eine neue Zeile angelegt wurde
      */
-    private static function logThreat(array $threat, string $ip, string $uri, string $userAgent): bool
+    private static function logThreat(array $threat, string $ip, string $uri, string $userAgent, ?string $action = null): bool
     {
         $table = rex::getTable('upkeep_ips_threat_log');
         $pattern = substr((string) ($threat['pattern'] ?? ''), 0, 500);
         $type = substr((string) $threat['type'], 0, 100);
+        $action ??= self::getActionForSeverity((string) $threat['severity']);
 
         try {
             if (self::$aggregation !== false) {
                 try {
                     $sql = rex_sql::factory();
                     $sql->setQuery(
-                        'UPDATE ' . $table . ' SET hit_count = hit_count + 1, last_seen = NOW() WHERE ip_address = ? AND threat_type = ? AND pattern_matched = ? AND created_at >= ? ORDER BY id DESC LIMIT 1',
-                        [$ip, $type, $pattern, date('Y-m-d H:i:s', time() - self::AGGREGATE_WINDOW)],
+                        'UPDATE ' . $table . ' SET hit_count = hit_count + 1, last_seen = ? WHERE ip_address = ? AND threat_type = ? AND pattern_matched = ? AND action_taken = ? AND created_at >= ? ORDER BY id DESC LIMIT 1',
+                        [self::now(), $ip, $type, $pattern, $action, date('Y-m-d H:i:s', time() - self::AGGREGATE_WINDOW)],
                     );
                     self::$aggregation = true;
                     if ($sql->getRows() > 0) {
@@ -1249,7 +1420,7 @@ class IntrusionPrevention
             $sql->setValue('threat_category', substr((string) ($threat['category'] ?? $threat['type']), 0, 100));
             $sql->setValue('pattern_matched', $pattern);
             $sql->setValue('severity', $threat['severity']);
-            $sql->setValue('action_taken', self::getActionForSeverity((string) $threat['severity']));
+            $sql->setValue('action_taken', $action);
             $sql->setValue('created_at', date('Y-m-d H:i:s'));
             if (self::$aggregation === true) {
                 $sql->setValue('last_seen', date('Y-m-d H:i:s'));
@@ -1288,9 +1459,9 @@ class IntrusionPrevention
         if (self::isMonitorOnlyMode()) {
             return 'logged';
         }
+        // Kritisch: zunächst zeitlich begrenzt; dauerhaft erst bei Wiederholung (siehe handleThreat)
         return match ($severity) {
-            'critical' => 'permanent_block',
-            'high' => 'temporary_block',
+            'critical', 'high' => 'temporary_block',
             default => 'logged',
         };
     }
@@ -1306,7 +1477,7 @@ class IntrusionPrevention
     public static function addCustomPattern(string $pattern, string $description = '', string $severity = 'medium', bool $isRegex = false): bool
     {
         $pattern = trim($pattern);
-        if ($pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+        if (mb_strlen($pattern) < self::MIN_PATTERN_LENGTH || ($isRegex && !PatternValidator::isValid($pattern))) {
             return false;
         }
         try {
@@ -1333,7 +1504,7 @@ class IntrusionPrevention
     public static function updateCustomPattern(int $id, string $pattern, string $description, string $severity, bool $isRegex, bool $status): bool
     {
         $pattern = trim($pattern);
-        if ($id <= 0 || $pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+        if ($id <= 0 || mb_strlen($pattern) < self::MIN_PATTERN_LENGTH || ($isRegex && !PatternValidator::isValid($pattern))) {
             return false;
         }
         try {
@@ -1405,7 +1576,7 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET status = 1 - status, updated_at = NOW() WHERE id = ?', [$id]);
+            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET status = 1 - status, updated_at = ? WHERE id = ?', [self::now(), $id]);
             return $sql->getRows() > 0;
         } catch (Throwable $e) {
             self::exceptionLog($e);
@@ -1454,6 +1625,10 @@ class IntrusionPrevention
         if (($ip === '' || !ClientIp::isValidEntry($ip)) && ($ipRange === null || $ipRange === '' || !ClientIp::isValidEntry($ipRange))) {
             return false;
         }
+        // Zu große Bereiche würden halbe Netze von allen Prüfungen ausnehmen
+        if (ClientIp::isTooWideRange($ip) || ($ipRange !== null && ClientIp::isTooWideRange($ipRange))) {
+            return false;
+        }
         try {
             $sql = rex_sql::factory();
             $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
@@ -1486,15 +1661,15 @@ class IntrusionPrevention
             $expiresAt = (new DateTime())->modify("+{$durationHours} hours")->format('Y-m-d H:i:s');
             $fullDescription = substr(trim($description . " (Temporär bis {$expiresAt})"), 0, 255);
 
+            // Nur eigene, zeitlich begrenzte Einträge (Selbst-Entsperrung, Captcha) verlängern.
+            // Andere Zeilen (Admin, deaktiviert, abgelaufen, andere Kategorie) bleiben unberührt – dann neue Zeile.
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT id, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$ip]);
+            $sql->setQuery(
+                'SELECT id FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ? AND category = ? AND expires_at IS NOT NULL ORDER BY id DESC LIMIT 1',
+                [$ip, substr($category, 0, 50)],
+            );
 
             if ($sql->getRows() > 0) {
-                // Permanente Einträge nicht in temporäre umwandeln
-                if ($sql->getValue('expires_at') === null) {
-                    self::invalidateCache();
-                    return true;
-                }
                 $id = (int) $sql->getValue('id');
                 $update = rex_sql::factory();
                 $update->setTable(rex::getTable('upkeep_ips_positivliste'));
@@ -1650,7 +1825,7 @@ class IntrusionPrevention
 
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT block_type, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1', [$ip]);
+            $sql->setQuery('SELECT block_type, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1', [$ip, self::now()]);
             if ($sql->getRows() > 0) {
                 $existingExpiresAt = $sql->getValue('expires_at');
                 $expiryInfo = $existingExpiresAt ? ' bis ' . date('d.m.Y H:i', (int) strtotime((string) $existingExpiresAt)) : ' permanent';
@@ -1728,6 +1903,10 @@ class IntrusionPrevention
                 return false;
             }
             $source = in_array($source, ['auto', 'manual', 'external'], true) ? $source : 'auto';
+            // Kurz nach einer Selbst-Entsperrung nicht noch einmal selbst aufhebbar
+            if ('manual' !== $source && self::wasRecentlyUnlocked($ip)) {
+                $source = self::SOURCE_AFTER_UNLOCK;
+            }
             self::blockIpTemporarily($ip, min($seconds, 30 * 86400), $reason, $source);
             self::invalidateCache();
             return self::isBlocked($ip);
@@ -1836,7 +2015,7 @@ class IntrusionPrevention
             $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ?', [$ip]);
             $debug['blocked_ips'] = $sql->getArray();
 
-            $sql->setQuery("SELECT *, CASE WHEN expires_at IS NULL THEN 'permanent' WHEN expires_at > NOW() THEN 'active' ELSE 'expired' END as status_type FROM " . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$ip]);
+            $sql->setQuery("SELECT *, CASE WHEN expires_at IS NULL THEN 'permanent' WHEN expires_at > ? THEN 'active' ELSE 'expired' END as status_type FROM " . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [self::now(), $ip]);
             $debug['positivliste'] = $sql->getArray();
 
             $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE ip_address = ? ORDER BY created_at DESC LIMIT 10', [$ip]);
@@ -1906,7 +2085,7 @@ class IntrusionPrevention
         $sql = rex_sql::factory();
 
         try {
-            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > ?', [self::now()]);
             $stats['blocked_ips'] = (int) $sql->getValue('count');
         } catch (Throwable $e) {
             self::debugLog('Statistics: upkeep_ips_blocked_ips table not available: ' . $e->getMessage());
@@ -1986,10 +2165,10 @@ class IntrusionPrevention
         $retentionDays = max(1, min(365, $retentionDays));
 
         try {
-            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < NOW()");
+            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < ?", [self::now()]);
             $cleanup['expired_ips'] = $sql->getRows();
 
-            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE expires_at IS NOT NULL AND expires_at < NOW()');
+            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE expires_at IS NOT NULL AND expires_at < ?', [self::now()]);
             $cleanup['expired_positivliste'] = $sql->getRows();
 
             $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE created_at < ?', [date('Y-m-d H:i:s', time() - $retentionDays * 86400)]);
@@ -2073,7 +2252,7 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_custom_patterns') . ' SET status = 1 - status, updated_at = NOW() WHERE id = ?', [$id]);
+            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_custom_patterns') . ' SET status = 1 - status, updated_at = ? WHERE id = ?', [self::now(), $id]);
             return $sql->getRows() > 0;
         } catch (Throwable $e) {
             self::exceptionLog($e);

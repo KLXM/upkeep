@@ -19,11 +19,13 @@ use Throwable;
  * - handleUnlock(): verifies the ALTCHA payload server side and unlocks ONLY ClientIp::get().
  *
  * Self-unlock rules:
- * - allowed for automatic, temporary blocks (rate limit, repeated violations, high threats);
- * - NOT allowed for permanent blocks and IP ranges (CIDR) - those are admin decisions or critical threats;
- *   if the blocked_ips table has a `source` column, rows with source = 'manual' are never self-unlockable;
- * - max `ips_unlock_max` unlocks per IP and 24 h, max 10 attempts per IP and 10 minutes;
- * - after success: unblock + clear threat history + temporary positive list for `ips_unlock_hours`.
+ * - only for an existing automatic, temporary block of exactly this IP (rate limit, repeated violations, high threats);
+ *   without such a block there is nothing to unlock (no challenge, no unlock);
+ * - NOT allowed for permanent blocks, IP ranges (CIDR), manual blocks and severe blocks shortly after a
+ *   self-unlock (source = 'after_unlock');
+ * - max `ips_unlock_max` unlocks per IP and 24 h (0 = self-unlock off), max 10 attempts per IP and 10 minutes;
+ * - after success: unblock + clear threat history + mark the IP as "self-unlocked" for `ips_unlock_hours`.
+ *   This is NOT a positive list: the IP stays fully monitored; a severe hit in that time blocks without self-unlock.
  */
 final class BlockPage
 {
@@ -32,6 +34,10 @@ final class BlockPage
 
     private const ATTEMPT_LIMIT = 10;
     private const ATTEMPT_WINDOW = 600;
+
+    /** Zähler der erfolgreichen Selbst-Entsperrungen (pro Adresse bzw. IPv6-/64 und 24 h) */
+    private const UNLOCK_BUCKET = 'unlock_success';
+    private const UNLOCK_WINDOW = 86400;
 
     private static ?bool $unlockResult = null;
     private static string $unlockError = '';
@@ -100,7 +106,9 @@ final class BlockPage
             $addon = rex_addon::get('upkeep');
             $ip = Altcha::clientIp();
 
-            if (!Altcha::throttle('unlock_attempt', $ip, self::ATTEMPT_LIMIT, self::ATTEMPT_WINDOW)) {
+            // Zähler je Adresse, bei IPv6 je /64-Netz (sonst Umgehung durch Adresswechsel)
+            $bucket = ClientIp::bucket($ip);
+            if (!Altcha::throttle('unlock_attempt', $bucket, self::ATTEMPT_LIMIT, self::ATTEMPT_WINDOW)) {
                 self::$unlockError = 'rate';
                 return false;
             }
@@ -116,17 +124,17 @@ final class BlockPage
                 return false;
             }
 
+            // Prüfen und Zählen in einem Schritt (unter Dateisperre) – parallele Anfragen können das Limit nicht überholen
             $max = max(0, (int) $addon->getConfig('ips_unlock_max', 3));
-            if (!Altcha::throttle('unlock_success', $ip, $max, 86400, false)) {
+            if ($max <= 0 || !Altcha::throttle(self::UNLOCK_BUCKET, $bucket, $max, self::UNLOCK_WINDOW)) {
                 self::$unlockError = 'limit';
                 return false;
             }
-            Altcha::throttle('unlock_success', $ip, $max, 86400);
 
             $hours = max(1, min(720, (int) $addon->getConfig('ips_unlock_hours', 24)));
             IntrusionPrevention::unblockIp($ip);
             IntrusionPrevention::clearThreatHistory($ip);
-            IntrusionPrevention::addToTemporaryPositivliste($ip, $hours, 'ALTCHA self-unlock');
+            IntrusionPrevention::addToTemporaryPositivliste($ip, $hours, 'ALTCHA self-unlock', IntrusionPrevention::SELF_UNLOCK_CATEGORY);
 
             rex_logger::factory()->log('info', 'upkeep IPS: self-unlock via ALTCHA for {ip} ({hours} h)', ['ip' => $ip, 'hours' => $hours]);
             self::$unlockResult = true;
@@ -149,7 +157,17 @@ final class BlockPage
      */
     public static function canSelfUnlock(string $ip): bool
     {
+        $addon = rex_addon::get('upkeep');
+        $max = (int) $addon->getConfig('ips_unlock_max', 3);
+        if ($max <= 0 || !$addon->getConfig('ips_active', false)) {
+            return false;
+        }
+        // Tageslimit verbraucht: keine Rechenaufgabe, kein Formular
+        if (Altcha::throttleCount(self::UNLOCK_BUCKET, ClientIp::bucket($ip), self::UNLOCK_WINDOW) >= $max) {
+            return false;
+        }
         try {
+            $unlockable = false;
             $table = rex::getTable('upkeep_ips_blocked_ips');
             $sql = rex_sql::factory();
             $sql->setQuery(
@@ -168,11 +186,13 @@ final class BlockPage
                 if ('permanent' === ($row['block_type'] ?? '') || null === $row['expires_at']) {
                     return false;
                 }
-                if ('manual' === ($row['source'] ?? '')) {
+                if (in_array((string) ($row['source'] ?? ''), ['manual', IntrusionPrevention::SOURCE_AFTER_UNLOCK], true)) {
                     return false;
                 }
+                $unlockable = true;
             }
-            return true;
+            // Ohne eigene, automatische Sperre gibt es nichts zu entsperren
+            return $unlockable;
         } catch (Throwable $e) {
             rex_logger::logException($e);
             return false;

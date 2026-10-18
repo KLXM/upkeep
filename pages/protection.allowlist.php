@@ -4,6 +4,7 @@
  * Upkeep 3.0 – Schutz: Positivliste (vertrauenswürdige IP-Adressen und Bereiche).
  */
 
+use KLXM\Upkeep\ClientIp;
 use KLXM\Upkeep\IntrusionPrevention;
 use KLXM\Upkeep\Ui;
 
@@ -44,6 +45,8 @@ if ($hasAction) {
             $messages[] = rex_view::error(rex_escape($addon->i18n('upkeep_ips_positivliste_ip_required')));
         } elseif (($ip !== '' && !$isIp($ip)) || ($range !== '' && !$isCidr($range))) {
             $messages[] = rex_view::error(rex_escape($addon->i18n('upkeep_pages_invalid_ip')));
+        } elseif (($ip !== '' && ClientIp::isTooWideRange($ip)) || ($range !== '' && ClientIp::isTooWideRange($range))) {
+            $messages[] = rex_view::error(rex_escape($addon->i18n('upkeep_allowlist_range_too_wide')));
         } elseif (IntrusionPrevention::addToPositivliste($ip, $description, $category, $range !== '' ? $range : null)) {
             $messages[] = rex_view::success(rex_escape($addon->i18n('upkeep_ips_positivliste_added')));
         } else {
@@ -86,6 +89,10 @@ try {
     echo rex_view::error(rex_escape($t('upkeep_pages_table_missing')));
     return;
 }
+
+// Selbst-Entsperrungen sind nur Markierungen (keine Positivliste) – eigene Liste weiter unten
+$unlockRows = array_values(array_filter($rows, static fn (array $r): bool => IntrusionPrevention::SELF_UNLOCK_CATEGORY === (string) ($r['category'] ?? '')));
+$rows = array_values(array_filter($rows, static fn (array $r): bool => IntrusionPrevention::SELF_UNLOCK_CATEGORY !== (string) ($r['category'] ?? '')));
 
 echo Ui::listTitle($t('upkeep_ips_positivliste_entries'), count($rows));
 
@@ -138,6 +145,46 @@ if (!$rows) {
     echo $body;
 }
 echo '<p class="upk-group-note">' . rex_escape($t('upkeep_ips_positivliste_help')) . '</p>';
+
+// Selbst entsperrte Adressen: weiter überwacht, keine Positivliste
+if ($unlockRows) {
+    $ulLabels = [
+        'ip' => $t('upkeep_ips_ip_address'),
+        'kind' => $t('upkeep_ips_category'),
+        'until' => $t('upkeep_allowlist_unlocked_until'),
+        'created' => $t('upkeep_ips_created_at'),
+        'actions' => $t('upkeep_actions'),
+    ];
+    echo Ui::listTitle($t('upkeep_allowlist_unlocked_title'), count($unlockRows));
+    // Formular für die Löschen-Knöpfe (steht sonst nur bei vorhandenen Positivliste-Einträgen)
+    $body = $rows ? '' : '<form id="upk-allowlist-row" action="' . rex_url::backendPage($pageKey) . '" method="post">' . $csrf->getHiddenField() . '</form>';
+    $body .= '<div class="upk-group upk-group--table"><div class="upk-table-wrap"><table class="upk-table"><thead><tr>';
+    foreach ($ulLabels as $key => $label) {
+        $body .= '<th scope="col"' . ('actions' === $key ? ' class="upk-actions"' : '') . '>' . ('actions' === $key ? '<span class="sr-only">' . rex_escape($label) . '</span>' : rex_escape($label)) . '</th>';
+    }
+    $body .= '</tr></thead><tbody>';
+    foreach ($unlockRows as $row) {
+        $id = (int) $row['id'];
+        $created = strtotime((string) ($row['created_at'] ?? ''));
+        $expires = !empty($row['expires_at']) ? strtotime((string) $row['expires_at']) : false;
+        $active = $expires && $expires > time() && (int) $row['status'] === 1;
+        $until = $expires ? rex_escape(date('d.m.Y H:i', $expires)) : '-';
+        if (!$active) {
+            $until .= ' <span class="upk-muted">(' . rex_escape($t('upkeep_allowlist_unlocked_expired')) . ')</span>';
+        }
+        $body .= '<tr>';
+        $body .= Ui::td($ulLabels['ip'], '<span class="upk-mono">' . rex_escape((string) ($row['ip_address'] ?? '')) . '</span>');
+        $body .= Ui::td($ulLabels['kind'], Ui::badge($t('upkeep_allowlist_unlocked_badge'), 'warn'));
+        $body .= Ui::td($ulLabels['until'], $until, 'upk-nowrap');
+        $body .= Ui::td($ulLabels['created'], rex_escape($created ? date('d.m.Y H:i', $created) : '-'), 'upk-nowrap');
+        $body .= Ui::td($ulLabels['actions'], '<button type="submit" form="upk-allowlist-row" class="btn btn-xs upk-btn-ghost upk-btn-ghost--danger" name="remove_allowlist" value="' . $id . '" data-confirm="' . rex_escape($t('upkeep_ips_confirm_remove')) . '">'
+            . '<i class="rex-icon rex-icon-delete" aria-hidden="true"></i> ' . rex_escape($t('upkeep_delete')) . '</button>', 'upk-actions');
+        $body .= '</tr>';
+    }
+    $body .= '</tbody></table></div></div>';
+    echo $body;
+    echo '<p class="upk-group-note">' . rex_escape($t('upkeep_allowlist_unlocked_note')) . '</p>';
+}
 
 // Formular: hinzufügen
 $posted = rex_post('add_allowlist', 'bool') && $hadError;

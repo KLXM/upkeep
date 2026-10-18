@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.0.2 (2026-10-18)
+
+Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
+
+- IPS: Ein einzelner Treffer sperrt nicht mehr dauerhaft. Kritische Treffer sperren 24 Stunden; dauerhaft erst, wenn dieselbe Adresse innerhalb von 7 Tagen dreimal kritisch auffällt. Bisher konnten Dritte Besucher dauerhaft sperren lassen.
+- IPS: Anfragen, die eine fremde Website im Browser des Besuchers auslöst (eingebettete Bilder, Skripte usw.), werden nur protokolliert und nicht an fail2ban gegeben. Erst viele solcher Treffer in kurzer Zeit (20 in 10 Minuten) sperren eine Stunde, selbst aufhebbar – sonst könnten Scanner sich mit gefälschten Kopfzeilen tarnen.
+- IPS: Das Standardmuster „/*“ (SQL-Kommentar) war zu breit und wird auf einen vollständigen Kommentarblock eingeengt. Bestehende Installationen werden angepasst; von Ihnen geänderte Muster bleiben unverändert.
+- IPS: Ablaufzeiten von Sperren und Positivliste werden mit derselben Uhr geschrieben und geprüft. Bei unterschiedlichen Zeitzonen von PHP und Datenbank dauerten Sperren bisher länger oder kürzer als eingestellt.
+- IPS: Die Abstufung für „normale“ REDAXO-Adressen greift nicht mehr bei kodierten Zeichen in den Parametern und nie bei kritischen Treffern.
+- Selbst-Entsperrung: Entsperren heißt nicht, dass die Adresse nicht mehr überwacht wird. Sie kommt nicht mehr auf die Positivliste, sondern wird nur markiert und weiter vollständig geprüft. Jede neue Sperre in dieser Zeit lässt sich nicht noch einmal selbst aufheben. Eine Rechenaufgabe zum Entsperren gibt es nur bei einer eigenen automatischen Sperre und nur, solange das Tageslimit nicht erreicht ist. Das Tageslimit lässt sich durch gleichzeitige Anfragen nicht mehr überschreiten. `ips_unlock_max = 0` schaltet die Selbst-Entsperrung aus.
+- Selbst-Entsperrung: Bestehende Einträge aus 3.0.0/3.0.1 werden beim Update zu Markierungen. Die Positivliste zeigt sie in einer eigenen Liste „Selbst entsperrt – weiter überwacht“. Andere Einträge derselben Adresse (z. B. vom Admin) werden nicht mehr überschrieben.
+- Zähler und Bremsen (Wartungspasswort, Selbst-Entsperrung, Rechenaufgaben, Schnittstellen, Formular- und E-Mail-Schutz) zählen IPv6-Adressen je /64-Netz. Das Wartungspasswort hat zusätzlich eine Obergrenze über alle Adressen (50 Fehlversuche in 15 Minuten).
+- Positivliste: Bereiche größer als /16 (IPv4) bzw. /32 (IPv6) werden abgelehnt. Eigene Muster brauchen mindestens 3 Zeichen.
+- fail2ban: URI, Muster und Typ stehen in der Logzeile maskiert in Anführungszeichen. Empfohlener, verankerter `failregex` in der README.
+- Wartung: Freigegebene Pfade (`UPKEEP_ALLOWED_PATHS`) gelten nur noch an Pfadgrenzen (`/media` gibt nicht mehr `/media-x` frei).
+- Wartungs-API: Das Token als Parameter in der Adresse ist veraltet (funktioniert noch); bitte den Header verwenden.
+- Listen-Cache: Ein paralleler Request kann keinen veralteten Stand mehr in den Cache schreiben.
+- Datenbank: Die Kategorie der Positivliste ist in Installation und Update einheitlich `varchar(50)`.
+
 ## 3.0.1 (2026-10-17)
 
 - Fix: Das IPS hat Besucher gesperrt, die den Einstieg der Website direkt aufrufen (`/index.php` ohne Parameter). Das Muster für Skript-Endungen (`\.php$`) schlug auf die eigene Datei an. Beim Skript, das die Anfrage ausführt, prüft das IPS jetzt nur die Parameter; Angriffe dort werden weiterhin erkannt.
