@@ -35,6 +35,8 @@ Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
   - Pfade anderer Systeme (`/admin`, `/administrator`, `/modules/`, `/templates/`, `/plugins/`, `/themes/`, `/core/`, `/components/`, `/libraries/`, `/node/`, `/manager/`, `/dashboard/`, `/control/`, `/mysql/`, `/cpanel/`, `/webmail/`, `/user/login`, `/fileadmin/`, `/sites/default/`) zählen nur noch am Anfang des Pfads und sind „mittel“ statt „hoch“: Ein einzelner Aufruf sperrt nicht mehr, wiederholte schon. `/de/administration/` oder `/redaxo/` treffen nicht.
   - Shell-Befehle (`bash`, `sh`, `powershell`, `curl`, `wget`, `nc`, `cat`, `more`, `rm` …) zählen nur noch als Befehl, also nach `;`, `|`, `&&`, `` ` ``, `$(` oder einem Zeilenumbruch bzw. mit typischen Angaben wie `bash -c` oder `curl http://`. Suchbegriffe wie „cat food“ oder „more information“ und Adressen wie `/web-sh-shop/` treffen nicht mehr, `;cat /etc/passwd` weiterhin.
   - IP-Adresse mit Port nur noch als Ziel in einer URL (`//1.2.3.4:8080`, „mittel“); `/config.php` und `/settings.php` nur noch als aufgerufene Datei, nicht in Parametern oder Teilen eines Pfads. `/admin.php` nur noch als aufgerufene Datei.
+  - Systemdateien (`passwd`, `shadow`, `hosts`) zählen nur noch mit Systempfad (`/etc/…`, `../`) bzw. `httpd.conf`; eine Suche nach „hosts“ trifft nicht mehr.
+  - `select … from` zählt nur noch mit SQL-Merkmalen (Anführungszeichen oder `union`/`and`/`or` davor, `*`, SQL-Funktionen, Systemtabellen). Sätze wie „select a size from the list“ treffen nicht mehr.
   - Beim Update werden nur Muster angepasst, die noch genau dem Standard entsprechen (Muster, Schweregrad, eingeschaltet). Von Ihnen geänderte oder abgeschaltete Muster bleiben unverändert.
 
 ## 3.0.1 (2026-10-17)

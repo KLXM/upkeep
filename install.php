@@ -568,6 +568,8 @@ $narrow302 = [
     ['/\b(wget|curl|lynx|nc|netcat)\b/i', 1, 'high', '#' . $ctx302 . '(?:wget|curl|lynx|nc|ncat|netcat)\b|\b(?:wget|curl|lynx)[\s+]+(?:-[^\s+]+[\s+]+)*(?:https?|ftp)://|\b(?:nc|ncat|netcat)[\s+]+(?:-[^\s+]+[\s+]+)*-[a-z]*e\b#i', 'high', 'Download-/Netzwerk-Werkzeuge (nur im Befehlskontext)'],
     ['/\b(cat|type|more|less)\s+/i', 1, 'high', '#' . $ctx302 . '(?:cat|type|more|less|head|tail)[\s+]+[^\s+]#i', 'high', 'Dateien lesen (nur im Befehlskontext)'],
     ['/\b(rm|del|rmdir)\s+/i', 1, 'high', '#' . $ctx302 . '(?:rm|del|rmdir)[\s+]+[^\s+]#i', 'high', 'Dateien löschen (nur im Befehlskontext)'],
+    ['/\b(passwd|shadow|hosts|httpd\.conf)\b/i', 1, 'high', '#\bhttpd\.conf\b|(?:^|[/\\\\=:]|%2f|%5c)(?:private[/\\\\])?etc(?:[/\\\\]|%2f|%5c)+(?:passwd|shadow|group|hosts|master\.passwd)\b|(?:\.\.(?:[/\\\\]|%2f|%5c))+[^?&\s]*\b(?:passwd|shadow)\b#i', 'high', 'Systemdateien (nur mit Systempfad)'],
+    ['/select\s+.*\s+from/i', 1, 'high', '#(?:[\'"`);]|\b(?:and|or|union(?:[\s+]+all)?)\b)[\s+(]*select\b.{0,200}?\bfrom\b|\bselect\b.{0,200}?\bfrom[\s+(]+(?:information_schema|mysql\.|sys\.|pg_\w+|sqlite_master|dual)\b|\bselect[\s+(]+(?:\*|@@\w+|(?:count|concat|group_concat|char|sleep|benchmark|version|user|database)[\s+]*\()#i', 'high', 'SQL-Abfrage (nur mit SQL-Merkmalen)'],
     ['/\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]+\b/', 1, 'high', '~//(?:[^/?#@\s]*@)?(?:\d{1,3}\.){3}\d{1,3}:\d{1,5}(?!\d)~', 'medium', 'URL mit IP-Adresse und Port (Backdoor, SSRF)'],
 ];
 try {
