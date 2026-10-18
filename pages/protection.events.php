@@ -7,6 +7,7 @@
  */
 
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\ProtectionStats;
 use KLXM\Upkeep\Ui;
 
 $addon = rex_addon::get('upkeep');
@@ -16,6 +17,7 @@ $pageKey = 'upkeep/protection/events';
 $table = rex::getTable('upkeep_ips_threat_log');
 $perPage = 25;
 $severities = ['low', 'medium', 'high', 'critical'];
+$actionsKnown = ProtectionStats::ACTIONS;
 
 // Kopf
 $ipsOn = (bool) $addon->getConfig('ips_active', false);
@@ -34,6 +36,10 @@ $severityFilter = rex_get('severity', 'string', '');
 if (!in_array($severityFilter, $severities, true)) {
     $severityFilter = '';
 }
+$actionFilter = rex_get('action', 'string', '');
+if (!in_array($actionFilter, $actionsKnown, true)) {
+    $actionFilter = '';
+}
 $typeFilter = mb_substr(trim(rex_get('type', 'string', '')), 0, 64);
 $isDate = static fn (string $d): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && checkdate((int) substr($d, 5, 2), (int) substr($d, 8, 2), (int) substr($d, 0, 4));
 $dateFrom = rex_get('from', 'string', '');
@@ -43,13 +49,21 @@ $dateTo = $isDate($dateTo) ? $dateTo : '';
 
 $where = [];
 $params = [];
-if ($ipFilter !== '') {
+if ($ipFilter !== '' && filter_var($ipFilter, FILTER_VALIDATE_IP) !== false) {
+    // Vollständige Adresse: genau diese (sonst träfe 192.0.2.1 auch 192.0.2.10)
+    $where[] = 'ip_address = ?';
+    $params[] = $ipFilter;
+} elseif ($ipFilter !== '') {
     $where[] = 'ip_address LIKE ?';
     $params[] = '%' . addcslashes($ipFilter, '%_\\') . '%';
 }
 if ($severityFilter !== '') {
     $where[] = 'severity = ?';
     $params[] = $severityFilter;
+}
+if ($actionFilter !== '') {
+    $where[] = 'action_taken = ?';
+    $params[] = $actionFilter;
 }
 if ($typeFilter !== '') {
     $where[] = 'threat_type LIKE ?';
@@ -82,7 +96,7 @@ try {
     $stats['today'] = (int) $sql->getValue('c');
     $sql->setQuery('SELECT COUNT(*) AS c FROM ' . $table . ' WHERE created_at >= ?', [date('Y-m-d 00:00:00', strtotime('-6 days'))]);
     $stats['week'] = (int) $sql->getValue('c');
-    $sql->setQuery('SELECT COUNT(*) AS c FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+    $sql->setQuery('SELECT COUNT(*) AS c FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > ?', [date('Y-m-d H:i:s')]);
     $stats['blocked'] = (int) $sql->getValue('c');
 } catch (rex_sql_exception $e) {
     rex_logger::logException($e);
@@ -118,17 +132,20 @@ $country = static function (string $ip) use ($geoAvailable, &$countryCache): str
     return $countryCache[$ip];
 };
 
-$actionBadge = static function (string $action): string {
+$actionBadge = static function (string $action) use ($t, $actionsKnown): string {
     $variant = match ($action) {
         'permanent_block' => 'danger',
         'temporary_block', 'blocked' => 'warn',
+        IntrusionPrevention::ACTION_AUTHENTICATED => 'info',
         default => 'muted',
     };
-    return Ui::badge($action ?: '-', $variant);
+    // Bekannte Ergebnisse mit lesbarer Bezeichnung, unbekannte unverändert
+    $label = in_array($action, $actionsKnown, true) ? $t('upkeep_stats_action_' . $action) : ($action ?: '-');
+    return Ui::badge($label, $variant);
 };
 
 // Filterleiste
-$filterParams = array_filter(['ip' => $ipFilter, 'severity' => $severityFilter, 'type' => $typeFilter, 'from' => $dateFrom, 'to' => $dateTo], static fn ($v) => $v !== '');
+$filterParams = array_filter(['ip' => $ipFilter, 'severity' => $severityFilter, 'action' => $actionFilter, 'type' => $typeFilter, 'from' => $dateFrom, 'to' => $dateTo], static fn ($v) => $v !== '');
 
 $filter = '<form class="upk-group upk-filterbar" method="get" action="' . rex_url::backendController() . '">';
 $filter .= '<input type="hidden" name="page" value="' . rex_escape($pageKey) . '">';
@@ -140,6 +157,12 @@ $filter .= '<label class="sr-only" for="upk-ev-sev">' . rex_escape($t('upkeep_ip
     . '<select class="form-control" id="upk-ev-sev" name="severity"><option value="">' . rex_escape($t('upkeep_filter_all_severities')) . '</option>';
 foreach ($severities as $sev) {
     $filter .= '<option value="' . $sev . '"' . ($severityFilter === $sev ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_severity_' . $sev)) . '</option>';
+}
+$filter .= '</select>';
+$filter .= '<label class="sr-only" for="upk-ev-action">' . rex_escape($t('upkeep_ips_action')) . '</label>'
+    . '<select class="form-control" id="upk-ev-action" name="action"><option value="">' . rex_escape($t('upkeep_filter_all_actions')) . '</option>';
+foreach ($actionsKnown as $act) {
+    $filter .= '<option value="' . $act . '"' . ($actionFilter === $act ? ' selected' : '') . '>' . rex_escape($t('upkeep_stats_action_' . $act)) . '</option>';
 }
 $filter .= '</select>';
 $filter .= '<label class="upk-filterbar-field" for="upk-ev-from"><span>' . rex_escape($t('upkeep_pages_date_from')) . '</span>'
@@ -191,7 +214,10 @@ foreach ($rows as $row) {
     if ($geoAvailable) {
         $body .= Ui::td($labels['country'], '<span class="upk-muted">' . rex_escape($country($ip) ?: '-') . '</span>');
     }
-    $body .= Ui::td($labels['type'], rex_escape((string) $row['threat_type']));
+    $typeLabel = ProtectionStats::typeLabel((string) $row['threat_type']);
+    $body .= Ui::td($labels['type'], $typeLabel !== (string) $row['threat_type']
+        ? '<span title="' . rex_escape((string) $row['threat_type']) . '">' . rex_escape($typeLabel) . '</span>'
+        : rex_escape($typeLabel));
     $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
     $body .= Ui::td($labels['pattern'], '<span class="upk-mono" title="' . rex_escape($pattern) . '">' . rex_escape(mb_strimwidth($pattern, 0, 50, '…')) . '</span>');
     $body .= Ui::td($labels['uri'], '<span class="upk-mono" title="' . rex_escape($uri) . '">' . rex_escape(mb_strimwidth($uri, 0, 80, '…')) . '</span>');

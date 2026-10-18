@@ -9,7 +9,7 @@ Zu finden unter Upkeep > Wartung (Reiter Status, Domains, Weiterleitungen) und U
 Ist die Wartung eingeschaltet, sehen Besucher die Wartungsseite mit HTTP 503 und `Retry-After` (wählbar: 403). Suchmaschinen erhalten so das richtige Signal. Zugang behalten:
 
 - **Angemeldete Backend-Benutzer** (abschaltbar unter Einstellungen > Wartung > Zugang)
-- **Freigegebene IP-Adressen und Netze** (eine pro Zeile oder durch Komma getrennt, CIDR erlaubt)
+- **Freigegebene IP-Adressen und Netze** (eine pro Zeile oder durch Komma getrennt, CIDR erlaubt). Achtung: Diese Adressen umgehen auch die Prüfungen des IPS – tragen Sie nur Adressen ein, denen Sie voll vertrauen.
 - **Besucher mit dem Passwort** der Wartungsseite
 - **Aufrufe mit dem geheimen Umgehungs-Link**
 - **Pfade**, die Sie per Extension Point freigeben (siehe unten)
@@ -48,7 +48,7 @@ Mit YRewrite sperren Sie unter Wartung > Domains einzelne Domains oder alle auf 
 
 ## Pfade freigeben
 
-Der Extension Point `UPKEEP_ALLOWED_PATHS` gibt Pfade trotz Wartung frei. Verglichen wird der Pfad ohne Query als Präfix, relativ zur Installation (liegt REDAXO in einem Unterordner, lassen Sie ihn weg):
+Der Extension Point `UPKEEP_ALLOWED_PATHS` gibt Pfade trotz Wartung frei. Verglichen wird der Pfad ohne Query als Präfix an Pfadgrenzen, relativ zur Installation (liegt REDAXO in einem Unterordner, lassen Sie ihn weg): `/media` gibt `/media` und `/media/…` frei, aber nicht `/media-x`.
 
 ```php
 rex_extension::register('UPKEEP_ALLOWED_PATHS', static function (rex_extension_point $ep) {

@@ -83,6 +83,10 @@ final class SettingsSections
                         ['key' => 'ips_unlock_hours', 'type' => 'number', 'default' => 24, 'min' => 1, 'max' => 720],
                         ['key' => 'ips_contact_info', 'type' => 'text', 'default' => ''],
                     ]],
+                    ['title' => 'upkeep_set_group_ips_404', 'note' => 'upkeep_set_group_ips_404_note', 'fields' => [
+                        ['key' => 'ips_404_flood', 'type' => 'switch', 'default' => 1],
+                        ['key' => 'ips_404_flood_limit', 'type' => 'number', 'default' => 30, 'min' => 10, 'max' => 300],
+                    ]],
                     ['title' => 'upkeep_set_group_ips_rate', 'note' => 'upkeep_set_group_ips_rate_note', 'fields' => [
                         ['key' => 'ips_rate_limiting_enabled', 'type' => 'switch', 'default' => 0],
                         ['key' => 'ips_burst_limit', 'type' => 'number', 'default' => 600, 'min' => 10, 'max' => 100000],

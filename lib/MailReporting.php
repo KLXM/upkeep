@@ -850,7 +850,7 @@ class MailReporting
     {
         try {
             return rex_sql::factory()->getArray(
-                'SELECT ip_address, threat_type, severity, pattern_matched, created_at FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE created_at >= ? ORDER BY created_at DESC LIMIT 50',
+                'SELECT ip_address, threat_type, severity, pattern_matched, created_at FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE created_at >= ? AND action_taken <> 'logged_authenticated' ORDER BY created_at DESC LIMIT 50",
                 [date('Y-m-d H:i:s', time() - $hours * 3600)],
             );
         } catch (Throwable) {
@@ -862,7 +862,7 @@ class MailReporting
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > ?', [date('Y-m-d H:i:s')]);
             return (int) $sql->getValue('count');
         } catch (Throwable) {
             return 0;

@@ -50,6 +50,8 @@ if ($hasAction) {
         $error = null;
         if ($formData['pattern'] === '') {
             $error = $addon->i18n('upkeep_ips_pattern_empty');
+        } elseif (mb_strlen($formData['pattern']) < 3) {
+            $error = $addon->i18n('upkeep_patterns_too_short');
         } elseif (strlen($formData['pattern']) > 500) {
             $error = $addon->i18n('upkeep_patterns_too_long');
         } elseif ($formData['is_regex'] && !$regexValid($formData['pattern'])) {

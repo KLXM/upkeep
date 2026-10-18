@@ -57,6 +57,9 @@ rex_extension::register('PACKAGES_INCLUDED', static function () use ($addon, $sa
     rex_view::addCssFile($addon->getAssetsUrl('css/upkeep.css'));
     if ('upkeep' === rex_be_controller::getCurrentPagePart(1)) {
         rex_view::addCssFile($addon->getAssetsUrl('css/storage.css'));
+        if ('protection' === rex_be_controller::getCurrentPagePart(2) && 'stats' === rex_be_controller::getCurrentPagePart(3)) {
+            rex_view::addCssFile($addon->getAssetsUrl('css/stats.css'));
+        }
     }
 
     // Menü: nur aktive Wartung wird angezeigt – ruhig, ohne Zähler
@@ -91,12 +94,24 @@ if (rex::isBackend()) {
         if (!$main || !$user) {
             return;
         }
+        // Seiten ausgeschalteter Module ausblenden (z. B. Weiterleitungen, Formularschutz)
+        foreach (array_keys(KLXM\Upkeep\ModuleGate::PAGES) as $gated) {
+            if (null === KLXM\Upkeep\ModuleGate::disabledSection($gated)) {
+                continue;
+            }
+            $parts = explode('/', $gated);
+            $page = $main->getSubpage($parts[0]);
+            if (isset($parts[1])) {
+                $page = $page?->getSubpage($parts[1]);
+            }
+            $page?->setHidden(true);
+        }
         foreach (['maintenance', 'protection'] as $key) {
             $sub = $main->getSubpage($key);
             if (!$sub) {
                 continue;
             }
-            $visible = array_filter($sub->getSubpages(), static fn (rex_be_page $p) => $p->checkPermission($user));
+            $visible = array_filter($sub->getSubpages(), static fn (rex_be_page $p) => !$p->isHidden() && $p->checkPermission($user));
             if ('maintenance' === $key && !rex_addon::get('yrewrite')->isAvailable()) {
                 $sub->getSubpage('domains')?->setHidden(true);
                 unset($visible['domains']);

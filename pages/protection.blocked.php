@@ -148,12 +148,14 @@ $total = 0;
 $rows = [];
 $counts = ['temporary' => 0, 'permanent' => 0];
 try {
+    // Gleiche Uhr wie beim Schreiben der Sperren (PHP), nicht die der Datenbank
+    $now = date('Y-m-d H:i:s');
     $sql = rex_sql::factory();
-    $sql->setQuery('SELECT COUNT(*) AS total FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+    $sql->setQuery('SELECT COUNT(*) AS total FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > ?', [$now]);
     $total = (int) $sql->getValue('total');
     $pages = max(1, (int) ceil($total / $perPage));
     $current = min(max(1, rex_get('p', 'int', 1)), $pages);
-    $rows = $sql->getArray('SELECT * FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > NOW() ORDER BY created_at DESC LIMIT ' . (int) $perPage . ' OFFSET ' . (int) (($current - 1) * $perPage));
+    $rows = $sql->getArray('SELECT * FROM ' . $table . ' WHERE expires_at IS NULL OR expires_at > ? ORDER BY created_at DESC LIMIT ' . (int) $perPage . ' OFFSET ' . (int) (($current - 1) * $perPage), [$now]);
     $sql->setQuery('SELECT COUNT(*) AS c FROM ' . $table . ' WHERE expires_at IS NULL OR block_type = \'permanent\'');
     $counts['permanent'] = (int) $sql->getValue('c');
     $counts['temporary'] = max(0, $total - $counts['permanent']);

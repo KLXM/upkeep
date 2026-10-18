@@ -136,6 +136,45 @@ final class ClientIp
     }
 
     /**
+     * Ist ein CIDR-Bereich für die Positivliste zu groß? Höchstens /16 (IPv4) bzw. /32 (IPv6).
+     * Einzelne Adressen sind nie zu groß.
+     */
+    public static function isTooWideRange(string $entry): bool
+    {
+        $entry = trim($entry);
+        if (!str_contains($entry, '/')) {
+            return false;
+        }
+        [$subnet, $bits] = explode('/', $entry, 2);
+        if (!ctype_digit($bits)) {
+            return false;
+        }
+        return (int) $bits < (str_contains($subnet, ':') ? 32 : 16);
+    }
+
+    /**
+     * Schlüssel für Zähler und Bremsen: IPv4 einzeln, IPv6 als /64-Netz.
+     * Ein IPv6-Anschluss bekommt meist ein ganzes /64 – sonst ließe sich jede Grenze
+     * durch Wechsel der Adresse innerhalb des eigenen Netzes umgehen.
+     */
+    public static function bucket(string $ip): string
+    {
+        $ip = self::normalize($ip);
+        if ($ip === '') {
+            return '0.0.0.0';
+        }
+        if (!str_contains($ip, ':')) {
+            return $ip;
+        }
+        $bin = @inet_pton($ip);
+        if ($bin === false || strlen($bin) !== 16) {
+            return $ip;
+        }
+        $net = inet_ntop(substr($bin, 0, 8) . str_repeat("\0", 8));
+        return ($net !== false ? $net : $ip) . '/64';
+    }
+
+    /**
      * Zerlegt eine Liste (Zeilenumbruch, Komma, Semikolon oder Leerzeichen getrennt).
      *
      * @return array<int, string>

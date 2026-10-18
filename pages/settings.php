@@ -199,7 +199,7 @@ if ('post' === rex_request_method()) {
                             // Tabelle fehlt – überspringen
                         }
                     }
-                    $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_mail_blocklist') . ' WHERE expires_at IS NOT NULL AND expires_at < NOW()');
+                    $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_mail_blocklist') . ' WHERE expires_at IS NOT NULL AND expires_at < ?', [date('Y-m-d H:i:s')]);
                     $deleted += $sql->getRows();
                     $messages[] = rex_view::success(rex_escape(rex_i18n::rawMsg('upkeep_set_mail_cleanup_done', (string) $deleted)));
                     break;

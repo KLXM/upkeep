@@ -1,5 +1,5 @@
 package: upkeep
-version: '3.0.1'
+version: '3.0.2'
 author: KLXM Crossmedia
 supportpage: https://github.com/klxm/upkeep
 load: late
@@ -31,6 +31,7 @@ page:
             perm: upkeep[]
             subpages:
                 events: {title: 'translate:upkeep_nav_protection_events', icon: 'rex-icon fa fa-list', perm: 'upkeep[ips]'}
+                stats: {title: 'translate:upkeep_nav_protection_stats', icon: 'rex-icon fa fa-bar-chart', perm: admin}
                 blocked: {title: 'translate:upkeep_nav_protection_blocked', icon: 'rex-icon fa fa-ban', perm: 'upkeep[ips]'}
                 allowlist: {title: 'translate:upkeep_nav_protection_allowlist', icon: 'rex-icon fa fa-check-circle', perm: 'upkeep[ips]'}
                 patterns: {title: 'translate:upkeep_nav_protection_patterns', icon: 'rex-icon fa fa-code', perm: 'upkeep[ips]'}
@@ -75,6 +76,7 @@ permissions:
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
     upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
+    upkeep:ips:unblock: rex_upkeep_ips_unblock_command
     upkeep:security:scan: rex_upkeep_security_scan_command
     upkeep:mail-reporting:send-bundle: rex_upkeep_mail_reporting_bundle_command
     upkeep:storage: rex_upkeep_storage_command

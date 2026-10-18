@@ -320,7 +320,7 @@ final class Altcha
             echo '{"error":"disabled"}';
             exit;
         }
-        if (!self::throttle('altcha_endpoint', self::clientIp(), self::ENDPOINT_LIMIT, self::ENDPOINT_WINDOW)) {
+        if (!self::throttle('altcha_endpoint', ClientIp::bucket(self::clientIp()), self::ENDPOINT_LIMIT, self::ENDPOINT_WINDOW)) {
             http_response_code(429);
             header('Retry-After: ' . self::ENDPOINT_WINDOW);
             echo '{"error":"rate_limited"}';
@@ -329,6 +329,12 @@ final class Altcha
 
         $addon = rex_addon::get('upkeep');
         if ('unlock' === $scope) {
+            // Rechenaufgaben zum Entsperren nur für Adressen, die sich wirklich selbst entsperren dürfen
+            if (!BlockPage::canSelfUnlock(self::clientIp())) {
+                http_response_code(403);
+                echo '{"error":"not_allowed"}';
+                exit;
+            }
             $challenge = self::createChallenge(100000, 600, 'unlock');
         } else {
             $challenge = self::createChallenge(

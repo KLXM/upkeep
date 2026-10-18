@@ -102,7 +102,9 @@ if ($can('ips')) {
             . '<ul class="upk-facts"><li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_week')) . '</span><span>' . (int) ($stats['threats_week'] ?? 0) . '</span></li>'
             . '<li><span>' . rex_escape(rex_i18n::rawMsg('upkeep_dash_blocked_ips')) . '</span><span>' . (int) ($stats['blocked_ips'] ?? 0) . '</span></li></ul>';
         $badge = $addon->getConfig('ips_monitor_only', false) ? Ui::badge(rex_i18n::rawMsg('upkeep_dash_monitor_only'), 'info') : Ui::badge(rex_i18n::rawMsg('upkeep_dash_on'), 'ok');
-        $tiles[] = Ui::tile($title, $icon, $body, $badge . '<a href="' . rex_url::backendPage('upkeep/protection/events') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_events')) . '</a>');
+        $tiles[] = Ui::tile($title, $icon, $body, $badge . '<span class="upk-tile-links">'
+            . ($isAdmin ? '<a href="' . rex_url::backendPage('upkeep/protection/stats') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_stats_link')) . '</a>' : '')
+            . '<a href="' . rex_url::backendPage('upkeep/protection/events') . '">' . rex_escape(rex_i18n::rawMsg('upkeep_dash_show_events')) . '</a></span>');
     } else {
         $tiles[] = $offTile($title, $icon, 'ips');
     }

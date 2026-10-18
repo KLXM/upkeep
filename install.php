@@ -120,7 +120,7 @@ rex_sql_table::get(rex::getTable('upkeep_ips_positivliste'))
     ->ensureColumn(new rex_sql_column('ip_address', 'varchar(45)', false)) // IPv6-kompatibel
     ->ensureColumn(new rex_sql_column('ip_range', 'varchar(50)', true)) // CIDR-Notation für IP-Bereiche
     ->ensureColumn(new rex_sql_column('description', 'varchar(255)', true))
-    ->ensureColumn(new rex_sql_column('category', 'enum("admin","cdn","monitoring","api","trusted","captcha_verified_temp")', false, 'trusted'))
+    ->ensureColumn(new rex_sql_column('category', 'varchar(50)', false, 'trusted')) // wie SecuritySchema (3.0.2: kein enum mehr)
     ->ensureColumn(new rex_sql_column('expires_at', 'datetime', true)) // NULL = permanent, sonst Ablaufzeit
     ->ensureColumn(new rex_sql_column('status', 'tinyint(1)', false, '1'))
     ->ensureColumn(new rex_sql_column('created_at', 'datetime', false))
@@ -455,6 +455,143 @@ if ($existingPatterns === 0) {
             $sql->insert();
         }
     }
+}
+
+// 3.0.2: Das Muster "/*" (SQL-Kommentar) traf auch harmlose Adressen. Es wird auf einen vollständigen
+// Kommentarblock (/* … */) eingeengt. Nur unveränderte Zeilen (Text "/*", kein RegEx) werden angepasst –
+// Schweregrad und Status, die Nutzer geändert haben, bleiben erhalten.
+try {
+    rex_sql::factory()->setQuery(
+        'UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . " SET pattern = ?, is_regex = 1, description = ?, updated_at = ? WHERE pattern = '/*' AND is_regex = 0 AND is_default = 1",
+        ['#/\*.*?\*/#s', 'SQL Comment Block (/* … */)', date('Y-m-d H:i:s')],
+    );
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+
+// 3.0.2: Weitere Standardmuster (bekannte Lücken anderer Systeme, Zugangsdaten, Sicherungen, Einschleusung).
+// Nur Muster, die es noch nicht gibt, werden ergänzt – vorhandene und von Ihnen geänderte Zeilen bleiben unverändert.
+// Einfache SQL-Befehle: update.php läuft mit den Klassen der alten Version.
+$ips302Patterns = [
+    // [Kategorie, Muster, Beschreibung, Schweregrad, RegEx]
+    ['exploits', '/_ignition/execute-solution', 'Laravel Ignition (Codeausführung)', 'critical', 0],
+    ['exploits', '/eval-stdin.php', 'PHPUnit eval-stdin (Codeausführung)', 'critical', 0],
+    ['exploits', 'invokefunction', 'ThinkPHP (Codeausführung)', 'critical', 0],
+    ['exploits', 'think\app', 'ThinkPHP (Codeausführung)', 'critical', 0],
+    ['exploits', '#/actuator/(?:env|heapdump|gateway|jolokia|configprops|threaddump|logfile|httptrace|mappings|beans)\b#i', 'Spring Boot Actuator', 'high', 1],
+    ['exploits', '#/vendor/[^?]*\.php#i', 'Direkter Aufruf von PHP-Dateien in vendor/', 'high', 1],
+    ['exploits', '/cgi-bin/', 'CGI-Skripte', 'high', 0],
+    ['exploits', '/_profiler/', 'Symfony Profiler', 'medium', 0],
+    ['exploits', '/telescope/requests', 'Laravel Telescope', 'medium', 0],
+    ['appliances', '/hnap1', 'Router (HNAP)', 'high', 0],
+    ['appliances', '/boaform', 'Router (Boa)', 'high', 0],
+    ['appliances', '/+CSCOE+/', 'Cisco VPN', 'high', 0],
+    ['appliances', '/remote/fgt_lang', 'Fortinet VPN', 'high', 0],
+    ['appliances', '/dana-na/', 'Pulse Secure VPN', 'high', 0],
+    ['appliances', '/global-protect/', 'Palo Alto VPN', 'high', 0],
+    ['appliances', '/mgmt/tm/', 'F5 BIG-IP', 'high', 0],
+    ['appliances', '/owa/auth', 'Outlook Web Access', 'high', 0],
+    ['appliances', '/autodiscover/autodiscover.xml', 'Exchange Autodiscover (auch echte Outlook-Programme – nur protokolliert)', 'low', 0],
+    ['config_files', '/.aws/', 'AWS-Zugangsdaten', 'critical', 0],
+    ['config_files', '/.ssh/', 'SSH-Schlüssel', 'critical', 0],
+    ['config_files', '/.htpasswd', 'Apache-Passwortdatei', 'critical', 0],
+    ['config_files', '/.git-credentials', 'Git-Zugangsdaten', 'critical', 0],
+    ['config_files', '/.vscode/', 'Editor-Einstellungen (z. B. sftp.json mit Zugangsdaten)', 'high', 0],
+    ['config_files', '/.idea/', 'Editor-Einstellungen (JetBrains)', 'high', 0],
+    ['config_files', '/docker-compose.yml', 'Docker-Konfiguration', 'high', 0],
+    ['info_disclosure', '/.DS_Store', 'macOS-Ordnerdatei (Dateiliste)', 'medium', 0],
+    ['backups', '#/(?:backup|backups|dump|db|database|www|wwwroot|htdocs|httpdocs|public_html)\.(?:zip|sql|sql\.gz|sql\.zip|tar|tar\.gz|tgz|gz|rar|7z|bak)(?:$|\?)#i', 'Sicherungsdateien (Website, Datenbank)', 'high', 1],
+    ['backups', '#\.sql(?:\.gz|\.zip|\.bz2)?(?:$|\?)#i', 'Datenbank-Exporte (.sql)', 'high', 1],
+    ['backups', '#\.(?:php|inc|ini|conf|config|ya?ml|env)(?:\.(?:bak|old|orig|save|swp|tmp)|~)(?:$|\?)#i', 'Sicherungskopien von Konfigurationsdateien', 'high', 1],
+    ['injection', '~(?:\{\{|\$\{|<%=?|#\{)\s*\d+\s*\*\s*\d+\s*(?:\}\}|\}|%>)~', 'Template-Injection (z. B. {{7*7}})', 'high', 1],
+    ['injection', '~(?<![a-z])(?:php|expect|phar|zip|glob|data)://~i', 'PHP-Stream-Wrapper (Datei-Einbindung)', 'high', 1],
+    ['injection', '/\x00/', 'Nullbyte', 'high', 1],
+    ['injection', '169.254.169.254', 'SSRF: Cloud-Metadaten', 'high', 0],
+    ['injection', 'metadata.google.internal', 'SSRF: Cloud-Metadaten (Google)', 'high', 0],
+    ['injection', '100.100.100.200', 'SSRF: Cloud-Metadaten (Alibaba)', 'high', 0],
+];
+try {
+    $now302 = date('Y-m-d H:i:s');
+    $table302 = rex::getTable('upkeep_ips_default_patterns');
+    foreach ($ips302Patterns as [$category302, $pattern302, $description302, $severity302, $regex302]) {
+        $check302 = rex_sql::factory();
+        $check302->setQuery('SELECT id FROM ' . $table302 . ' WHERE pattern = ? LIMIT 1', [$pattern302]);
+        if ($check302->getRows() > 0) {
+            continue;
+        }
+        rex_sql::factory()->setQuery(
+            'INSERT INTO ' . $table302 . ' (category, pattern, description, severity, is_regex, status, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)',
+            [$category302, $pattern302, $description302, $severity302, $regex302, $now302, $now302],
+        );
+    }
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+unset($ips302Patterns, $now302, $table302, $check302, $category302, $pattern302, $description302, $severity302, $regex302);
+
+// 3.0.2: Zu breite Standardmuster einengen (Fehlalarme bei normalen Adressen und Suchbegriffen).
+// - CMS-Pfade (/admin, /modules/, /templates/ …) nur noch am Anfang des Pfads und mit „mittel“ statt „hoch“:
+//   ein einzelner Treffer sperrt nicht mehr, wiederholte schon. /de/administration/ oder /redaxo/ treffen nicht.
+// - Shell-Befehle (bash, curl, cat, rm …) nur noch im Befehlskontext (nach ; | & ` $( oder Zeilenumbruch,
+//   bzw. mit typischen Argumenten wie -c oder http://). „?q=cat food“ trifft nicht mehr, „;cat /etc/passwd“ schon.
+// - IP:Port nur noch als Adresse in einer URL (//1.2.3.4:8080), config.php/settings.php nur als aufgerufene Datei.
+// Geändert werden nur Zeilen, die noch genau dem Standard entsprechen (Muster, RegEx, Schweregrad, aktiv) –
+// von Ihnen bearbeitete oder abgeschaltete Muster bleiben unverändert. Einfache SQL-Befehle (alte Klassen im Update).
+$ctx302 = '(?:[;`|]|&&|\$\(|[\r\n]|%0[ad])[\s+]*(?:/(?:usr/)?(?:local/)?bin/)?';
+$narrow302 = [
+    // [altes Muster, alt RegEx, alter Schweregrad, neues Muster, neuer Schweregrad, Beschreibung]
+    ['/fileadmin/', 0, 'high', '#^/fileadmin/#i', 'medium', 'TYPO3 File Admin (Pfadanfang)'],
+    ['/user/login', 0, 'high', '#^/user/login(?:[/?]|$)#i', 'medium', 'Drupal Login (Pfadanfang)'],
+    ['/admin/', 0, 'high', '#^/admin/#i', 'medium', 'Drupal Admin-Bereich (Pfadanfang)'],
+    ['/node/', 0, 'high', '#^/node/#i', 'medium', 'Drupal Node-Zugriff (Pfadanfang)'],
+    ['/sites/default/', 0, 'high', '#^/sites/default/#i', 'medium', 'Drupal Site Config (Pfadanfang)'],
+    ['/modules/', 0, 'high', '#^/modules/#i', 'medium', 'Module-Verzeichnis (Pfadanfang)'],
+    ['/themes/', 0, 'high', '#^/themes/#i', 'medium', 'Drupal Theme-Verzeichnis (Pfadanfang)'],
+    ['/core/', 0, 'high', '#^/core/#i', 'medium', 'Drupal Core-Verzeichnis (Pfadanfang)'],
+    ['/administrator/', 0, 'high', '#^/administrator/#i', 'medium', 'Joomla Administrator (Pfadanfang)'],
+    ['/components/', 0, 'high', '#^/components/#i', 'medium', 'Joomla Components (Pfadanfang)'],
+    ['/plugins/', 0, 'high', '#^/plugins/#i', 'medium', 'Joomla Plugins (Pfadanfang)'],
+    ['/templates/', 0, 'high', '#^/templates/#i', 'medium', 'Joomla Templates (Pfadanfang)'],
+    ['/libraries/', 0, 'high', '#^/libraries/#i', 'medium', 'Joomla Libraries (Pfadanfang)'],
+    ['/admin', 0, 'high', '#^/admin(?:[/?]|$)#i', 'medium', 'Admin Panel (Pfadanfang)'],
+    ['/admin.php', 0, 'high', '#/admin\.php(?:[/?]|$)#i', 'high', 'Admin PHP Script (aufgerufene Datei)'],
+    ['/administrator', 0, 'high', '#^/administrator(?:[/?]|\.php|$)#i', 'medium', 'Administrator Panel (Pfadanfang)'],
+    ['/mysql/', 0, 'high', '#^/mysql/#i', 'medium', 'MySQL Interface (Pfadanfang)'],
+    ['/cpanel/', 0, 'high', '#^/cpanel/#i', 'medium', 'cPanel Interface (Pfadanfang)'],
+    ['/webmail/', 0, 'high', '#^/webmail/#i', 'medium', 'Webmail Interface (Pfadanfang)'],
+    ['/control/', 0, 'high', '#^/control/#i', 'medium', 'Control Panel (Pfadanfang)'],
+    ['/manager/', 0, 'high', '#^/manager/#i', 'medium', 'Manager Interface (Pfadanfang)'],
+    ['/dashboard/', 0, 'high', '#^/dashboard/#i', 'medium', 'Dashboard Interface (Pfadanfang)'],
+    ['/config.php', 0, 'critical', '#^[^?]*/config\.php(?:[/?]|$)#i', 'critical', 'PHP Config File (aufgerufene Datei)'],
+    ['/settings.php', 0, 'critical', '#^[^?]*/settings\.php(?:[/?]|$)#i', 'critical', 'Settings File (aufgerufene Datei)'],
+    ['/\b(powershell|cmd\.exe|bash|sh)\b/i', 1, 'high', '#' . $ctx302 . '(?:powershell|pwsh|cmd|bash|sh|zsh|dash|ksh)\b|\b(?:bash|sh|zsh)[\s+]+-[a-z]*c\b|/bin/(?:ba|z|da|k)?sh\b|\bcmd(?:\.exe)?[\s+]+/c\b|\bpowershell(?:\.exe)?[\s+]+-(?:e|ec|enc|encodedcommand|c|command|nop|noprofile|w|windowstyle|ep|exec|executionpolicy)\b#i', 'high', 'Shell-Programme (nur im Befehlskontext)'],
+    ['/\b(wget|curl|lynx|nc|netcat)\b/i', 1, 'high', '#' . $ctx302 . '(?:wget|curl|lynx|nc|ncat|netcat)\b|\b(?:wget|curl|lynx)[\s+]+(?:-[^\s+]+[\s+]+)*(?:https?|ftp)://|\b(?:nc|ncat|netcat)[\s+]+(?:-[^\s+]+[\s+]+)*-[a-z]*e\b#i', 'high', 'Download-/Netzwerk-Werkzeuge (nur im Befehlskontext)'],
+    ['/\b(cat|type|more|less)\s+/i', 1, 'high', '#' . $ctx302 . '(?:cat|type|more|less|head|tail)[\s+]+[^\s+]#i', 'high', 'Dateien lesen (nur im Befehlskontext)'],
+    ['/\b(rm|del|rmdir)\s+/i', 1, 'high', '#' . $ctx302 . '(?:rm|del|rmdir)[\s+]+[^\s+]#i', 'high', 'Dateien löschen (nur im Befehlskontext)'],
+    ['/\b(passwd|shadow|hosts|httpd\.conf)\b/i', 1, 'high', '#\bhttpd\.conf\b|(?:^|[/\\\\=:]|%2f|%5c)(?:private[/\\\\])?etc(?:[/\\\\]|%2f|%5c)+(?:passwd|shadow|group|hosts|master\.passwd)\b|(?:\.\.(?:[/\\\\]|%2f|%5c))+[^?&\s]*\b(?:passwd|shadow)\b#i', 'high', 'Systemdateien (nur mit Systempfad)'],
+    ['/select\s+.*\s+from/i', 1, 'high', '#(?:[\'"`);]|\b(?:and|or|union(?:[\s+]+all)?)\b)[\s+(]*select\b.{0,200}?\bfrom\b|\bselect\b.{0,200}?\bfrom[\s+(]+(?:information_schema|mysql\.|sys\.|pg_\w+|sqlite_master|dual)\b|\bselect[\s+(]+(?:\*|@@\w+|(?:count|concat|group_concat|char|sleep|benchmark|version|user|database)[\s+]*\()#i', 'high', 'SQL-Abfrage (nur mit SQL-Merkmalen)'],
+    ['/\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]+\b/', 1, 'high', '~//(?:[^/?#@\s]*@)?(?:\d{1,3}\.){3}\d{1,3}:\d{1,5}(?!\d)~', 'medium', 'URL mit IP-Adresse und Port (Backdoor, SSRF)'],
+];
+try {
+    $nowNarrow302 = date('Y-m-d H:i:s');
+    foreach ($narrow302 as [$old302, $oldRegex302, $oldSeverity302, $new302, $newSeverity302, $newDescription302]) {
+        rex_sql::factory()->setQuery(
+            'UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET pattern = ?, is_regex = 1, severity = ?, description = ?, updated_at = ?'
+            . ' WHERE pattern = ? AND is_regex = ? AND severity = ? AND status = 1 AND is_default = 1',
+            [$new302, $newSeverity302, $newDescription302, $nowNarrow302, $old302, $oldRegex302, $oldSeverity302],
+        );
+    }
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+unset($ctx302, $narrow302, $nowNarrow302, $old302, $oldRegex302, $oldSeverity302, $new302, $newSeverity302, $newDescription302);
+
+// 3.0.2: Verzeichnis-Suche (viele 404 in kurzer Zeit) – standardmäßig an
+if ($addon->getConfig('ips_404_flood') === null) {
+    $addon->setConfig('ips_404_flood', 1);
+}
+if ($addon->getConfig('ips_404_flood_limit') === null) {
+    $addon->setConfig('ips_404_flood_limit', 30);
 }
 
 // Mail Security Tabellen erstellen
@@ -871,6 +1008,20 @@ foreach (['SecuritySchema', 'FormProtectionSchema'] as $schema) {
     $class = 'KLXM\\Upkeep\\Schema\\' . $schema;
     $class::ensure();
 }
+
+// 3.0.2: Selbst-Entsperrungen standen bisher als volle Positivliste (Prüfungen aus). Sie werden zur Schonfrist.
+try {
+    rex_sql::factory()->setQuery(
+        'UPDATE ' . rex::getTable('upkeep_ips_positivliste') . " SET category = 'self_unlock' WHERE category = 'captcha_verified_temp' AND expires_at IS NOT NULL",
+    );
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+
+// Listen-Cache verwerfen (neuer Stand + Datei löschen). Bewusst ohne Klassenmethode:
+// beim Update sind noch die Klassen der alten Version geladen.
+rex_config::set('upkeep', 'ips_list_generation', bin2hex(random_bytes(8)));
+rex_file::delete(rex_path::addonCache('upkeep', 'ips_lists.json'));
 
 // Einstellungen, Rechte und Passwörter aus 2.x übernehmen (idempotent, nach allen Standardwerten)
 require_once __DIR__ . '/lib/Migration.php';

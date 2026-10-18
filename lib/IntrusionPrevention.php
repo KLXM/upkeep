@@ -6,6 +6,7 @@ use DateTime;
 use Exception;
 use rex;
 use rex_addon;
+use rex_backend_login;
 use rex_config;
 use rex_dir;
 use rex_extension;
@@ -16,6 +17,7 @@ use rex_path;
 use rex_response;
 use rex_sql;
 use rex_sql_table;
+use rex_user;
 use Throwable;
 
 /**
@@ -26,12 +28,38 @@ use Throwable;
  * - Pentest-Tools und Scanner-Signaturen
  * - SQL-Injection und Path-Traversal-Versuche
  * - Benutzerdefinierte Patterns
+ * - 3.0.2: Signaturen in Kopfzeilen, Cookies und Frontend-POSTs (Log4Shell, Shellshock, Spring4Shell, OAST),
+ *   ungewöhnliche HTTP-Methoden, Verzeichnis-Suche (viele 404)
  *
  * 3.0: echte Client-IP über ClientIp, Sperrseite über BlockPage (ALTCHA),
  * Fail-open bei Fehlern, zusammengefasste Logs, Caches pro Request.
  */
 class IntrusionPrevention
 {
+    /** Kategorie der Markierung „selbst entsperrt“ in der Positivlisten-Tabelle (wirkt NICHT als Positivliste) */
+    public const SELF_UNLOCK_CATEGORY = 'self_unlock';
+
+    /** Herkunft einer schweren Sperre kurz nach einer Selbst-Entsperrung – nicht noch einmal selbst aufhebbar */
+    public const SOURCE_AFTER_UNLOCK = 'after_unlock';
+
+    /** rex_config-Schlüssel mit dem Stand der Listen (Positivliste, Sperren); jede Änderung erzeugt einen neuen Stand */
+    public const LIST_GENERATION_KEY = 'ips_list_generation';
+
+    /** Dauer der Sperre bei einem einzelnen kritischen Treffer (Sekunden) */
+    private const CRITICAL_BLOCK_SECONDS = 86400;
+
+    /** Kritische Treffer derselben Adresse im Zeitfenster, ab denen dauerhaft gesperrt wird */
+    private const CRITICAL_PERMANENT_HITS = 3;
+
+    /** Zeitfenster für die kritischen Treffer (Sekunden) */
+    private const CRITICAL_PERMANENT_WINDOW = 7 * 86400;
+
+    /** Mindestlänge eigener Muster (kürzere treffen fast jede Adresse) */
+    public const MIN_PATTERN_LENGTH = 3;
+
+    /** Ab so vielen eingebetteten Fremd-Anfragen mit Treffer in 10 Minuten wird zeitweise gesperrt */
+    private const CROSS_SITE_BLOCK_HITS = 20;
+
     /** Zeitfenster für das Zusammenfassen gleichartiger Ereignisse (Sekunden) */
     private const AGGREGATE_WINDOW = 600;
 
@@ -44,7 +72,13 @@ class IntrusionPrevention
     /** Mindestabstand zwischen automatischen Bereinigungen (Sekunden) */
     private const CLEANUP_INTERVAL = 3600;
 
+    /** Ergebnis im Protokoll für Treffer angemeldeter Backend-Nutzer: nur protokolliert, nie gesperrt */
+    public const ACTION_AUTHENTICATED = 'logged_authenticated';
+
     private static ?rex_addon $addon = null;
+
+    /** Gültige Backend-Anmeldung für diese Anfrage (null = noch nicht geprüft) */
+    private static ?bool $authenticated = null;
 
     /** @var array<string, bool> */
     private static array $blockedCache = [];
@@ -60,28 +94,52 @@ class IntrusionPrevention
     private static int $dnsLookups = 0;
 
     /**
-     * Bekannte Scanner und Pentest-Tools (User-Agent)
+     * Bekannte Scanner und Pentest-Tools (User-Agent). Treffer nur als ganzes Wort (ohne Groß-/Kleinschreibung),
+     * damit z. B. „nmap“ nicht in einem längeren Namen anschlägt. Erweiterbar über UPKEEP_IPS_SCANNER_AGENTS.
+     * Allgemeine Bibliotheken (curl, python-requests, Go-http-client) stehen bewusst nicht in dieser Liste.
      *
      * @var list<string>
      */
     private static array $suspiciousUserAgents = [
-        'nmap',
-        'nikto',
-        'sqlmap',
-        'burpsuite',
-        'owasp zap',
-        'acunetix',
-        'nessus',
-        'openvas',
-        'masscan',
-        'dirb',
-        'dirbuster',
-        'gobuster',
-        'wfuzz',
-        'hydra',
-        'metasploit',
-        'w3af',
+        // Port- und Netzwerkscanner
+        'nmap', 'masscan', 'zmap', 'zgrab', 'zgrab2',
+        // Schwachstellenscanner
+        'nikto', 'nuclei', 'nessus', 'openvas', 'acunetix', 'netsparker', 'invicti', 'appscan', 'webinspect',
+        'qualys', 'qualyswas', 'qualysguard', 'burpsuite', 'burp collaborator', 'owasp zap', 'zaproxy', 'w3af', 'arachni',
+        'skipfish', 'wapiti', 'jaeles', 'grabber', 'paros', 'webshag', 'vega scanner', 'grendel-scan', 'nsauditor',
+        'interactsh',
+        // CMS-Scanner und Fingerprinting
+        'wpscan', 'joomscan', 'droopescan', 'cmsmap', 'whatweb',
+        // Verzeichnis- und Parameter-Suche (Fuzzer)
+        'dirb', 'dirbuster', 'gobuster', 'feroxbuster', 'dirsearch', 'ffuf', 'fuzz faster u fool', 'wfuzz', 'dotdotpwn',
+        // Injection- und Exploit-Werkzeuge
+        'sqlmap', 'havij', 'sqlninja', 'jsql', 'bbqsql', 'pangolin', 'fimap', 'commix', 'xsstrike',
+        'xsser', 'metasploit', 'tplmap', 'nosqlmap',
+        // Passwort-Rater
+        'hydra', 'medusa', 'patator', 'crowbar', 'brutus',
+        // Bekannte Bot-Netze und Massenscanner
+        'zmeu', 'morfeus', 'muieblackcat', 'fhscan',
     ];
+
+    /**
+     * Allgemeine HTTP-Bibliotheken: allein harmlos (Skripte, Monitoring). Fällt dieselbe Anfrage zusätzlich
+     * mit einem mittleren Treffer auf, wird sie als „hoch“ behandelt.
+     *
+     * @var list<string>
+     */
+    private static array $genericClients = ['go-http-client', 'python-requests', 'python-urllib', 'libwww-perl', 'aiohttp'];
+
+    /** Höchstens so viele Bytes eines POST-Rumpfs werden geprüft */
+    private const BODY_SCAN_BYTES = 65536;
+
+    /** Höchstens so viele Zeichen je Kopfzeile bzw. Cookie werden geprüft */
+    private const HEADER_SCAN_CHARS = 4096;
+
+    /** Zeitfenster für die Erkennung von Verzeichnis-Suchen (viele 404 in Folge, Sekunden) */
+    private const NOT_FOUND_WINDOW = 60;
+
+    /** Sperrdauer nach einer Verzeichnis-Suche (Sekunden) */
+    private const NOT_FOUND_BLOCK_SECONDS = 3600;
 
     /**
      * Liefert die Addon-Instanz
@@ -140,7 +198,8 @@ class IntrusionPrevention
     public static function checkRequest(): void
     {
         try {
-            if (!rex::isFrontend() || !self::isActive()) {
+            // Frontend und Backend (seit 3.0.2), nie Konsole/Cronjob
+            if (PHP_SAPI === 'cli' || (!rex::isFrontend() && !rex::isBackend()) || !self::isActive()) {
                 return;
             }
             self::runCheck();
@@ -175,13 +234,27 @@ class IntrusionPrevention
             return;
         }
 
+        // Angemeldete Backend-Nutzer werden nie gesperrt: Treffer nur protokollieren (zusammengefasst),
+        // keine Sperre, keine Zählung für Wiederholungen, 404-Flut oder Anfragelimit.
+        if (self::isAuthenticatedUser()) {
+            $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
+            if ($threat !== null) {
+                self::logThreat($threat, $clientIp, $requestUri, $userAgent, self::ACTION_AUTHENTICATED);
+            }
+            return;
+        }
+
         if (self::isBlocked($clientIp)) {
             self::blockRequest('IP bereits gesperrt', $clientIp, $requestUri);
         }
 
+        // Selbst entsperrte Adressen werden weiter überwacht wie alle anderen. Sperrt sie ein schwerer Treffer
+        // innerhalb von ips_unlock_hours erneut, lässt sich diese Sperre nicht noch einmal selbst aufheben.
+        $recentlyUnlocked = self::wasRecentlyUnlocked($clientIp);
+
         $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
         if ($threat !== null) {
-            self::handleThreat($threat, $clientIp, $requestUri, $userAgent);
+            self::handleThreat($threat, $clientIp, $requestUri, $userAgent, $recentlyUnlocked);
         }
 
         if (self::isRateLimitingEnabled() && self::isRateLimitExceeded($clientIp)) {
@@ -189,8 +262,81 @@ class IntrusionPrevention
                 'type' => 'rate_limit',
                 'severity' => 'medium',
                 'pattern' => 'Too many requests',
-            ], $clientIp, $requestUri, $userAgent);
+            ], $clientIp, $requestUri, $userAgent, $recentlyUnlocked);
         }
+
+        // Verzeichnis-Suche: 404-Antworten erst am Ende der Anfrage zählen (Status steht dann fest)
+        if (self::isNotFoundFloodEnabled()) {
+            register_shutdown_function(static function () use ($clientIp, $requestUri, $userAgent, $recentlyUnlocked): void {
+                self::countNotFound($clientIp, $requestUri, $userAgent, $recentlyUnlocked);
+            });
+        }
+    }
+
+    /**
+     * Aktuelle Zeit nach der PHP-Uhr. Alle Zeitvergleiche in SQL nutzen diesen Wert als Parameter,
+     * weil Sperren und Ablaufzeiten mit date() geschrieben werden (Datenbank-Uhr kann eine andere Zeitzone haben).
+     */
+    private static function now(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * Gibt es für diese Anfrage eine gültige Backend-Anmeldung?
+     *
+     * Ohne Session-Cookie wird keine Session gestartet (normale Besucher bleiben ohne Session). Mit Cookie prüft
+     * rex_backend_login::createUser() die Anmeldung vollständig (Ablauf der Sitzung, Status und Passwort des Nutzers),
+     * wie es der Core im Frontend auch tut. Ein gefälschtes oder abgelaufenes Cookie ergibt keinen Nutzer.
+     * Im Backend steht der Nutzer beim Laden der AddOns bereits fest.
+     */
+    public static function isAuthenticatedUser(): bool
+    {
+        if (self::$authenticated !== null) {
+            return self::$authenticated;
+        }
+        self::$authenticated = false;
+        try {
+            if (rex::getUser() instanceof rex_user) {
+                return self::$authenticated = true;
+            }
+            if (PHP_SAPI === 'cli' || !class_exists(rex_backend_login::class)) {
+                return false;
+            }
+            // Schneller Ausstieg ohne Cookie – hasSession() prüft das auch, hier ohne jeden Seiteneffekt
+            if (!isset($_COOKIE[session_name()]) || '' === (string) $_COOKIE[session_name()]) {
+                return false;
+            }
+            self::$authenticated = rex_backend_login::createUser() instanceof rex_user;
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            self::$authenticated = false;
+        }
+        return self::$authenticated;
+    }
+
+    /**
+     * Unterressource einer fremden Website (z. B. <img src="…"> auf einer anderen Seite)?
+     * Solche Anfragen löst der Browser des Besuchers aus, nicht der Besucher selbst –
+     * sie werden nur protokolliert, nie gesperrt. Formular-POSTs zählen nicht dazu.
+     */
+    private static function isCrossSiteSubresource(): bool
+    {
+        if ('POST' === strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'))) {
+            return false;
+        }
+        $site = strtolower(trim(rex_server('HTTP_SEC_FETCH_SITE', 'string', '')));
+        $dest = strtolower(trim(rex_server('HTTP_SEC_FETCH_DEST', 'string', '')));
+        return 'cross-site' === $site && '' !== $dest && !in_array($dest, ['document', 'iframe', 'frame'], true);
+    }
+
+    /**
+     * Hat eine fremde Website die Anfrage ausgelöst (Link, Formular, eingebettete Datei)?
+     * Echte Browser senden Sec-Fetch-Site; Scanner und Skripte in der Regel nicht.
+     */
+    private static function isThirdPartyRequest(): bool
+    {
+        return 'cross-site' === strtolower(trim(rex_server('HTTP_SEC_FETCH_SITE', 'string', '')));
     }
 
     /**
@@ -226,6 +372,11 @@ class IntrusionPrevention
             ];
         }
 
+        // 0. Eindeutige Angriffs-Signaturen in Adresse, Methode und Kopfzeilen (Log4Shell, Shellshock, Rückruf-Domains …)
+        $threat ??= self::checkUriSignatures($uri);
+        $threat ??= self::checkMethod($userAgent);
+        $threat ??= self::checkHeaders();
+
         // 1. Standard-Patterns
         if ($threat === null) {
             foreach (self::getDefaultPatterns() as $pattern) {
@@ -241,18 +392,16 @@ class IntrusionPrevention
             }
         }
 
-        // 2. User-Agent
+        // 2. User-Agent (bekannte Scanner und Pentest-Tools, nur ganze Wörter)
         if ($threat === null && $userAgent !== '') {
-            $userAgentLower = strtolower($userAgent);
-            foreach (self::$suspiciousUserAgents as $suspiciousAgent) {
-                if (str_contains($userAgentLower, $suspiciousAgent)) {
-                    $threat = [
-                        'type' => 'suspicious_user_agent',
-                        'pattern' => $suspiciousAgent,
-                        'severity' => 'high',
-                    ];
-                    break;
-                }
+            $agent = self::matchScannerAgent($userAgent);
+            if ($agent !== null) {
+                $threat = [
+                    'type' => 'suspicious_user_agent',
+                    'pattern' => $agent,
+                    'severity' => 'high',
+                    'source' => 'header',
+                ];
             }
         }
 
@@ -270,13 +419,35 @@ class IntrusionPrevention
             }
         }
 
+        // 4. POST-Rumpf im Frontend (nur eindeutige Signaturen, keine SQL-Wörter – Formulare enthalten normalen Text)
+        $threat ??= self::checkBody();
+
+        // 5. Ohne User-Agent: nur protokollieren, nie allein sperren
+        if ($threat === null && '' === trim($userAgent) && 'cli' !== PHP_SAPI) {
+            $threat = [
+                'type' => 'empty_user_agent',
+                'category' => 'header',
+                'pattern' => 'User-Agent missing',
+                'severity' => 'low',
+                'source' => 'header',
+            ];
+        }
+
         if ($threat === null) {
             return null;
         }
 
-        // Legitime CMS-URL: Schweregrad höchstens "medium" (keine Sofortsperre)
-        if (($threat['category'] ?? '') !== 'immediate_block' && self::isLegitimateUrl($uri)) {
-            if (in_array($threat['severity'], ['critical', 'high'], true)) {
+        // Allgemeine HTTP-Bibliothek plus mittlerer Treffer: typisch für automatisierte Angriffe
+        if ('medium' === $threat['severity'] && self::isGenericClient($userAgent)) {
+            $threat['severity'] = 'high';
+            $threat['escalated'] = true;
+        }
+
+        // Legitime CMS-URL: "high" wird zu "medium" (keine Sofortsperre). Kritische Treffer werden nie abgestuft,
+        // Treffer in Kopfzeilen, Methode oder Rumpf auch nicht (die Adresse sagt darüber nichts aus).
+        if (($threat['category'] ?? '') !== 'immediate_block' && empty($threat['escalated'])
+            && in_array($threat['source'] ?? 'uri', ['uri'], true) && self::isLegitimateUrl($uri)) {
+            if ('high' === $threat['severity']) {
                 $threat['severity'] = 'medium';
                 $threat['downgraded'] = true;
             }
@@ -309,9 +480,6 @@ class IntrusionPrevention
     }
 
     /**
-     * Legitime CMS-URLs (streng verankert auf den Pfad, Query nur aus harmlosen Zeichen).
-     */
-    /**
      * Ist der Pfad der eigene Einstieg der Website? Das ist genau das PHP-Skript, das diese Anfrage
      * gerade ausführt (in der Regel index.php der Installation, auch in Unterordnern).
      */
@@ -321,6 +489,10 @@ class IntrusionPrevention
         return '' !== $script && str_ends_with($script, '.php') && $path === $script;
     }
 
+    /**
+     * Legitime CMS-URLs (streng verankert auf den Pfad, Query nur aus harmlosen Zeichen).
+     * Kodierte Zeichen (%) in der Query zählen nicht als harmlos – dahinter kann sich alles verbergen.
+     */
     private static function isLegitimateUrl(string $uri): bool
     {
         $parts = parse_url($uri);
@@ -330,7 +502,7 @@ class IntrusionPrevention
         $path = rawurldecode((string) ($parts['path'] ?? ''));
         $query = (string) ($parts['query'] ?? '');
 
-        if ($query !== '' && !preg_match('/^[a-zA-Z0-9_=&\-.%]{0,200}$/', $query)) {
+        if ($query !== '' && !preg_match('/^[a-zA-Z0-9_=&\-.]{0,200}$/', $query)) {
             return false;
         }
 
@@ -346,44 +518,495 @@ class IntrusionPrevention
         return false;
     }
 
+    // ------------------------------------------------------------------
+    // Signaturen in Kopfzeilen, Methode und Rumpf
+    // ------------------------------------------------------------------
+
+    /**
+     * Eindeutige Angriffs-Signaturen. Sie kommen in normalen Anfragen nicht vor und werden deshalb
+     * in Adresse, Kopfzeilen und (Frontend-)POST-Rümpfen gesucht.
+     *
+     * @return array<string, array{regex: string, label: string, severity: string, body: bool}>
+     */
+    private static function signatures(): array
+    {
+        return [
+            // Log4Shell: ${jndi:…} und verschleierte Formen (${${lower:j}ndi:…}, ${${::-j}…}, ${env:…})
+            'log4shell' => [
+                'regex' => '/\$\{\s*(?:jndi\s*:|\$\{|::-|(?:lower|upper|env|sys|java|date|base64|main|ctx|k8s|docker|bundle|marker|sd|event|jvmrunargs)\s*:)/i',
+                'label' => '${jndi:…}',
+                'severity' => 'critical',
+                'body' => true,
+            ],
+            // Spring4Shell: Zugriff auf den ClassLoader über Parameter
+            'spring4shell' => [
+                'regex' => '/class\s*(?:\.|\[\s*[\'"]?)\s*module\s*(?:\.|[\'"]?\s*\]\s*\[\s*[\'"]?)\s*classloader/i',
+                'label' => 'class.module.classLoader',
+                'severity' => 'critical',
+                'body' => true,
+            ],
+            // Shellshock: Wert beginnt mit einer Funktionsdefinition, z. B. "() { :; };" (nur so wertet Bash ihn aus)
+            'shellshock' => [
+                'regex' => '/(?:^|[=\'"])\s*\(\s*\)\s*\{[^}]{0,80};\s*\}/',
+                'label' => '() { …; }',
+                'severity' => 'critical',
+                'body' => false,
+            ],
+            // Rückruf-Domains (Out-of-Band), mit denen Scanner prüfen, ob eine Eingabe ausgeführt wurde
+            'oast_callback' => [
+                'regex' => '/(?<![a-z0-9-])(?:oast\.(?:pro|live|site|online|fun|me)|interact\.sh|interactsh\.com|oastify\.com|burpcollaborator\.net|dnslog\.cn|dnslog\.link|ceye\.io|requestrepo\.com|canarytokens\.com|bxss\.me|xss\.ht)(?![a-z0-9-])/i',
+                'label' => 'OAST',
+                'severity' => 'high',
+                'body' => true,
+            ],
+            // PHP-Stream-Wrapper (Datei-Einbindung) – in der Adresse über die Standardmuster, hier nur im Rumpf
+            'php_wrapper' => [
+                'regex' => '~(?<![a-z])(?:php://(?:filter|input)|expect://|phar://)~i',
+                'label' => 'php://',
+                'severity' => 'high',
+                'body' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Prüft einen Wert auf die Signaturen (auch einfach und doppelt URL-kodiert).
+     *
+     * @return array{type: string, label: string, severity: string}|null
+     */
+    private static function matchSignatures(string $value, bool $body = false): ?array
+    {
+        if ($value === '' || (!str_contains($value, '$') && !str_contains($value, '%') && !str_contains($value, '(')
+            && !str_contains($value, '.') && !str_contains($value, ':') && !str_contains($value, '['))) {
+            return null;
+        }
+        $candidates = [$value];
+        if (str_contains($value, '%') || str_contains($value, '+')) {
+            $once = urldecode($value);
+            $candidates[] = $once;
+            if (str_contains($once, '%')) {
+                $candidates[] = urldecode($once);
+            }
+        }
+        foreach (self::signatures() as $type => $signature) {
+            if ($body && !$signature['body']) {
+                continue;
+            }
+            if ('php_wrapper' === $type && !$body) {
+                continue;
+            }
+            foreach ($candidates as $candidate) {
+                if (1 === @preg_match($signature['regex'], $candidate)) {
+                    return ['type' => $type, 'label' => $signature['label'], 'severity' => $signature['severity']];
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Signaturen und Header-Injection (CRLF) in der Adresse.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkUriSignatures(string $uri): ?array
+    {
+        $hit = self::matchSignatures($uri);
+        if ($hit !== null) {
+            return [
+                'type' => $hit['type'],
+                'category' => 'uri',
+                'pattern' => $hit['label'],
+                'severity' => $hit['severity'],
+                'source' => 'uri',
+            ];
+        }
+
+        // Zeilenumbruch gefolgt von einer Kopfzeile (Antwort-Manipulation), auch als Unicode-Variante
+        if (preg_match('/(?:%0d|%0a|%e5%98%8a|%e5%98%8d|\r|\n)+\s*(?:set-cookie|location|content-type|content-length|access-control-allow-[a-z]+|x-xss-protection)\s*(?::|%3a)/i', $uri)) {
+            return [
+                'type' => 'crlf_injection',
+                'category' => 'uri',
+                'pattern' => 'CRLF + header',
+                'severity' => 'high',
+                'source' => 'uri',
+            ];
+        }
+        return null;
+    }
+
+    /**
+     * Ungewöhnliche HTTP-Methoden. GET, POST, HEAD, OPTIONS, PUT, PATCH und DELETE bleiben unberührt
+     * (Schnittstellen nutzen PUT/PATCH/DELETE).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkMethod(string $userAgent): ?array
+    {
+        $method = strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'));
+        if (in_array($method, ['GET', 'POST', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'], true)) {
+            return null;
+        }
+        // Debug- und Tunnel-Methoden: nur von Werkzeugen
+        if (in_array($method, ['TRACE', 'TRACK', 'DEBUG', 'CONNECT'], true)) {
+            return ['type' => 'http_method', 'category' => 'method', 'pattern' => $method, 'severity' => 'high', 'source' => 'method'];
+        }
+        // WebDAV gibt es in REDAXO nicht. Office und der Windows-Explorer fragen beim Öffnen von Dokumenten
+        // trotzdem danach – diese Programme werden nicht gemeldet.
+        if (in_array($method, ['PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK'], true)) {
+            if (preg_match('/microsoft office|microsoft-webdav|davclnt|ms frontpage/i', $userAgent)) {
+                return null;
+            }
+            return ['type' => 'http_method', 'category' => 'method', 'pattern' => $method, 'severity' => 'medium', 'source' => 'method'];
+        }
+        return null;
+    }
+
+    /**
+     * Kopfzeilen und Cookies (Länge je Wert begrenzt).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkHeaders(): ?array
+    {
+        $checked = 0;
+        foreach ($_SERVER as $key => $value) {
+            if (!is_string($key) || !str_starts_with($key, 'HTTP_') || 'HTTP_COOKIE' === $key || !is_string($value) || $value === '') {
+                continue;
+            }
+            if (++$checked > 60) {
+                break;
+            }
+            $hit = self::matchSignatures(substr($value, 0, self::HEADER_SCAN_CHARS));
+            if ($hit !== null) {
+                $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($key, 5)))));
+                return [
+                    'type' => $hit['type'],
+                    'category' => 'header',
+                    'pattern' => $hit['label'] . ' [' . $name . ']',
+                    'severity' => $hit['severity'],
+                    // Den Referer bestimmt bei Links die verweisende Seite – dort gilt die Regel für fremde Seiten
+                    'source' => 'HTTP_REFERER' === $key ? 'referer' : 'header',
+                ];
+            }
+        }
+
+        $checked = 0;
+        foreach ($_COOKIE as $name => $value) {
+            if (++$checked > 50) {
+                break;
+            }
+            $values = [(string) $name];
+            if (is_string($value)) {
+                $values[] = $value;
+            } elseif (is_array($value)) {
+                array_walk_recursive($value, static function ($v, $k) use (&$values): void {
+                    if (count($values) < 20) {
+                        $values[] = (string) $k;
+                        $values[] = is_scalar($v) ? (string) $v : '';
+                    }
+                });
+            }
+            foreach ($values as $v) {
+                $hit = self::matchSignatures(substr($v, 0, self::HEADER_SCAN_CHARS));
+                if ($hit !== null) {
+                    return [
+                        'type' => $hit['type'],
+                        'category' => 'header',
+                        'pattern' => $hit['label'] . ' [Cookie]',
+                        'severity' => $hit['severity'],
+                        'source' => 'header',
+                    ];
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Rumpf von POST-Anfragen im Frontend (höchstens die ersten 64 KB). Nur eindeutige Signaturen.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkBody(): ?array
+    {
+        if (!rex::isFrontend() || 'POST' !== strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'))) {
+            return null;
+        }
+        $body = '';
+        try {
+            $fh = @fopen('php://input', 'r');
+            if ($fh !== false) {
+                $body = (string) stream_get_contents($fh, self::BODY_SCAN_BYTES);
+                fclose($fh);
+            }
+        } catch (Throwable) {
+            $body = '';
+        }
+        // multipart/form-data: der Rohtext steht nicht zur Verfügung, dann die Formularwerte
+        if ($body === '' && $_POST !== []) {
+            $parts = [];
+            $length = 0;
+            array_walk_recursive($_POST, static function ($v, $k) use (&$parts, &$length): void {
+                if ($length < self::BODY_SCAN_BYTES) {
+                    $piece = (string) $k . '=' . (is_scalar($v) ? (string) $v : '');
+                    $parts[] = $piece;
+                    $length += strlen($piece);
+                }
+            });
+            $body = substr(implode("\n", $parts), 0, self::BODY_SCAN_BYTES);
+        }
+        if ($body === '') {
+            return null;
+        }
+        $hit = self::matchSignatures($body, true);
+        if ($hit === null) {
+            return null;
+        }
+        return [
+            'type' => $hit['type'],
+            'category' => 'body',
+            'pattern' => $hit['label'] . ' [POST]',
+            'severity' => $hit['severity'],
+            'source' => 'body',
+        ];
+    }
+
+    // ------------------------------------------------------------------
+    // Scanner (User-Agent)
+    // ------------------------------------------------------------------
+
+    /**
+     * Liste der Scanner-Kennungen (kleingeschrieben). Über den Extension Point UPKEEP_IPS_SCANNER_AGENTS
+     * lassen sich Einträge ergänzen oder entfernen (Registrierung in einer boot.php, z. B. im project-AddOn).
+     *
+     * @return list<string>
+     */
+    public static function getScannerAgents(): array
+    {
+        static $agents = null;
+        if ($agents !== null) {
+            return $agents;
+        }
+        $list = self::$suspiciousUserAgents;
+        try {
+            $result = rex_extension::registerPoint(new rex_extension_point('UPKEEP_IPS_SCANNER_AGENTS', $list));
+            if (is_array($result)) {
+                $list = $result;
+            }
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
+        $clean = [];
+        foreach ($list as $entry) {
+            if (!is_string($entry)) {
+                continue;
+            }
+            $entry = strtolower(trim($entry));
+            if (mb_strlen($entry) >= self::MIN_PATTERN_LENGTH && mb_strlen($entry) <= 100) {
+                $clean[$entry] = true;
+            }
+        }
+        return $agents = array_keys($clean);
+    }
+
+    /**
+     * Liefert die erkannte Scanner-Kennung (ganzes Wort) oder null.
+     */
+    private static function matchScannerAgent(string $userAgent): ?string
+    {
+        static $regex = null;
+        if ($regex === null) {
+            $agents = self::getScannerAgents();
+            // Längere Einträge zuerst, damit "dirbuster" vor "dirb" gemeldet wird
+            usort($agents, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+            $quoted = array_map(static fn (string $a): string => str_replace(' ', '[\s_+-]?', preg_quote($a, '/')), $agents);
+            $regex = $quoted ? '/(?<![a-z0-9])(' . implode('|', $quoted) . ')(?![a-z0-9])/i' : '';
+        }
+        if ($regex === '' || 1 !== @preg_match($regex, substr($userAgent, 0, 1000), $m)) {
+            return null;
+        }
+        return strtolower($m[1]);
+    }
+
+    private static function isGenericClient(string $userAgent): bool
+    {
+        $userAgent = strtolower($userAgent);
+        foreach (self::$genericClients as $client) {
+            if (str_contains($userAgent, $client)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // Verzeichnis-Suche (viele 404)
+    // ------------------------------------------------------------------
+
+    public static function isNotFoundFloodEnabled(): bool
+    {
+        return (bool) self::getAddon()->getConfig('ips_404_flood', true);
+    }
+
+    /**
+     * Zählt 404-Antworten pro Adresse (IPv6 je /64) in einem gleitenden Zeitfenster. Ab der Schwelle wird
+     * die Adresse eine Stunde gesperrt (selbst aufhebbar); die Sperre greift ab der nächsten Anfrage.
+     * Nicht gezählt: Dateien wie Bilder, Stylesheets und Skripte, eingebettete Anfragen und Anfragen fremder Seiten
+     * (defekte Bilder auf einer Seite sollen niemanden sperren), angemeldete Backend-Nutzer.
+     */
+    private static function countNotFound(string $ip, string $uri, string $userAgent, bool $afterUnlock): void
+    {
+        try {
+            if (404 !== http_response_code()) {
+                return;
+            }
+            $dest = strtolower(trim(rex_server('HTTP_SEC_FETCH_DEST', 'string', '')));
+            if (('' !== $dest && 'document' !== $dest) || self::isThirdPartyRequest()) {
+                return;
+            }
+            $path = strtolower((string) (parse_url($uri, PHP_URL_PATH) ?? ''));
+            if (str_contains($path, '/media/') || str_contains($path, '/assets/') || '' !== rex_get('rex_media_file', 'string', '')
+                || preg_match('/\.(?:jpe?g|png|gif|webp|avif|svg|ico|bmp|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|ogg)$/', $path)) {
+                return;
+            }
+            // Angemeldete Nutzer (Ergebnis aus dem Anfang der Anfrage – hier sind die Kopfzeilen schon gesendet)
+            if (self::$authenticated === true) {
+                return;
+            }
+
+            $limit = max(10, min(300, (int) self::getAddon()->getConfig('ips_404_flood_limit', 30)));
+            $now = time();
+            $bucket = ClientIp::bucket($ip);
+            $store = new JsonStore('ips_404', 2000);
+            $hits = $store->update($bucket, static function ($v) use ($now, $limit): array {
+                $list = is_array($v) ? array_values(array_filter($v, static fn ($t) => is_int($t) && $t > $now - self::NOT_FOUND_WINDOW)) : [];
+                $list[] = $now;
+                return array_slice($list, -$limit);
+            }, self::NOT_FOUND_WINDOW);
+            if (!is_array($hits) || count($hits) < $limit) {
+                return;
+            }
+            // Verifizierte Suchmaschinen (Googlebot, Bingbot) folgen auch toten Links
+            if (self::isGoodBot()) {
+                return;
+            }
+            $store->delete($bucket);
+
+            $threat = [
+                'type' => 'not_found_flood',
+                'category' => 'scan',
+                'pattern' => $limit . ' x 404 / ' . self::NOT_FOUND_WINDOW . ' s',
+                'severity' => 'high',
+                'source' => 'uri',
+            ];
+            $action = self::getActionForSeverity('high');
+            $isNew = self::logThreat($threat, $ip, $uri, $userAgent, $action);
+            self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew, $action);
+            if (self::isMonitorOnlyMode() || self::isBlocked($ip)) {
+                return;
+            }
+            self::blockIpTemporarily($ip, self::NOT_FOUND_BLOCK_SECONDS, 'Directory scan (many 404 responses)', $afterUnlock ? self::SOURCE_AFTER_UNLOCK : 'auto');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
+    }
+
     /**
      * Behandelt erkannte Bedrohungen
      *
      * @param array<string, mixed> $threat
      */
-    private static function handleThreat(array $threat, string $ip, string $uri, string $userAgent): void
+    private static function handleThreat(array $threat, string $ip, string $uri, string $userAgent, bool $afterUnlock = false): void
     {
-        $isNew = self::logThreat($threat, $ip, $uri, $userAgent);
+        $critical = 'critical' === $threat['severity'] || 'immediate_block' === ($threat['category'] ?? '');
+        if ($critical) {
+            $threat['severity'] = 'critical';
+        }
 
-        self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew);
+        // Von einer fremden Seite eingebettete Anfrage: nur protokollieren (Dritte sollen niemanden sperren lassen).
+        // Scanner-Kennungen im User-Agent kann eine fremde Seite nicht setzen – die werden weiter behandelt.
+        // Kopfzeilen wie User-Agent oder Cookies und die Methode kann eine fremde Seite nicht setzen. Referer und
+        // POST-Rumpf dagegen schon (Link oder Formular auf einer fremden Seite) – dort zählt jede fremde Herkunft.
+        $crossSite = match ($threat['source'] ?? 'uri') {
+            'header', 'method' => false,
+            'referer', 'body' => self::isThirdPartyRequest(),
+            default => self::isCrossSiteSubresource(),
+        };
+
+        $action = self::getActionForSeverity((string) $threat['severity']);
+        if ($crossSite) {
+            $action = 'logged_cross_site';
+            $threat['cross_site'] = true;
+        } elseif ($critical && 'logged' !== $action) {
+            // Dauerhaft erst bei wiederholten kritischen Treffern derselben Adresse (dieser Treffer zählt mit)
+            $action = self::getCriticalHitCount($ip) + 1 >= self::CRITICAL_PERMANENT_HITS ? 'permanent_block' : 'temporary_block';
+        }
+
+        $isNew = self::logThreat($threat, $ip, $uri, $userAgent, $action);
+
+        self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew, $action);
 
         if (self::isMonitorOnlyMode()) {
             self::debugLog("IPS: Monitor-Only mode - threat logged but not blocked: {$threat['type']} from {$ip}");
             return;
         }
+        // Kurz nach einer Selbst-Entsperrung ist jede neue Sperre nicht noch einmal selbst aufhebbar
+        $source = $afterUnlock ? self::SOURCE_AFTER_UNLOCK : 'auto';
 
-        if (($threat['category'] ?? '') === 'immediate_block') {
-            self::blockIpPermanently($ip, 'Malicious activity detected - permanent block');
-            self::blockRequest('Malicious activity detected', $ip, $uri);
+        if ($crossSite) {
+            // Die Kopfzeilen kann ein Scanner fälschen: viele solcher Treffer in kurzer Zeit sperren deshalb zeitweise
+            // (selbst aufhebbar). Ein eingebettetes Bild in Forum oder Newsletter bleibt ein einzelner Treffer.
+            if (self::getCrossSiteHitCount($ip) >= self::CROSS_SITE_BLOCK_HITS) {
+                self::blockIpTemporarily($ip, 3600, 'Repeated cross-site threats', $source);
+                self::blockRequest('Repeated violations', $ip, $uri);
+            }
+            self::debugLog("IPS: cross-site subresource - threat logged but not blocked: {$threat['type']} from {$ip}");
+            return;
+        }
+
+        if ($critical) {
+            if ('permanent_block' === $action) {
+                self::blockIpPermanently($ip, 'Repeated critical threats - permanent block');
+            } else {
+                self::blockIpTemporarily($ip, self::CRITICAL_BLOCK_SECONDS, 'Critical threat detected', $source);
+            }
+            self::blockRequest('Critical threat detected', $ip, $uri);
         }
 
         switch ($threat['severity']) {
-            case 'critical':
-                self::blockIpPermanently($ip, 'Critical threat detected - permanent block');
-                self::blockRequest('Critical threat detected', $ip, $uri);
-                // no break (blockRequest beendet den Request)
             case 'high':
-                self::blockIpTemporarily($ip, 3600);
+                self::blockIpTemporarily($ip, 3600, '', $source);
                 self::blockRequest('High threat detected', $ip, $uri);
                 // no break
             case 'medium':
                 if (self::getViolationCount($ip) >= 3) {
-                    self::blockIpTemporarily($ip, 1800);
+                    self::blockIpTemporarily($ip, 1800, '', $source);
                     self::blockRequest('Repeated violations', $ip, $uri);
                 }
                 break;
             default:
                 break;
+        }
+    }
+
+    /**
+     * Anzahl kritischer Treffer (mit Sperrwirkung) einer Adresse im Zeitfenster.
+     * Nur protokollierte Treffer (Monitor-Modus, fremde Seiten) und Meldungen anderer Module zählen nicht.
+     */
+    private static function getCriticalHitCount(string $ip): int
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT SUM(' . self::hitExpression() . ') AS count FROM ' . rex::getTable('upkeep_ips_threat_log')
+                . " WHERE ip_address = ? AND severity = 'critical' AND action_taken IN ('temporary_block', 'permanent_block') AND created_at >= ?",
+                [$ip, date('Y-m-d H:i:s', time() - self::CRITICAL_PERMANENT_WINDOW)],
+            );
+            return (int) $sql->getValue('count');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            return 0;
         }
     }
 
@@ -413,23 +1036,31 @@ class IntrusionPrevention
             $uri = rex_server('REQUEST_URI', 'string', '');
             $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
 
+            // Angemeldete Backend-Nutzer (z. B. beim Testen von Formularen): nur protokollieren, nie sperren
+            if ($ip === ClientIp::get() && self::isAuthenticatedUser()) {
+                self::logThreat($threat, $ip, $uri, $userAgent, self::ACTION_AUTHENTICATED);
+                return;
+            }
+
             $isNew = self::logThreat($threat, $ip, $uri, $userAgent);
             self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew);
 
             if (!self::isActive() || self::isMonitorOnlyMode() || self::isOnPositivliste($ip) || self::isBlocked($ip)) {
                 return;
             }
+            // Nach Selbst-Entsperrung: schwere Treffer sperren so, dass keine erneute Selbst-Entsperrung möglich ist
+            $source = self::wasRecentlyUnlocked($ip) ? self::SOURCE_AFTER_UNLOCK : 'external';
 
             switch ($severity) {
                 case 'critical':
-                    self::blockIpTemporarily($ip, 86400, 'External report: ' . $type, 'external');
+                    self::blockIpTemporarily($ip, 86400, 'External report: ' . $type, $source);
                     break;
                 case 'high':
-                    self::blockIpTemporarily($ip, 3600, 'External report: ' . $type, 'external');
+                    self::blockIpTemporarily($ip, 3600, 'External report: ' . $type, $source);
                     break;
                 case 'medium':
                     if (self::getViolationCount($ip) >= 3) {
-                        self::blockIpTemporarily($ip, 1800, 'Repeated violations: ' . $type, 'external');
+                        self::blockIpTemporarily($ip, 1800, 'Repeated violations: ' . $type, $source);
                     }
                     break;
             }
@@ -443,7 +1074,7 @@ class IntrusionPrevention
      *
      * @param array<string, mixed> $threat
      */
-    private static function callExternalLogging(array $threat, string $ip, string $uri, string $userAgent, bool $isNew = true): void
+    private static function callExternalLogging(array $threat, string $ip, string $uri, string $userAgent, bool $isNew = true, ?string $action = null): void
     {
         $logData = [
             'timestamp' => date('Y-m-d H:i:s'),
@@ -455,8 +1086,9 @@ class IntrusionPrevention
             'threat_category' => $threat['category'] ?? $threat['type'],
             'pattern' => $threat['pattern'],
             'severity' => $threat['severity'],
-            'action' => self::getActionForSeverity($threat['severity']),
+            'action' => $action ?? self::getActionForSeverity((string) $threat['severity']),
             'monitor_only' => self::isMonitorOnlyMode(),
+            'cross_site' => (bool) ($threat['cross_site'] ?? false),
             'first_in_window' => $isNew,
         ];
 
@@ -466,7 +1098,8 @@ class IntrusionPrevention
             self::exceptionLog($e);
         }
 
-        if (self::getAddon()->getConfig('ips_fail2ban_logging', false)) {
+        // Von fremden Seiten ausgelöste Anfragen nicht an fail2ban geben – sonst sperrt die Firewall das Opfer
+        if (self::getAddon()->getConfig('ips_fail2ban_logging', false) && !$logData['cross_site']) {
             self::logForFail2ban($logData);
         }
     }
@@ -480,16 +1113,20 @@ class IntrusionPrevention
     {
         $logFile = self::getFail2banLogFile();
 
-        $clean = static fn ($v): string => str_replace(["\r", "\n"], ' ', (string) $v);
+        // Freitext (URI, Muster, Typ) als JSON-String in Anführungszeichen: Steuerzeichen, Anführungszeichen und
+        // Nicht-ASCII werden maskiert, damit kein Text eine zweite "threat from x.x.x.x"-Angabe vortäuschen kann.
+        // Die IP steht direkt hinter "threat from" und ist geprüft (filter_var) – darauf verankert der failregex.
+        $quote = static fn ($v): string => (string) json_encode(substr((string) $v, 0, 2000), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        $ip = filter_var((string) $logData['ip'], FILTER_VALIDATE_IP) !== false ? (string) $logData['ip'] : '0.0.0.0';
         $message = sprintf(
             '%s [REDAXO-IPS] %s threat from %s: %s (URI: %s, Pattern: %s, Action: %s)',
             $logData['timestamp'],
             strtoupper((string) $logData['severity']),
-            $logData['ip'],
-            $clean($logData['threat_type']),
-            $clean($logData['uri']),
-            $clean($logData['pattern']),
-            $logData['action'],
+            $ip,
+            $quote($logData['threat_type']),
+            $quote($logData['uri']),
+            $quote($logData['pattern']),
+            preg_replace('/[^a-z_]/', '', (string) $logData['action']),
         );
 
         try {
@@ -543,11 +1180,11 @@ class IntrusionPrevention
                     SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT t.threat_type ORDER BY t.created_at DESC), ",", 3) as recent_threats
                 FROM ' . rex::getTable('upkeep_ips_threat_log') . ' t
                 LEFT JOIN ' . rex::getTable('upkeep_ips_blocked_ips') . ' b
-                    ON b.ip_address = t.ip_address AND (b.expires_at IS NULL OR b.expires_at > NOW())
-                WHERE t.created_at >= ? AND b.id IS NULL
+                    ON b.ip_address = t.ip_address AND (b.expires_at IS NULL OR b.expires_at > ?)
+                WHERE t.created_at >= ? AND b.id IS NULL AND t.action_taken <> \'logged_authenticated\'
                 GROUP BY t.ip_address
                 ORDER BY threat_count DESC, last_threat DESC
-                LIMIT ' . max(1, min(100, $limit)), [date('Y-m-d H:i:s', time() - 86400)]);
+                LIMIT ' . max(1, min(100, $limit)), [self::now(), date('Y-m-d H:i:s', time() - 86400)]);
 
             $threatIps = [];
             foreach ($sql as $row) {
@@ -686,6 +1323,20 @@ class IntrusionPrevention
     }
 
     /**
+     * Wurde die Adresse innerhalb von ips_unlock_hours selbst entsperrt? (eigene Liste, keine Positivliste – siehe getListCache)
+     */
+    public static function wasRecentlyUnlocked(string $ip): bool
+    {
+        $now = time();
+        foreach (self::getListCache()['unlocked'] ?? [] as $entry) {
+            if (($entry['exp'] === 0 || $entry['exp'] >= $now) && $entry['ip'] !== '' && ClientIp::inList($ip, [$entry['ip']])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Prüft ob IP gesperrt ist (exakt per Index, CIDR-Bereiche aus dem Cache)
      */
     private static function isBlocked(string $ip): bool
@@ -696,8 +1347,8 @@ class IntrusionPrevention
 
         $sql = rex_sql::factory();
         $sql->setQuery(
-            'SELECT 1 FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1',
-            [$ip],
+            'SELECT 1 FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1',
+            [$ip, self::now()],
         );
         if ($sql->getRows() > 0) {
             return self::$blockedCache[$ip] = true;
@@ -727,20 +1378,25 @@ class IntrusionPrevention
             return self::$listCache;
         }
 
+        // Stand vor dem Lesen der Datenbank merken: eine Datei, die ein paralleler Request mit alten Daten
+        // nach einer Änderung schreibt, trägt den alten Stand und wird verworfen.
+        $generation = self::listGeneration();
         $file = self::listCacheFile();
         if (is_file($file) && (time() - (int) @filemtime($file)) < self::LIST_CACHE_TTL) {
             $data = json_decode((string) @file_get_contents($file), true);
-            if (is_array($data) && isset($data['positive'], $data['blocked_cidr'])) {
+            if (is_array($data) && isset($data['positive'], $data['unlocked'], $data['blocked_cidr'], $data['gen']) && $data['gen'] === $generation) {
                 return self::$listCache = $data;
             }
         }
 
-        $data = ['positive' => [], 'blocked_cidr' => []];
+        $data = ['gen' => $generation, 'positive' => [], 'unlocked' => [], 'blocked_cidr' => []];
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, ip_range, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1 AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 5000');
+            $sql->setQuery('SELECT ip_address, ip_range, expires_at, category FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE status = 1 AND (expires_at IS NULL OR expires_at > ?) LIMIT 5000', [self::now()]);
             foreach ($sql as $row) {
-                $data['positive'][] = [
+                // Selbst-Entsperrung: nur Markierung, keine Positivliste (Prüfungen laufen weiter)
+                $list = self::SELF_UNLOCK_CATEGORY === (string) $row->getValue('category') ? 'unlocked' : 'positive';
+                $data[$list][] = [
                     'ip' => trim((string) $row->getValue('ip_address')),
                     'range' => trim((string) $row->getValue('ip_range')),
                     'exp' => $row->getValue('expires_at') ? (int) strtotime((string) $row->getValue('expires_at')) : 0,
@@ -751,7 +1407,7 @@ class IntrusionPrevention
         }
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT ip_address, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address LIKE '%/%' AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 5000");
+            $sql->setQuery('SELECT ip_address, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE ip_address LIKE '%/%' AND (expires_at IS NULL OR expires_at > ?) LIMIT 5000", [self::now()]);
             foreach ($sql as $row) {
                 $data['blocked_cidr'][] = [
                     'cidr' => trim((string) $row->getValue('ip_address')),
@@ -777,6 +1433,22 @@ class IntrusionPrevention
     }
 
     /**
+     * Aktueller Stand der Listen (direkt aus der Datenbank, nicht aus dem rex_config-Speicher dieses Requests).
+     */
+    private static function listGeneration(): string
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery('SELECT value FROM ' . rex::getTable('config') . ' WHERE namespace = ? AND `key` = ?', ['upkeep', self::LIST_GENERATION_KEY]);
+            if ($sql->getRows() > 0) {
+                return (string) json_decode((string) $sql->getValue('value'), true);
+            }
+        } catch (Throwable) {
+        }
+        return '';
+    }
+
+    /**
      * Verwirft alle Caches (nach Änderungen an Positiv- oder Sperrliste).
      */
     public static function invalidateCache(): void
@@ -784,6 +1456,13 @@ class IntrusionPrevention
         self::$listCache = null;
         self::$blockedCache = [];
         self::$allowCache = [];
+        // Neuer Stand sofort in der Datenbank (nicht erst am Request-Ende), damit andere Requests ihn sehen
+        try {
+            rex_config::set('upkeep', self::LIST_GENERATION_KEY, bin2hex(random_bytes(8)));
+            rex_config::save();
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
         try {
             $file = self::listCacheFile();
             if (is_file($file)) {
@@ -1113,8 +1792,8 @@ class IntrusionPrevention
         $windowStart = date('Y-m-d H:i:00');
         $sql = rex_sql::factory();
         $sql->setQuery(
-            'UPDATE ' . rex::getTable('upkeep_ips_rate_limit') . ' SET request_count = request_count + 1, last_request = NOW() WHERE ip_address = ? AND window_start = ?',
-            [$ip, $windowStart],
+            'UPDATE ' . rex::getTable('upkeep_ips_rate_limit') . ' SET request_count = request_count + 1, last_request = ? WHERE ip_address = ? AND window_start = ?',
+            [self::now(), $ip, $windowStart],
         );
 
         if ($sql->getRows() === 0) {
@@ -1188,12 +1867,28 @@ class IntrusionPrevention
     /**
      * Holt Anzahl der Verstöße für IP (24 h, inkl. zusammengefasster Treffer)
      */
+    /** Treffer aus eingebetteten Fremd-Anfragen der letzten 10 Minuten (inkl. des aktuellen) */
+    private static function getCrossSiteHitCount(string $ip): int
+    {
+        try {
+            $sql = rex_sql::factory();
+            $sql->setQuery(
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken = 'logged_cross_site'",
+                [$ip, date('Y-m-d H:i:s', time() - 600)],
+            );
+            return (int) $sql->getValue('count');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            return 0;
+        }
+    }
+
     private static function getViolationCount(string $ip): int
     {
         try {
             $sql = rex_sql::factory();
             $sql->setQuery(
-                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE ip_address = ? AND created_at >= ?',
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken NOT IN ('logged_cross_site', 'logged_authenticated') AND severity <> 'low'",
                 [$ip, date('Y-m-d H:i:s', time() - 86400)],
             );
             return (int) $sql->getValue('count');
@@ -1210,19 +1905,20 @@ class IntrusionPrevention
      * @param array<string, mixed> $threat
      * @return bool true wenn eine neue Zeile angelegt wurde
      */
-    private static function logThreat(array $threat, string $ip, string $uri, string $userAgent): bool
+    private static function logThreat(array $threat, string $ip, string $uri, string $userAgent, ?string $action = null): bool
     {
         $table = rex::getTable('upkeep_ips_threat_log');
         $pattern = substr((string) ($threat['pattern'] ?? ''), 0, 500);
         $type = substr((string) $threat['type'], 0, 100);
+        $action ??= self::getActionForSeverity((string) $threat['severity']);
 
         try {
             if (self::$aggregation !== false) {
                 try {
                     $sql = rex_sql::factory();
                     $sql->setQuery(
-                        'UPDATE ' . $table . ' SET hit_count = hit_count + 1, last_seen = NOW() WHERE ip_address = ? AND threat_type = ? AND pattern_matched = ? AND created_at >= ? ORDER BY id DESC LIMIT 1',
-                        [$ip, $type, $pattern, date('Y-m-d H:i:s', time() - self::AGGREGATE_WINDOW)],
+                        'UPDATE ' . $table . ' SET hit_count = hit_count + 1, last_seen = ? WHERE ip_address = ? AND threat_type = ? AND pattern_matched = ? AND action_taken = ? AND created_at >= ? ORDER BY id DESC LIMIT 1',
+                        [self::now(), $ip, $type, $pattern, $action, date('Y-m-d H:i:s', time() - self::AGGREGATE_WINDOW)],
                     );
                     self::$aggregation = true;
                     if ($sql->getRows() > 0) {
@@ -1249,7 +1945,7 @@ class IntrusionPrevention
             $sql->setValue('threat_category', substr((string) ($threat['category'] ?? $threat['type']), 0, 100));
             $sql->setValue('pattern_matched', $pattern);
             $sql->setValue('severity', $threat['severity']);
-            $sql->setValue('action_taken', self::getActionForSeverity((string) $threat['severity']));
+            $sql->setValue('action_taken', $action);
             $sql->setValue('created_at', date('Y-m-d H:i:s'));
             if (self::$aggregation === true) {
                 $sql->setValue('last_seen', date('Y-m-d H:i:s'));
@@ -1265,7 +1961,7 @@ class IntrusionPrevention
     /**
      * SQL-Ausdruck für die Trefferzahl einer Log-Zeile (mit/ohne hit_count-Spalte)
      */
-    private static function hitExpression(): string
+    public static function hitExpression(): string
     {
         static $expr = null;
         if ($expr === null) {
@@ -1288,9 +1984,9 @@ class IntrusionPrevention
         if (self::isMonitorOnlyMode()) {
             return 'logged';
         }
+        // Kritisch: zunächst zeitlich begrenzt; dauerhaft erst bei Wiederholung (siehe handleThreat)
         return match ($severity) {
-            'critical' => 'permanent_block',
-            'high' => 'temporary_block',
+            'critical', 'high' => 'temporary_block',
             default => 'logged',
         };
     }
@@ -1306,7 +2002,7 @@ class IntrusionPrevention
     public static function addCustomPattern(string $pattern, string $description = '', string $severity = 'medium', bool $isRegex = false): bool
     {
         $pattern = trim($pattern);
-        if ($pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+        if (mb_strlen($pattern) < self::MIN_PATTERN_LENGTH || ($isRegex && !PatternValidator::isValid($pattern))) {
             return false;
         }
         try {
@@ -1333,7 +2029,7 @@ class IntrusionPrevention
     public static function updateCustomPattern(int $id, string $pattern, string $description, string $severity, bool $isRegex, bool $status): bool
     {
         $pattern = trim($pattern);
-        if ($id <= 0 || $pattern === '' || ($isRegex && !PatternValidator::isValid($pattern))) {
+        if ($id <= 0 || mb_strlen($pattern) < self::MIN_PATTERN_LENGTH || ($isRegex && !PatternValidator::isValid($pattern))) {
             return false;
         }
         try {
@@ -1405,7 +2101,7 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET status = 1 - status, updated_at = NOW() WHERE id = ?', [$id]);
+            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET status = 1 - status, updated_at = ? WHERE id = ?', [self::now(), $id]);
             return $sql->getRows() > 0;
         } catch (Throwable $e) {
             self::exceptionLog($e);
@@ -1454,6 +2150,10 @@ class IntrusionPrevention
         if (($ip === '' || !ClientIp::isValidEntry($ip)) && ($ipRange === null || $ipRange === '' || !ClientIp::isValidEntry($ipRange))) {
             return false;
         }
+        // Zu große Bereiche würden halbe Netze von allen Prüfungen ausnehmen
+        if (ClientIp::isTooWideRange($ip) || ($ipRange !== null && ClientIp::isTooWideRange($ipRange))) {
+            return false;
+        }
         try {
             $sql = rex_sql::factory();
             $sql->setTable(rex::getTable('upkeep_ips_positivliste'));
@@ -1486,15 +2186,15 @@ class IntrusionPrevention
             $expiresAt = (new DateTime())->modify("+{$durationHours} hours")->format('Y-m-d H:i:s');
             $fullDescription = substr(trim($description . " (Temporär bis {$expiresAt})"), 0, 255);
 
+            // Nur eigene, zeitlich begrenzte Einträge (Selbst-Entsperrung, Captcha) verlängern.
+            // Andere Zeilen (Admin, deaktiviert, abgelaufen, andere Kategorie) bleiben unberührt – dann neue Zeile.
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT id, expires_at FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$ip]);
+            $sql->setQuery(
+                'SELECT id FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ? AND category = ? AND expires_at IS NOT NULL ORDER BY id DESC LIMIT 1',
+                [$ip, substr($category, 0, 50)],
+            );
 
             if ($sql->getRows() > 0) {
-                // Permanente Einträge nicht in temporäre umwandeln
-                if ($sql->getValue('expires_at') === null) {
-                    self::invalidateCache();
-                    return true;
-                }
                 $id = (int) $sql->getValue('id');
                 $update = rex_sql::factory();
                 $update->setTable(rex::getTable('upkeep_ips_positivliste'));
@@ -1650,7 +2350,7 @@ class IntrusionPrevention
 
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('SELECT block_type, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1', [$ip]);
+            $sql->setQuery('SELECT block_type, expires_at FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1', [$ip, self::now()]);
             if ($sql->getRows() > 0) {
                 $existingExpiresAt = $sql->getValue('expires_at');
                 $expiryInfo = $existingExpiresAt ? ' bis ' . date('d.m.Y H:i', (int) strtotime((string) $existingExpiresAt)) : ' permanent';
@@ -1728,6 +2428,10 @@ class IntrusionPrevention
                 return false;
             }
             $source = in_array($source, ['auto', 'manual', 'external'], true) ? $source : 'auto';
+            // Kurz nach einer Selbst-Entsperrung nicht noch einmal selbst aufhebbar
+            if ('manual' !== $source && self::wasRecentlyUnlocked($ip)) {
+                $source = self::SOURCE_AFTER_UNLOCK;
+            }
             self::blockIpTemporarily($ip, min($seconds, 30 * 86400), $reason, $source);
             self::invalidateCache();
             return self::isBlocked($ip);
@@ -1836,7 +2540,7 @@ class IntrusionPrevention
             $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE ip_address = ?', [$ip]);
             $debug['blocked_ips'] = $sql->getArray();
 
-            $sql->setQuery("SELECT *, CASE WHEN expires_at IS NULL THEN 'permanent' WHEN expires_at > NOW() THEN 'active' ELSE 'expired' END as status_type FROM " . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [$ip]);
+            $sql->setQuery("SELECT *, CASE WHEN expires_at IS NULL THEN 'permanent' WHEN expires_at > ? THEN 'active' ELSE 'expired' END as status_type FROM " . rex::getTable('upkeep_ips_positivliste') . ' WHERE ip_address = ?', [self::now(), $ip]);
             $debug['positivliste'] = $sql->getArray();
 
             $sql->setQuery('SELECT * FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE ip_address = ? ORDER BY created_at DESC LIMIT 10', [$ip]);
@@ -1906,7 +2610,7 @@ class IntrusionPrevention
         $sql = rex_sql::factory();
 
         try {
-            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > NOW()');
+            $sql->setQuery('SELECT COUNT(*) as count FROM ' . rex::getTable('upkeep_ips_blocked_ips') . ' WHERE expires_at IS NULL OR expires_at > ?', [self::now()]);
             $stats['blocked_ips'] = (int) $sql->getValue('count');
         } catch (Throwable $e) {
             self::debugLog('Statistics: upkeep_ips_blocked_ips table not available: ' . $e->getMessage());
@@ -1918,13 +2622,15 @@ class IntrusionPrevention
             $today = date('Y-m-d 00:00:00');
             $weekStart = date('Y-m-d 00:00:00', (int) strtotime('monday this week'));
 
-            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?', [$today]);
+            // Treffer angemeldeter Nutzer sind keine Bedrohungen (nur in Statistik und Ereignissen sichtbar)
+            $notAuth = " AND action_taken <> '" . self::ACTION_AUTHENTICATED . "'";
+            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth, [$today]);
             $stats['threats_today'] = (int) $sql->getValue('count');
 
-            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?', [$weekStart]);
+            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth, [$weekStart]);
             $stats['threats_week'] = (int) $sql->getValue('count');
 
-            $sql->setQuery('SELECT threat_type, SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5', [$weekStart]);
+            $sql->setQuery('SELECT threat_type, SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth . ' GROUP BY threat_type ORDER BY count DESC LIMIT 5', [$weekStart]);
             foreach ($sql as $row) {
                 $stats['top_threats'][] = [
                     'type' => (string) $row->getValue('threat_type'),
@@ -1986,10 +2692,10 @@ class IntrusionPrevention
         $retentionDays = max(1, min(365, $retentionDays));
 
         try {
-            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < NOW()");
+            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_blocked_ips') . " WHERE block_type = 'temporary' AND expires_at IS NOT NULL AND expires_at < ?", [self::now()]);
             $cleanup['expired_ips'] = $sql->getRows();
 
-            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE expires_at IS NOT NULL AND expires_at < NOW()');
+            $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_positivliste') . ' WHERE expires_at IS NOT NULL AND expires_at < ?', [self::now()]);
             $cleanup['expired_positivliste'] = $sql->getRows();
 
             $sql->setQuery('DELETE FROM ' . rex::getTable('upkeep_ips_threat_log') . ' WHERE created_at < ?', [date('Y-m-d H:i:s', time() - $retentionDays * 86400)]);
@@ -2073,7 +2779,7 @@ class IntrusionPrevention
     {
         try {
             $sql = rex_sql::factory();
-            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_custom_patterns') . ' SET status = 1 - status, updated_at = NOW() WHERE id = ?', [$id]);
+            $sql->setQuery('UPDATE ' . rex::getTable('upkeep_ips_custom_patterns') . ' SET status = 1 - status, updated_at = ? WHERE id = ?', [self::now(), $id]);
             return $sql->getRows() > 0;
         } catch (Throwable $e) {
             self::exceptionLog($e);
