@@ -83,6 +83,20 @@ Das IPS prüft jede Anfrage im Frontend auf bekannte Angriffsmuster (SQL-Injecti
 - **Fehlertolerant:** Fehlt eine Tabelle oder tritt ein Fehler auf, bleibt die Website erreichbar; der Fehler steht im System-Log.
 - **Zeit:** Alle Ablaufzeiten werden mit der Uhr von PHP geschrieben und verglichen. Unterschiedliche Zeitzonen von PHP und Datenbank verlängern oder verkürzen Sperren nicht mehr.
 
+#### Was erkannt wird
+
+- **Bekannte Angriffsmuster in der Adresse:** SQL-Injection, Pfad-Manipulation, Einschleusen von Code und Vorlagen (z. B. `{{7*7}}`), PHP-Stream-Wrapper, Nullbytes, Zugriffe auf Cloud-Metadaten (SSRF).
+- **Suche nach Lücken anderer Systeme:** WordPress, TYPO3, Drupal, Joomla, Laravel, PHPUnit, ThinkPHP, Spring Boot, Router und VPN-Geräte, Outlook Web Access.
+- **Suche nach vertraulichen Dateien:** `.env`, `.git`, Zugangsdaten (`.aws`, `.ssh`, `.htpasswd`), Editor-Einstellungen, Sicherungen und Datenbank-Exporte.
+- **Scanner und Pentest-Werkzeuge** am User-Agent (z. B. sqlmap, Nikto, Nuclei, ffuf, WPScan, Acunetix), nur als ganzes Wort. Allgemeine Bibliotheken wie curl oder python-requests werden nicht gesperrt; fällt eine Anfrage von Go-http-client, python-requests, python-urllib, libwww-perl oder aiohttp zusätzlich mit einem mittleren Treffer auf, gilt sie als „hoch“.
+- **Angriffe über Kopfzeilen und Cookies:** Log4Shell (auch verschleiert), Shellshock, Spring4Shell und Rückruf-Adressen von Scannern (OAST, z. B. `oast.pro`, `interact.sh`, `oastify.com`) in User-Agent, Referer, X-Forwarded-For, X-Api-Version, Cookies und weiteren Kopfzeilen; eingeschleuste Kopfzeilen (CRLF) in der Adresse.
+- **Formulare im Frontend:** Der Inhalt von POST-Anfragen (höchstens 64 KB) wird nur auf eindeutige Signaturen geprüft (Log4Shell, Spring4Shell, Rückruf-Adressen, `php://filter`), nicht auf SQL-Wörter. Das Backend wird nicht geprüft.
+- **Ungewöhnliche HTTP-Methoden:** TRACE, TRACK, DEBUG und CONNECT (hoch), WebDAV-Methoden wie PROPFIND (mittel; Office und der Windows-Explorer sind ausgenommen). GET, POST, HEAD, OPTIONS, PUT, PATCH und DELETE bleiben unberührt.
+- **Verzeichnis-Suche:** Viele Fehlerseiten (404) von einer Adresse in kurzer Zeit (Standard: 30 in 60 Sekunden) sperren eine Stunde, selbst aufhebbar. Bilder, Stylesheets, Skripte, Medien, eingebettete Anfragen, Anfragen fremder Seiten, angemeldete Backend-Nutzer und verifizierte Suchmaschinen zählen nicht mit. Einstellbar unter Einstellungen > Schutz (IPS).
+- **Ohne User-Agent:** wird nur protokolliert (niedrig), nie gesperrt. Niedrige Treffer zählen nicht zu den „wiederholten Verstößen“.
+
+Referer und Formularinhalte kann eine fremde Website bestimmen (Link oder Formular auf ihrer Seite). Treffer dort werden bei Anfragen von fremden Seiten (`Sec-Fetch-Site: cross-site`) nur protokolliert. Die Standardmuster stehen unter Schutz > Muster und lassen sich anpassen oder abschalten; neue Muster aus Updates werden ergänzt, ohne Ihre Änderungen zu überschreiben.
+
 #### Statistik
 
 Unter Schutz > Statistik (nur Admins) stehen die Zahlen für 24 Stunden, 7, 30 oder 90 Tage: Treffer gesamt, Sperren (zeitweise/dauerhaft), aktuell gesperrte IPs, Selbst-Entsperrungen, nur protokollierte Treffer (auch von fremden Seiten) und abgewiesene Formulare. Dazu ein Verlauf pro Tag bzw. Stunde nach Schweregrad (auch als Tabelle), die Aufschlüsselung nach Art, Schweregrad, Ergebnis und Herkunft der aktuellen Sperren sowie die zehn auffälligsten Adressen. Gezählt werden Treffer (zusammengefasste Ereignisse zählen mehrfach); jede Zeile führt zu den passend gefilterten Ereignissen.
@@ -94,7 +108,7 @@ Entsperren heißt nicht, dass eine Adresse nicht mehr überwacht wird.
 - Selbst entsperren kann sich nur, wer gerade eine eigene automatische, zeitlich begrenzte Sperre hat. Ohne Sperre gibt es keine Rechenaufgabe und keine Entsperrung.
 - Nur die eigene IP, höchstens `ips_unlock_max`-mal in 24 Stunden (bei IPv6 je /64-Netz); `0` schaltet die Selbst-Entsperrung aus. Ist das Limit erreicht, zeigt der Sperrbildschirm keine Rechenaufgabe mehr.
 - Nicht selbst aufheben lassen sich manuelle Sperren, dauerhafte Sperren und Sperren ganzer Bereiche.
-- Nach dem Entsperren wird die Adresse für `ips_unlock_hours` nur **markiert**. Sie kommt **nicht** auf die Positivliste und wird weiter vollständig geprüft. Jede neue Sperre in dieser Zeit (Muster, Scanner, Häufung, Anfragen-Limit, Formular- und E-Mail-Schutz) lässt sich nicht noch einmal selbst aufheben.
+- Nach dem Entsperren wird die Adresse für `ips_unlock_hours` nur **markiert**. Sie kommt **nicht** auf die Positivliste und wird weiter vollständig geprüft. Jede neue Sperre in dieser Zeit (Muster, Scanner, Häufung, Verzeichnis-Suche, Anfragen-Limit, Formular- und E-Mail-Schutz) lässt sich nicht noch einmal selbst aufheben.
 - Die Markierungen stehen unter Schutz > Positivliste in einer eigenen Liste „Selbst entsperrt – weiter überwacht“.
 - Einträge aus 3.0.0/3.0.1 (Kategorie `captcha_verified_temp`) werden beim Update zu Markierungen.
 
@@ -228,12 +242,23 @@ Datenbank-Zugangsdaten, E-Mail-Adressen und Server-Software werden nicht ausgege
 | `UPKEEP_SECURITY_SCAN_COMPLETED` | Empfehlungen wurden geprüft | vollständiges Prüfergebnis |
 | `UPKEEP_FORM_SPAM_REJECTED` | Formularschutz weist eine Einsendung ab | Formular, Gründe, Punkte |
 | `UPKEEP_ALLOWED_PATHS` | Wartung im Frontend | Liste von Pfaden, die trotz Wartung erreichbar bleiben |
+| `UPKEEP_IPS_SCANNER_AGENTS` | IPS prüft den User-Agent | Liste der Scanner-Kennungen (ganze Wörter, ohne Groß-/Kleinschreibung) zum Ergänzen oder Entfernen |
 
 ```php
 rex_extension::register('UPKEEP_ALLOWED_PATHS', static function (rex_extension_point $ep) {
     $paths = $ep->getSubject();
     $paths[] = '/api/'; // Pfad-Präfix an Pfadgrenzen, relativ zur Installation (/api gibt /api/… frei, nicht /api-x)
     return $paths;
+});
+```
+
+Scanner-Kennungen ergänzen oder entfernen (z. B. in der `boot.php` des project-AddOns, das vor upkeep geladen wird). Für einen eigenen, erlaubten Scanner ist meist die Positivliste die bessere Wahl:
+
+```php
+rex_extension::register('UPKEEP_IPS_SCANNER_AGENTS', static function (rex_extension_point $ep) {
+    $agents = $ep->getSubject();
+    $agents[] = 'mein-scanner';                                 // ergänzen (mindestens 3 Zeichen)
+    return array_values(array_diff($agents, ['qualys']));       // entfernen
 });
 ```
 

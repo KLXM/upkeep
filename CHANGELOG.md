@@ -19,6 +19,14 @@ Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
 - Listen-Cache: Ein paralleler Request kann keinen veralteten Stand mehr in den Cache schreiben.
 - Datenbank: Die Kategorie der Positivliste ist in Installation und Update einheitlich `varchar(50)`.
 - Neu: Statistik zu Treffern, Sperren und Arten (Schutz > Statistik, nur Admins).
+- IPS: Deutlich mehr Scanner und Pentest-Werkzeuge werden am User-Agent erkannt (z. B. Nuclei, ffuf, feroxbuster, WPScan, WhatWeb, zgrab, Commix). Erkannt wird nur das ganze Wort, damit ähnliche Namen nicht anschlagen. Allgemeine Bibliotheken wie curl bleiben erlaubt. Die Liste lässt sich über den Extension Point `UPKEEP_IPS_SCANNER_AGENTS` anpassen.
+- IPS: Kopfzeilen und Cookies werden auf eindeutige Angriffe geprüft (Log4Shell, Shellshock, Spring4Shell, Rückruf-Adressen von Scannern), die Adresse zusätzlich auf eingeschleuste Kopfzeilen.
+- IPS: POST-Anfragen im Frontend werden auf dieselben eindeutigen Signaturen geprüft (höchstens 64 KB, keine SQL-Wörter). Das Backend ist nicht betroffen.
+- IPS: Ungewöhnliche HTTP-Methoden (TRACE, TRACK, DEBUG, CONNECT; WebDAV) werden erkannt.
+- IPS: Neu „Verzeichnis-Suche“: Viele Fehlerseiten (404) in kurzer Zeit sperren eine Stunde, selbst aufhebbar. Standard an, Schwelle einstellbar (30 in 60 Sekunden). Bilder, Medien, eingebettete Anfragen und verifizierte Suchmaschinen zählen nicht.
+- IPS: Neue Standardmuster für bekannte Lücken anderer Systeme (Laravel, PHPUnit, ThinkPHP, Spring Boot, Router, VPN-Geräte), Zugangsdaten und Editor-Dateien, Sicherungen und Datenbank-Exporte, Template-Injection, Stream-Wrapper, Nullbytes und Cloud-Metadaten. Beim Update werden nur fehlende Muster ergänzt.
+- IPS: Anfragen ohne User-Agent werden nur protokolliert. Niedrige Treffer zählen nicht mehr zu den wiederholten Verstößen.
+- Statistik und Ereignisse zeigen für alle Arten verständliche Bezeichnungen.
 
 ## 3.0.1 (2026-10-17)
 

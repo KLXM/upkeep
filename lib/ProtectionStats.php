@@ -3,6 +3,7 @@
 namespace KLXM\Upkeep;
 
 use rex;
+use rex_i18n;
 use rex_sql;
 use Throwable;
 
@@ -26,6 +27,17 @@ final class ProtectionStats
 
     /** Bekannte Herkünfte einer Sperre */
     public const SOURCES = ['auto', 'manual', 'external', IntrusionPrevention::SOURCE_AFTER_UNLOCK];
+
+    /**
+     * Lesbare Bezeichnung einer Ereignis-Art (threat_type); unbekannte Arten bleiben unverändert.
+     */
+    public static function typeLabel(string $type): string
+    {
+        if (str_starts_with($type, 'mail_escalated_')) {
+            return rex_i18n::rawMsg('upkeep_stats_type_mail_escalated') . ': ' . substr($type, 15);
+        }
+        return rex_i18n::hasMsg('upkeep_stats_type_' . $type) ? rex_i18n::rawMsg('upkeep_stats_type_' . $type) : $type;
+    }
 
     public static function normalizePeriod(string $period): string
     {

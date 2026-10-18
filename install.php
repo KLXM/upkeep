@@ -469,6 +469,74 @@ try {
     rex_logger::logException($e);
 }
 
+// 3.0.2: Weitere Standardmuster (bekannte Lücken anderer Systeme, Zugangsdaten, Sicherungen, Einschleusung).
+// Nur Muster, die es noch nicht gibt, werden ergänzt – vorhandene und von Ihnen geänderte Zeilen bleiben unverändert.
+// Einfache SQL-Befehle: update.php läuft mit den Klassen der alten Version.
+$ips302Patterns = [
+    // [Kategorie, Muster, Beschreibung, Schweregrad, RegEx]
+    ['exploits', '/_ignition/execute-solution', 'Laravel Ignition (Codeausführung)', 'critical', 0],
+    ['exploits', '/eval-stdin.php', 'PHPUnit eval-stdin (Codeausführung)', 'critical', 0],
+    ['exploits', 'invokefunction', 'ThinkPHP (Codeausführung)', 'critical', 0],
+    ['exploits', 'think\app', 'ThinkPHP (Codeausführung)', 'critical', 0],
+    ['exploits', '#/actuator/(?:env|heapdump|gateway|jolokia|configprops|threaddump|logfile|httptrace|mappings|beans)\b#i', 'Spring Boot Actuator', 'high', 1],
+    ['exploits', '#/vendor/[^?]*\.php#i', 'Direkter Aufruf von PHP-Dateien in vendor/', 'high', 1],
+    ['exploits', '/cgi-bin/', 'CGI-Skripte', 'high', 0],
+    ['exploits', '/_profiler/', 'Symfony Profiler', 'medium', 0],
+    ['exploits', '/telescope/requests', 'Laravel Telescope', 'medium', 0],
+    ['appliances', '/hnap1', 'Router (HNAP)', 'high', 0],
+    ['appliances', '/boaform', 'Router (Boa)', 'high', 0],
+    ['appliances', '/+CSCOE+/', 'Cisco VPN', 'high', 0],
+    ['appliances', '/remote/fgt_lang', 'Fortinet VPN', 'high', 0],
+    ['appliances', '/dana-na/', 'Pulse Secure VPN', 'high', 0],
+    ['appliances', '/global-protect/', 'Palo Alto VPN', 'high', 0],
+    ['appliances', '/mgmt/tm/', 'F5 BIG-IP', 'high', 0],
+    ['appliances', '/owa/auth', 'Outlook Web Access', 'high', 0],
+    ['appliances', '/autodiscover/autodiscover.xml', 'Exchange Autodiscover (auch echte Outlook-Programme – nur protokolliert)', 'low', 0],
+    ['config_files', '/.aws/', 'AWS-Zugangsdaten', 'critical', 0],
+    ['config_files', '/.ssh/', 'SSH-Schlüssel', 'critical', 0],
+    ['config_files', '/.htpasswd', 'Apache-Passwortdatei', 'critical', 0],
+    ['config_files', '/.git-credentials', 'Git-Zugangsdaten', 'critical', 0],
+    ['config_files', '/.vscode/', 'Editor-Einstellungen (z. B. sftp.json mit Zugangsdaten)', 'high', 0],
+    ['config_files', '/.idea/', 'Editor-Einstellungen (JetBrains)', 'high', 0],
+    ['config_files', '/docker-compose.yml', 'Docker-Konfiguration', 'high', 0],
+    ['info_disclosure', '/.DS_Store', 'macOS-Ordnerdatei (Dateiliste)', 'medium', 0],
+    ['backups', '#/(?:backup|backups|dump|db|database|www|wwwroot|htdocs|httpdocs|public_html)\.(?:zip|sql|sql\.gz|sql\.zip|tar|tar\.gz|tgz|gz|rar|7z|bak)(?:$|\?)#i', 'Sicherungsdateien (Website, Datenbank)', 'high', 1],
+    ['backups', '#\.sql(?:\.gz|\.zip|\.bz2)?(?:$|\?)#i', 'Datenbank-Exporte (.sql)', 'high', 1],
+    ['backups', '#\.(?:php|inc|ini|conf|config|ya?ml|env)(?:\.(?:bak|old|orig|save|swp|tmp)|~)(?:$|\?)#i', 'Sicherungskopien von Konfigurationsdateien', 'high', 1],
+    ['injection', '~(?:\{\{|\$\{|<%=?|#\{)\s*\d+\s*\*\s*\d+\s*(?:\}\}|\}|%>)~', 'Template-Injection (z. B. {{7*7}})', 'high', 1],
+    ['injection', '~(?<![a-z])(?:php|expect|phar|zip|glob|data)://~i', 'PHP-Stream-Wrapper (Datei-Einbindung)', 'high', 1],
+    ['injection', '/\x00/', 'Nullbyte', 'high', 1],
+    ['injection', '169.254.169.254', 'SSRF: Cloud-Metadaten', 'high', 0],
+    ['injection', 'metadata.google.internal', 'SSRF: Cloud-Metadaten (Google)', 'high', 0],
+    ['injection', '100.100.100.200', 'SSRF: Cloud-Metadaten (Alibaba)', 'high', 0],
+];
+try {
+    $now302 = date('Y-m-d H:i:s');
+    $table302 = rex::getTable('upkeep_ips_default_patterns');
+    foreach ($ips302Patterns as [$category302, $pattern302, $description302, $severity302, $regex302]) {
+        $check302 = rex_sql::factory();
+        $check302->setQuery('SELECT id FROM ' . $table302 . ' WHERE pattern = ? LIMIT 1', [$pattern302]);
+        if ($check302->getRows() > 0) {
+            continue;
+        }
+        rex_sql::factory()->setQuery(
+            'INSERT INTO ' . $table302 . ' (category, pattern, description, severity, is_regex, status, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)',
+            [$category302, $pattern302, $description302, $severity302, $regex302, $now302, $now302],
+        );
+    }
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+unset($ips302Patterns, $now302, $table302, $check302, $category302, $pattern302, $description302, $severity302, $regex302);
+
+// 3.0.2: Verzeichnis-Suche (viele 404 in kurzer Zeit) – standardmäßig an
+if ($addon->getConfig('ips_404_flood') === null) {
+    $addon->setConfig('ips_404_flood', 1);
+}
+if ($addon->getConfig('ips_404_flood_limit') === null) {
+    $addon->setConfig('ips_404_flood_limit', 30);
+}
+
 // Mail Security Tabellen erstellen
 
 // Mail Rate Limiting Tabelle (getrennt von IPS Rate Limiting)

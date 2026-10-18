@@ -7,6 +7,7 @@
  */
 
 use KLXM\Upkeep\IntrusionPrevention;
+use KLXM\Upkeep\ProtectionStats;
 use KLXM\Upkeep\Ui;
 
 $addon = rex_addon::get('upkeep');
@@ -210,7 +211,10 @@ foreach ($rows as $row) {
     if ($geoAvailable) {
         $body .= Ui::td($labels['country'], '<span class="upk-muted">' . rex_escape($country($ip) ?: '-') . '</span>');
     }
-    $body .= Ui::td($labels['type'], rex_escape((string) $row['threat_type']));
+    $typeLabel = ProtectionStats::typeLabel((string) $row['threat_type']);
+    $body .= Ui::td($labels['type'], $typeLabel !== (string) $row['threat_type']
+        ? '<span title="' . rex_escape((string) $row['threat_type']) . '">' . rex_escape($typeLabel) . '</span>'
+        : rex_escape($typeLabel));
     $body .= Ui::td($labels['severity'], Ui::severity((string) $row['severity']));
     $body .= Ui::td($labels['pattern'], '<span class="upk-mono" title="' . rex_escape($pattern) . '">' . rex_escape(mb_strimwidth($pattern, 0, 50, '…')) . '</span>');
     $body .= Ui::td($labels['uri'], '<span class="upk-mono" title="' . rex_escape($uri) . '">' . rex_escape(mb_strimwidth($uri, 0, 80, '…')) . '</span>');

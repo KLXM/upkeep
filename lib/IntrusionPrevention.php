@@ -6,6 +6,7 @@ use DateTime;
 use Exception;
 use rex;
 use rex_addon;
+use rex_backend_login;
 use rex_config;
 use rex_dir;
 use rex_extension;
@@ -26,6 +27,8 @@ use Throwable;
  * - Pentest-Tools und Scanner-Signaturen
  * - SQL-Injection und Path-Traversal-Versuche
  * - Benutzerdefinierte Patterns
+ * - 3.0.2: Signaturen in Kopfzeilen, Cookies und Frontend-POSTs (Log4Shell, Shellshock, Spring4Shell, OAST),
+ *   ungewöhnliche HTTP-Methoden, Verzeichnis-Suche (viele 404)
  *
  * 3.0: echte Client-IP über ClientIp, Sperrseite über BlockPage (ALTCHA),
  * Fail-open bei Fehlern, zusammengefasste Logs, Caches pro Request.
@@ -84,28 +87,52 @@ class IntrusionPrevention
     private static int $dnsLookups = 0;
 
     /**
-     * Bekannte Scanner und Pentest-Tools (User-Agent)
+     * Bekannte Scanner und Pentest-Tools (User-Agent). Treffer nur als ganzes Wort (ohne Groß-/Kleinschreibung),
+     * damit z. B. „nmap“ nicht in einem längeren Namen anschlägt. Erweiterbar über UPKEEP_IPS_SCANNER_AGENTS.
+     * Allgemeine Bibliotheken (curl, python-requests, Go-http-client) stehen bewusst nicht in dieser Liste.
      *
      * @var list<string>
      */
     private static array $suspiciousUserAgents = [
-        'nmap',
-        'nikto',
-        'sqlmap',
-        'burpsuite',
-        'owasp zap',
-        'acunetix',
-        'nessus',
-        'openvas',
-        'masscan',
-        'dirb',
-        'dirbuster',
-        'gobuster',
-        'wfuzz',
-        'hydra',
-        'metasploit',
-        'w3af',
+        // Port- und Netzwerkscanner
+        'nmap', 'masscan', 'zmap', 'zgrab', 'zgrab2',
+        // Schwachstellenscanner
+        'nikto', 'nuclei', 'nessus', 'openvas', 'acunetix', 'netsparker', 'invicti', 'appscan', 'webinspect',
+        'qualys', 'qualyswas', 'qualysguard', 'burpsuite', 'burp collaborator', 'owasp zap', 'zaproxy', 'w3af', 'arachni',
+        'skipfish', 'wapiti', 'jaeles', 'grabber', 'paros', 'webshag', 'vega scanner', 'grendel-scan', 'nsauditor',
+        'interactsh',
+        // CMS-Scanner und Fingerprinting
+        'wpscan', 'joomscan', 'droopescan', 'cmsmap', 'whatweb',
+        // Verzeichnis- und Parameter-Suche (Fuzzer)
+        'dirb', 'dirbuster', 'gobuster', 'feroxbuster', 'dirsearch', 'ffuf', 'fuzz faster u fool', 'wfuzz', 'dotdotpwn',
+        // Injection- und Exploit-Werkzeuge
+        'sqlmap', 'havij', 'sqlninja', 'jsql', 'bbqsql', 'pangolin', 'fimap', 'commix', 'xsstrike',
+        'xsser', 'metasploit', 'tplmap', 'nosqlmap',
+        // Passwort-Rater
+        'hydra', 'medusa', 'patator', 'crowbar', 'brutus',
+        // Bekannte Bot-Netze und Massenscanner
+        'zmeu', 'morfeus', 'muieblackcat', 'fhscan',
     ];
+
+    /**
+     * Allgemeine HTTP-Bibliotheken: allein harmlos (Skripte, Monitoring). Fällt dieselbe Anfrage zusätzlich
+     * mit einem mittleren Treffer auf, wird sie als „hoch“ behandelt.
+     *
+     * @var list<string>
+     */
+    private static array $genericClients = ['go-http-client', 'python-requests', 'python-urllib', 'libwww-perl', 'aiohttp'];
+
+    /** Höchstens so viele Bytes eines POST-Rumpfs werden geprüft */
+    private const BODY_SCAN_BYTES = 65536;
+
+    /** Höchstens so viele Zeichen je Kopfzeile bzw. Cookie werden geprüft */
+    private const HEADER_SCAN_CHARS = 4096;
+
+    /** Zeitfenster für die Erkennung von Verzeichnis-Suchen (viele 404 in Folge, Sekunden) */
+    private const NOT_FOUND_WINDOW = 60;
+
+    /** Sperrdauer nach einer Verzeichnis-Suche (Sekunden) */
+    private const NOT_FOUND_BLOCK_SECONDS = 3600;
 
     /**
      * Liefert die Addon-Instanz
@@ -219,6 +246,13 @@ class IntrusionPrevention
                 'pattern' => 'Too many requests',
             ], $clientIp, $requestUri, $userAgent, $recentlyUnlocked);
         }
+
+        // Verzeichnis-Suche: 404-Antworten erst am Ende der Anfrage zählen (Status steht dann fest)
+        if (self::isNotFoundFloodEnabled()) {
+            register_shutdown_function(static function () use ($clientIp, $requestUri, $userAgent, $recentlyUnlocked): void {
+                self::countNotFound($clientIp, $requestUri, $userAgent, $recentlyUnlocked);
+            });
+        }
     }
 
     /**
@@ -243,6 +277,15 @@ class IntrusionPrevention
         $site = strtolower(trim(rex_server('HTTP_SEC_FETCH_SITE', 'string', '')));
         $dest = strtolower(trim(rex_server('HTTP_SEC_FETCH_DEST', 'string', '')));
         return 'cross-site' === $site && '' !== $dest && !in_array($dest, ['document', 'iframe', 'frame'], true);
+    }
+
+    /**
+     * Hat eine fremde Website die Anfrage ausgelöst (Link, Formular, eingebettete Datei)?
+     * Echte Browser senden Sec-Fetch-Site; Scanner und Skripte in der Regel nicht.
+     */
+    private static function isThirdPartyRequest(): bool
+    {
+        return 'cross-site' === strtolower(trim(rex_server('HTTP_SEC_FETCH_SITE', 'string', '')));
     }
 
     /**
@@ -278,6 +321,11 @@ class IntrusionPrevention
             ];
         }
 
+        // 0. Eindeutige Angriffs-Signaturen in Adresse, Methode und Kopfzeilen (Log4Shell, Shellshock, Rückruf-Domains …)
+        $threat ??= self::checkUriSignatures($uri);
+        $threat ??= self::checkMethod($userAgent);
+        $threat ??= self::checkHeaders();
+
         // 1. Standard-Patterns
         if ($threat === null) {
             foreach (self::getDefaultPatterns() as $pattern) {
@@ -293,18 +341,16 @@ class IntrusionPrevention
             }
         }
 
-        // 2. User-Agent
+        // 2. User-Agent (bekannte Scanner und Pentest-Tools, nur ganze Wörter)
         if ($threat === null && $userAgent !== '') {
-            $userAgentLower = strtolower($userAgent);
-            foreach (self::$suspiciousUserAgents as $suspiciousAgent) {
-                if (str_contains($userAgentLower, $suspiciousAgent)) {
-                    $threat = [
-                        'type' => 'suspicious_user_agent',
-                        'pattern' => $suspiciousAgent,
-                        'severity' => 'high',
-                    ];
-                    break;
-                }
+            $agent = self::matchScannerAgent($userAgent);
+            if ($agent !== null) {
+                $threat = [
+                    'type' => 'suspicious_user_agent',
+                    'pattern' => $agent,
+                    'severity' => 'high',
+                    'source' => 'header',
+                ];
             }
         }
 
@@ -322,12 +368,34 @@ class IntrusionPrevention
             }
         }
 
+        // 4. POST-Rumpf im Frontend (nur eindeutige Signaturen, keine SQL-Wörter – Formulare enthalten normalen Text)
+        $threat ??= self::checkBody();
+
+        // 5. Ohne User-Agent: nur protokollieren, nie allein sperren
+        if ($threat === null && '' === trim($userAgent) && 'cli' !== PHP_SAPI) {
+            $threat = [
+                'type' => 'empty_user_agent',
+                'category' => 'header',
+                'pattern' => 'User-Agent missing',
+                'severity' => 'low',
+                'source' => 'header',
+            ];
+        }
+
         if ($threat === null) {
             return null;
         }
 
-        // Legitime CMS-URL: "high" wird zu "medium" (keine Sofortsperre). Kritische Treffer werden nie abgestuft.
-        if (($threat['category'] ?? '') !== 'immediate_block' && self::isLegitimateUrl($uri)) {
+        // Allgemeine HTTP-Bibliothek plus mittlerer Treffer: typisch für automatisierte Angriffe
+        if ('medium' === $threat['severity'] && self::isGenericClient($userAgent)) {
+            $threat['severity'] = 'high';
+            $threat['escalated'] = true;
+        }
+
+        // Legitime CMS-URL: "high" wird zu "medium" (keine Sofortsperre). Kritische Treffer werden nie abgestuft,
+        // Treffer in Kopfzeilen, Methode oder Rumpf auch nicht (die Adresse sagt darüber nichts aus).
+        if (($threat['category'] ?? '') !== 'immediate_block' && empty($threat['escalated'])
+            && in_array($threat['source'] ?? 'uri', ['uri'], true) && self::isLegitimateUrl($uri)) {
             if ('high' === $threat['severity']) {
                 $threat['severity'] = 'medium';
                 $threat['downgraded'] = true;
@@ -399,6 +467,399 @@ class IntrusionPrevention
         return false;
     }
 
+    // ------------------------------------------------------------------
+    // Signaturen in Kopfzeilen, Methode und Rumpf
+    // ------------------------------------------------------------------
+
+    /**
+     * Eindeutige Angriffs-Signaturen. Sie kommen in normalen Anfragen nicht vor und werden deshalb
+     * in Adresse, Kopfzeilen und (Frontend-)POST-Rümpfen gesucht.
+     *
+     * @return array<string, array{regex: string, label: string, severity: string, body: bool}>
+     */
+    private static function signatures(): array
+    {
+        return [
+            // Log4Shell: ${jndi:…} und verschleierte Formen (${${lower:j}ndi:…}, ${${::-j}…}, ${env:…})
+            'log4shell' => [
+                'regex' => '/\$\{\s*(?:jndi\s*:|\$\{|::-|(?:lower|upper|env|sys|java|date|base64|main|ctx|k8s|docker|bundle|marker|sd|event|jvmrunargs)\s*:)/i',
+                'label' => '${jndi:…}',
+                'severity' => 'critical',
+                'body' => true,
+            ],
+            // Spring4Shell: Zugriff auf den ClassLoader über Parameter
+            'spring4shell' => [
+                'regex' => '/class\s*(?:\.|\[\s*[\'"]?)\s*module\s*(?:\.|[\'"]?\s*\]\s*\[\s*[\'"]?)\s*classloader/i',
+                'label' => 'class.module.classLoader',
+                'severity' => 'critical',
+                'body' => true,
+            ],
+            // Shellshock: Wert beginnt mit einer Funktionsdefinition, z. B. "() { :; };" (nur so wertet Bash ihn aus)
+            'shellshock' => [
+                'regex' => '/(?:^|[=\'"])\s*\(\s*\)\s*\{[^}]{0,80};\s*\}/',
+                'label' => '() { …; }',
+                'severity' => 'critical',
+                'body' => false,
+            ],
+            // Rückruf-Domains (Out-of-Band), mit denen Scanner prüfen, ob eine Eingabe ausgeführt wurde
+            'oast_callback' => [
+                'regex' => '/(?<![a-z0-9-])(?:oast\.(?:pro|live|site|online|fun|me)|interact\.sh|interactsh\.com|oastify\.com|burpcollaborator\.net|dnslog\.cn|dnslog\.link|ceye\.io|requestrepo\.com|canarytokens\.com|bxss\.me|xss\.ht)(?![a-z0-9-])/i',
+                'label' => 'OAST',
+                'severity' => 'high',
+                'body' => true,
+            ],
+            // PHP-Stream-Wrapper (Datei-Einbindung) – in der Adresse über die Standardmuster, hier nur im Rumpf
+            'php_wrapper' => [
+                'regex' => '~(?<![a-z])(?:php://(?:filter|input)|expect://|phar://)~i',
+                'label' => 'php://',
+                'severity' => 'high',
+                'body' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Prüft einen Wert auf die Signaturen (auch einfach und doppelt URL-kodiert).
+     *
+     * @return array{type: string, label: string, severity: string}|null
+     */
+    private static function matchSignatures(string $value, bool $body = false): ?array
+    {
+        if ($value === '' || (!str_contains($value, '$') && !str_contains($value, '%') && !str_contains($value, '(')
+            && !str_contains($value, '.') && !str_contains($value, ':') && !str_contains($value, '['))) {
+            return null;
+        }
+        $candidates = [$value];
+        if (str_contains($value, '%') || str_contains($value, '+')) {
+            $once = urldecode($value);
+            $candidates[] = $once;
+            if (str_contains($once, '%')) {
+                $candidates[] = urldecode($once);
+            }
+        }
+        foreach (self::signatures() as $type => $signature) {
+            if ($body && !$signature['body']) {
+                continue;
+            }
+            if ('php_wrapper' === $type && !$body) {
+                continue;
+            }
+            foreach ($candidates as $candidate) {
+                if (1 === @preg_match($signature['regex'], $candidate)) {
+                    return ['type' => $type, 'label' => $signature['label'], 'severity' => $signature['severity']];
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Signaturen und Header-Injection (CRLF) in der Adresse.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkUriSignatures(string $uri): ?array
+    {
+        $hit = self::matchSignatures($uri);
+        if ($hit !== null) {
+            return [
+                'type' => $hit['type'],
+                'category' => 'uri',
+                'pattern' => $hit['label'],
+                'severity' => $hit['severity'],
+                'source' => 'uri',
+            ];
+        }
+
+        // Zeilenumbruch gefolgt von einer Kopfzeile (Antwort-Manipulation), auch als Unicode-Variante
+        if (preg_match('/(?:%0d|%0a|%e5%98%8a|%e5%98%8d|\r|\n)+\s*(?:set-cookie|location|content-type|content-length|access-control-allow-[a-z]+|x-xss-protection)\s*(?::|%3a)/i', $uri)) {
+            return [
+                'type' => 'crlf_injection',
+                'category' => 'uri',
+                'pattern' => 'CRLF + header',
+                'severity' => 'high',
+                'source' => 'uri',
+            ];
+        }
+        return null;
+    }
+
+    /**
+     * Ungewöhnliche HTTP-Methoden. GET, POST, HEAD, OPTIONS, PUT, PATCH und DELETE bleiben unberührt
+     * (Schnittstellen nutzen PUT/PATCH/DELETE).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkMethod(string $userAgent): ?array
+    {
+        $method = strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'));
+        if (in_array($method, ['GET', 'POST', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'], true)) {
+            return null;
+        }
+        // Debug- und Tunnel-Methoden: nur von Werkzeugen
+        if (in_array($method, ['TRACE', 'TRACK', 'DEBUG', 'CONNECT'], true)) {
+            return ['type' => 'http_method', 'category' => 'method', 'pattern' => $method, 'severity' => 'high', 'source' => 'method'];
+        }
+        // WebDAV gibt es in REDAXO nicht. Office und der Windows-Explorer fragen beim Öffnen von Dokumenten
+        // trotzdem danach – diese Programme werden nicht gemeldet.
+        if (in_array($method, ['PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK'], true)) {
+            if (preg_match('/microsoft office|microsoft-webdav|davclnt|ms frontpage/i', $userAgent)) {
+                return null;
+            }
+            return ['type' => 'http_method', 'category' => 'method', 'pattern' => $method, 'severity' => 'medium', 'source' => 'method'];
+        }
+        return null;
+    }
+
+    /**
+     * Kopfzeilen und Cookies (Länge je Wert begrenzt).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkHeaders(): ?array
+    {
+        $checked = 0;
+        foreach ($_SERVER as $key => $value) {
+            if (!is_string($key) || !str_starts_with($key, 'HTTP_') || 'HTTP_COOKIE' === $key || !is_string($value) || $value === '') {
+                continue;
+            }
+            if (++$checked > 60) {
+                break;
+            }
+            $hit = self::matchSignatures(substr($value, 0, self::HEADER_SCAN_CHARS));
+            if ($hit !== null) {
+                $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($key, 5)))));
+                return [
+                    'type' => $hit['type'],
+                    'category' => 'header',
+                    'pattern' => $hit['label'] . ' [' . $name . ']',
+                    'severity' => $hit['severity'],
+                    // Den Referer bestimmt bei Links die verweisende Seite – dort gilt die Regel für fremde Seiten
+                    'source' => 'HTTP_REFERER' === $key ? 'referer' : 'header',
+                ];
+            }
+        }
+
+        $checked = 0;
+        foreach ($_COOKIE as $name => $value) {
+            if (++$checked > 50) {
+                break;
+            }
+            $values = [(string) $name];
+            if (is_string($value)) {
+                $values[] = $value;
+            } elseif (is_array($value)) {
+                array_walk_recursive($value, static function ($v, $k) use (&$values): void {
+                    if (count($values) < 20) {
+                        $values[] = (string) $k;
+                        $values[] = is_scalar($v) ? (string) $v : '';
+                    }
+                });
+            }
+            foreach ($values as $v) {
+                $hit = self::matchSignatures(substr($v, 0, self::HEADER_SCAN_CHARS));
+                if ($hit !== null) {
+                    return [
+                        'type' => $hit['type'],
+                        'category' => 'header',
+                        'pattern' => $hit['label'] . ' [Cookie]',
+                        'severity' => $hit['severity'],
+                        'source' => 'header',
+                    ];
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Rumpf von POST-Anfragen im Frontend (höchstens die ersten 64 KB). Nur eindeutige Signaturen.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function checkBody(): ?array
+    {
+        if (!rex::isFrontend() || 'POST' !== strtoupper(rex_server('REQUEST_METHOD', 'string', 'GET'))) {
+            return null;
+        }
+        $body = '';
+        try {
+            $fh = @fopen('php://input', 'r');
+            if ($fh !== false) {
+                $body = (string) stream_get_contents($fh, self::BODY_SCAN_BYTES);
+                fclose($fh);
+            }
+        } catch (Throwable) {
+            $body = '';
+        }
+        // multipart/form-data: der Rohtext steht nicht zur Verfügung, dann die Formularwerte
+        if ($body === '' && $_POST !== []) {
+            $parts = [];
+            $length = 0;
+            array_walk_recursive($_POST, static function ($v, $k) use (&$parts, &$length): void {
+                if ($length < self::BODY_SCAN_BYTES) {
+                    $piece = (string) $k . '=' . (is_scalar($v) ? (string) $v : '');
+                    $parts[] = $piece;
+                    $length += strlen($piece);
+                }
+            });
+            $body = substr(implode("\n", $parts), 0, self::BODY_SCAN_BYTES);
+        }
+        if ($body === '') {
+            return null;
+        }
+        $hit = self::matchSignatures($body, true);
+        if ($hit === null) {
+            return null;
+        }
+        return [
+            'type' => $hit['type'],
+            'category' => 'body',
+            'pattern' => $hit['label'] . ' [POST]',
+            'severity' => $hit['severity'],
+            'source' => 'body',
+        ];
+    }
+
+    // ------------------------------------------------------------------
+    // Scanner (User-Agent)
+    // ------------------------------------------------------------------
+
+    /**
+     * Liste der Scanner-Kennungen (kleingeschrieben). Über den Extension Point UPKEEP_IPS_SCANNER_AGENTS
+     * lassen sich Einträge ergänzen oder entfernen (Registrierung in einer boot.php, z. B. im project-AddOn).
+     *
+     * @return list<string>
+     */
+    public static function getScannerAgents(): array
+    {
+        static $agents = null;
+        if ($agents !== null) {
+            return $agents;
+        }
+        $list = self::$suspiciousUserAgents;
+        try {
+            $result = rex_extension::registerPoint(new rex_extension_point('UPKEEP_IPS_SCANNER_AGENTS', $list));
+            if (is_array($result)) {
+                $list = $result;
+            }
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
+        $clean = [];
+        foreach ($list as $entry) {
+            if (!is_string($entry)) {
+                continue;
+            }
+            $entry = strtolower(trim($entry));
+            if (mb_strlen($entry) >= self::MIN_PATTERN_LENGTH && mb_strlen($entry) <= 100) {
+                $clean[$entry] = true;
+            }
+        }
+        return $agents = array_keys($clean);
+    }
+
+    /**
+     * Liefert die erkannte Scanner-Kennung (ganzes Wort) oder null.
+     */
+    private static function matchScannerAgent(string $userAgent): ?string
+    {
+        static $regex = null;
+        if ($regex === null) {
+            $agents = self::getScannerAgents();
+            // Längere Einträge zuerst, damit "dirbuster" vor "dirb" gemeldet wird
+            usort($agents, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+            $quoted = array_map(static fn (string $a): string => str_replace(' ', '[\s_+-]?', preg_quote($a, '/')), $agents);
+            $regex = $quoted ? '/(?<![a-z0-9])(' . implode('|', $quoted) . ')(?![a-z0-9])/i' : '';
+        }
+        if ($regex === '' || 1 !== @preg_match($regex, substr($userAgent, 0, 1000), $m)) {
+            return null;
+        }
+        return strtolower($m[1]);
+    }
+
+    private static function isGenericClient(string $userAgent): bool
+    {
+        $userAgent = strtolower($userAgent);
+        foreach (self::$genericClients as $client) {
+            if (str_contains($userAgent, $client)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // Verzeichnis-Suche (viele 404)
+    // ------------------------------------------------------------------
+
+    public static function isNotFoundFloodEnabled(): bool
+    {
+        return (bool) self::getAddon()->getConfig('ips_404_flood', true);
+    }
+
+    /**
+     * Zählt 404-Antworten pro Adresse (IPv6 je /64) in einem gleitenden Zeitfenster. Ab der Schwelle wird
+     * die Adresse eine Stunde gesperrt (selbst aufhebbar); die Sperre greift ab der nächsten Anfrage.
+     * Nicht gezählt: Dateien wie Bilder, Stylesheets und Skripte, eingebettete Anfragen und Anfragen fremder Seiten
+     * (defekte Bilder auf einer Seite sollen niemanden sperren), angemeldete Backend-Nutzer.
+     */
+    private static function countNotFound(string $ip, string $uri, string $userAgent, bool $afterUnlock): void
+    {
+        try {
+            if (404 !== http_response_code()) {
+                return;
+            }
+            $dest = strtolower(trim(rex_server('HTTP_SEC_FETCH_DEST', 'string', '')));
+            if (('' !== $dest && 'document' !== $dest) || self::isThirdPartyRequest()) {
+                return;
+            }
+            $path = strtolower((string) (parse_url($uri, PHP_URL_PATH) ?? ''));
+            if (str_contains($path, '/media/') || str_contains($path, '/assets/') || '' !== rex_get('rex_media_file', 'string', '')
+                || preg_match('/\.(?:jpe?g|png|gif|webp|avif|svg|ico|bmp|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|ogg)$/', $path)) {
+                return;
+            }
+            if (class_exists('rex_backend_login') && rex_backend_login::hasSession()) {
+                return;
+            }
+
+            $limit = max(10, min(300, (int) self::getAddon()->getConfig('ips_404_flood_limit', 30)));
+            $now = time();
+            $bucket = ClientIp::bucket($ip);
+            $store = new JsonStore('ips_404', 2000);
+            $hits = $store->update($bucket, static function ($v) use ($now, $limit): array {
+                $list = is_array($v) ? array_values(array_filter($v, static fn ($t) => is_int($t) && $t > $now - self::NOT_FOUND_WINDOW)) : [];
+                $list[] = $now;
+                return array_slice($list, -$limit);
+            }, self::NOT_FOUND_WINDOW);
+            if (!is_array($hits) || count($hits) < $limit) {
+                return;
+            }
+            // Verifizierte Suchmaschinen (Googlebot, Bingbot) folgen auch toten Links
+            if (self::isGoodBot()) {
+                return;
+            }
+            $store->delete($bucket);
+
+            $threat = [
+                'type' => 'not_found_flood',
+                'category' => 'scan',
+                'pattern' => $limit . ' x 404 / ' . self::NOT_FOUND_WINDOW . ' s',
+                'severity' => 'high',
+                'source' => 'uri',
+            ];
+            $action = self::getActionForSeverity('high');
+            $isNew = self::logThreat($threat, $ip, $uri, $userAgent, $action);
+            self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew, $action);
+            if (self::isMonitorOnlyMode() || self::isBlocked($ip)) {
+                return;
+            }
+            self::blockIpTemporarily($ip, self::NOT_FOUND_BLOCK_SECONDS, 'Directory scan (many 404 responses)', $afterUnlock ? self::SOURCE_AFTER_UNLOCK : 'auto');
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+        }
+    }
+
     /**
      * Behandelt erkannte Bedrohungen
      *
@@ -413,7 +874,13 @@ class IntrusionPrevention
 
         // Von einer fremden Seite eingebettete Anfrage: nur protokollieren (Dritte sollen niemanden sperren lassen).
         // Scanner-Kennungen im User-Agent kann eine fremde Seite nicht setzen – die werden weiter behandelt.
-        $crossSite = 'suspicious_user_agent' !== $threat['type'] && self::isCrossSiteSubresource();
+        // Kopfzeilen wie User-Agent oder Cookies und die Methode kann eine fremde Seite nicht setzen. Referer und
+        // POST-Rumpf dagegen schon (Link oder Formular auf einer fremden Seite) – dort zählt jede fremde Herkunft.
+        $crossSite = match ($threat['source'] ?? 'uri') {
+            'header', 'method' => false,
+            'referer', 'body' => self::isThirdPartyRequest(),
+            default => self::isCrossSiteSubresource(),
+        };
 
         $action = self::getActionForSeverity((string) $threat['severity']);
         if ($crossSite) {
@@ -1363,7 +1830,7 @@ class IntrusionPrevention
         try {
             $sql = rex_sql::factory();
             $sql->setQuery(
-                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken <> 'logged_cross_site'",
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken <> 'logged_cross_site' AND severity <> 'low'",
                 [$ip, date('Y-m-d H:i:s', time() - 86400)],
             );
             return (int) $sql->getValue('count');

@@ -232,14 +232,11 @@ if (!$hasHits) {
         . '</section>';
 
     // ---------- Aufschlüsselungen ----------
-    $typeLabel = static function (string $type): string {
-        if (str_starts_with($type, 'mail_escalated_')) {
-            return rex_i18n::rawMsg('upkeep_stats_type_mail_escalated') . ': ' . substr($type, 15);
-        }
-        return rex_i18n::hasMsg('upkeep_stats_type_' . $type) ? rex_i18n::rawMsg('upkeep_stats_type_' . $type) : $type;
-    };
+    $typeLabel = static fn (string $type): string => ProtectionStats::typeLabel($type);
     $typeIcon = static fn (string $type): string => match (true) {
         str_contains($type, 'user_agent') => 'fa-user-secret',
+        'not_found_flood' === $type => 'fa-search',
+        'http_method' === $type => 'fa-exchange',
         str_contains($type, 'rate_limit') => 'fa-tachometer',
         str_starts_with($type, 'form') => 'fa-wpforms',
         str_starts_with($type, 'mail') => 'fa-envelope-o',
