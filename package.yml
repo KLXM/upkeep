@@ -76,6 +76,7 @@ permissions:
 console_commands:
     upkeep:mode: rex_upkeep_mode_command
     upkeep:ips:cleanup: rex_upkeep_ips_cleanup_command
+    upkeep:ips:unblock: rex_upkeep_ips_unblock_command
     upkeep:security:scan: rex_upkeep_security_scan_command
     upkeep:mail-reporting:send-bundle: rex_upkeep_mail_reporting_bundle_command
     upkeep:storage: rex_upkeep_storage_command

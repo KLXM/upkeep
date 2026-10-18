@@ -74,7 +74,9 @@ Alle Einstellungen liegen an einer Stelle (Upkeep > Einstellungen, nur Admins) �
 
 ### Schutz (IPS)
 
-Das IPS prüft jede Anfrage im Frontend auf bekannte Angriffsmuster (SQL-Injection, Pfad-Manipulation, Zugriffe auf Schwachstellen anderer Systeme usw.). Je nach Schwere wird die Anfrage protokolliert oder die Adresse gesperrt. „Nur beobachten“ protokolliert, ohne zu sperren.
+Das IPS prüft jede Anfrage im Frontend und im Backend auf bekannte Angriffsmuster (SQL-Injection, Pfad-Manipulation, Zugriffe auf Schwachstellen anderer Systeme usw.). Je nach Schwere wird die Anfrage protokolliert oder die Adresse gesperrt. „Nur beobachten“ protokolliert, ohne zu sperren.
+
+- **Angemeldete Backend-Nutzer** werden nie gesperrt – weder im Frontend noch im Backend. Ihre Treffer stehen nur im Protokoll (Ergebnis „Nur protokolliert (angemeldet)“, zusammengefasst), zählen nicht als Verstoß, nicht zur Verzeichnis-Suche und nicht zum Anfragelimit und gehen nicht an fail2ban oder die Berichte. Geprüft wird die Anmeldung nur, wenn ein Session-Cookie mitkommt, und dann vollständig über REDAXO (abgelaufene oder gefälschte Sitzungen zählen nicht). Ohne gültige Anmeldung – auch auf der Anmeldeseite des Backends – gilt alles wie bisher: erkennen und sperren. Gesperrte Adressen erreichen damit auch die Anmeldeseite nicht mehr; für feste Adressen des eigenen Büros ist die Positivliste gedacht.
 
 - **Sperrstufen:** Hoch: 1 Stunde. Kritisch: 24 Stunden. Dauerhaft erst, wenn dieselbe Adresse innerhalb von 7 Tagen dreimal kritisch auffällt – ein einzelner Treffer sperrt nie dauerhaft. Mittel: ab drei Treffern in 24 Stunden 30 Minuten.
 - **Anfragen fremder Websites:** Bindet eine andere Website eine Adresse Ihrer Seite ein (Bild, Skript, Stylesheet), schickt der Browser des Besuchers die Anfrage, nicht der Besucher selbst. Solche Anfragen (Kopfzeile `Sec-Fetch-Site: cross-site`, kein Seitenaufruf, kein POST) werden nur protokolliert und nicht an fail2ban gegeben. So kann niemand fremde Besucher per eingebettetem Bild sperren lassen. Weil sich diese Kopfzeilen fälschen lassen, sperren erst viele solcher Treffer in kurzer Zeit (20 in 10 Minuten) für eine Stunde – selbst aufhebbar.
@@ -90,7 +92,7 @@ Das IPS prüft jede Anfrage im Frontend auf bekannte Angriffsmuster (SQL-Injecti
 - **Suche nach vertraulichen Dateien:** `.env`, `.git`, Zugangsdaten (`.aws`, `.ssh`, `.htpasswd`), Editor-Einstellungen, Sicherungen und Datenbank-Exporte.
 - **Scanner und Pentest-Werkzeuge** am User-Agent (z. B. sqlmap, Nikto, Nuclei, ffuf, WPScan, Acunetix), nur als ganzes Wort. Allgemeine Bibliotheken wie curl oder python-requests werden nicht gesperrt; fällt eine Anfrage von Go-http-client, python-requests, python-urllib, libwww-perl oder aiohttp zusätzlich mit einem mittleren Treffer auf, gilt sie als „hoch“.
 - **Angriffe über Kopfzeilen und Cookies:** Log4Shell (auch verschleiert), Shellshock, Spring4Shell und Rückruf-Adressen von Scannern (OAST, z. B. `oast.pro`, `interact.sh`, `oastify.com`) in User-Agent, Referer, X-Forwarded-For, X-Api-Version, Cookies und weiteren Kopfzeilen; eingeschleuste Kopfzeilen (CRLF) in der Adresse.
-- **Formulare im Frontend:** Der Inhalt von POST-Anfragen (höchstens 64 KB) wird nur auf eindeutige Signaturen geprüft (Log4Shell, Spring4Shell, Rückruf-Adressen, `php://filter`), nicht auf SQL-Wörter. Das Backend wird nicht geprüft.
+- **Formulare im Frontend:** Der Inhalt von POST-Anfragen (höchstens 64 KB) wird nur auf eindeutige Signaturen geprüft (Log4Shell, Spring4Shell, Rückruf-Adressen, `php://filter`), nicht auf SQL-Wörter. POST-Anfragen im Backend werden nicht geprüft.
 - **Ungewöhnliche HTTP-Methoden:** TRACE, TRACK, DEBUG und CONNECT (hoch), WebDAV-Methoden wie PROPFIND (mittel; Office und der Windows-Explorer sind ausgenommen). GET, POST, HEAD, OPTIONS, PUT, PATCH und DELETE bleiben unberührt.
 - **Verzeichnis-Suche:** Viele Fehlerseiten (404) von einer Adresse in kurzer Zeit (Standard: 30 in 60 Sekunden) sperren eine Stunde, selbst aufhebbar. Bilder, Stylesheets, Skripte, Medien, eingebettete Anfragen, Anfragen fremder Seiten, angemeldete Backend-Nutzer und verifizierte Suchmaschinen zählen nicht mit. Einstellbar unter Einstellungen > Schutz (IPS).
 - **Ohne User-Agent:** wird nur protokolliert (niedrig), nie gesperrt. Niedrige Treffer zählen nicht zu den „wiederholten Verstößen“.
@@ -192,6 +194,7 @@ php redaxo/bin/console upkeep:mode frontend on        # frontend|backend, on|off
 php redaxo/bin/console upkeep:security:scan           # Empfehlungen aktualisieren
 php redaxo/bin/console upkeep:storage                 # Speicherübersicht berechnen (--json)
 php redaxo/bin/console upkeep:ips:cleanup             # alte IPS-Daten bereinigen
+php redaxo/bin/console upkeep:ips:unblock 1.2.3.4        # Notausgang: Sperre aufheben (--allow: dauerhaft auf die Positivliste)
 php redaxo/bin/console upkeep:mail-reporting:send-bundle --interval=3600
 ```
 

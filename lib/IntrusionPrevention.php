@@ -17,6 +17,7 @@ use rex_path;
 use rex_response;
 use rex_sql;
 use rex_sql_table;
+use rex_user;
 use Throwable;
 
 /**
@@ -71,7 +72,13 @@ class IntrusionPrevention
     /** Mindestabstand zwischen automatischen Bereinigungen (Sekunden) */
     private const CLEANUP_INTERVAL = 3600;
 
+    /** Ergebnis im Protokoll für Treffer angemeldeter Backend-Nutzer: nur protokolliert, nie gesperrt */
+    public const ACTION_AUTHENTICATED = 'logged_authenticated';
+
     private static ?rex_addon $addon = null;
+
+    /** Gültige Backend-Anmeldung für diese Anfrage (null = noch nicht geprüft) */
+    private static ?bool $authenticated = null;
 
     /** @var array<string, bool> */
     private static array $blockedCache = [];
@@ -191,7 +198,8 @@ class IntrusionPrevention
     public static function checkRequest(): void
     {
         try {
-            if (!rex::isFrontend() || !self::isActive()) {
+            // Frontend und Backend (seit 3.0.2), nie Konsole/Cronjob
+            if (PHP_SAPI === 'cli' || (!rex::isFrontend() && !rex::isBackend()) || !self::isActive()) {
                 return;
             }
             self::runCheck();
@@ -223,6 +231,16 @@ class IntrusionPrevention
         }
 
         if (self::isOnPositivliste($clientIp)) {
+            return;
+        }
+
+        // Angemeldete Backend-Nutzer werden nie gesperrt: Treffer nur protokollieren (zusammengefasst),
+        // keine Sperre, keine Zählung für Wiederholungen, 404-Flut oder Anfragelimit.
+        if (self::isAuthenticatedUser()) {
+            $threat = self::analyzeRequest($requestUri, $userAgent, $referer);
+            if ($threat !== null) {
+                self::logThreat($threat, $clientIp, $requestUri, $userAgent, self::ACTION_AUTHENTICATED);
+            }
             return;
         }
 
@@ -262,6 +280,39 @@ class IntrusionPrevention
     private static function now(): string
     {
         return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * Gibt es für diese Anfrage eine gültige Backend-Anmeldung?
+     *
+     * Ohne Session-Cookie wird keine Session gestartet (normale Besucher bleiben ohne Session). Mit Cookie prüft
+     * rex_backend_login::createUser() die Anmeldung vollständig (Ablauf der Sitzung, Status und Passwort des Nutzers),
+     * wie es der Core im Frontend auch tut. Ein gefälschtes oder abgelaufenes Cookie ergibt keinen Nutzer.
+     * Im Backend steht der Nutzer beim Laden der AddOns bereits fest.
+     */
+    public static function isAuthenticatedUser(): bool
+    {
+        if (self::$authenticated !== null) {
+            return self::$authenticated;
+        }
+        self::$authenticated = false;
+        try {
+            if (rex::getUser() instanceof rex_user) {
+                return self::$authenticated = true;
+            }
+            if (PHP_SAPI === 'cli' || !class_exists(rex_backend_login::class)) {
+                return false;
+            }
+            // Schneller Ausstieg ohne Cookie – hasSession() prüft das auch, hier ohne jeden Seiteneffekt
+            if (!isset($_COOKIE[session_name()]) || '' === (string) $_COOKIE[session_name()]) {
+                return false;
+            }
+            self::$authenticated = rex_backend_login::createUser() instanceof rex_user;
+        } catch (Throwable $e) {
+            self::exceptionLog($e);
+            self::$authenticated = false;
+        }
+        return self::$authenticated;
     }
 
     /**
@@ -819,7 +870,8 @@ class IntrusionPrevention
                 || preg_match('/\.(?:jpe?g|png|gif|webp|avif|svg|ico|bmp|css|js|mjs|map|woff2?|ttf|otf|eot|mp4|webm|mp3|ogg)$/', $path)) {
                 return;
             }
-            if (class_exists('rex_backend_login') && rex_backend_login::hasSession()) {
+            // Angemeldete Nutzer (Ergebnis aus dem Anfang der Anfrage – hier sind die Kopfzeilen schon gesendet)
+            if (self::$authenticated === true) {
                 return;
             }
 
@@ -984,6 +1036,12 @@ class IntrusionPrevention
             $uri = rex_server('REQUEST_URI', 'string', '');
             $userAgent = rex_server('HTTP_USER_AGENT', 'string', '');
 
+            // Angemeldete Backend-Nutzer (z. B. beim Testen von Formularen): nur protokollieren, nie sperren
+            if ($ip === ClientIp::get() && self::isAuthenticatedUser()) {
+                self::logThreat($threat, $ip, $uri, $userAgent, self::ACTION_AUTHENTICATED);
+                return;
+            }
+
             $isNew = self::logThreat($threat, $ip, $uri, $userAgent);
             self::callExternalLogging($threat, $ip, $uri, $userAgent, $isNew);
 
@@ -1123,7 +1181,7 @@ class IntrusionPrevention
                 FROM ' . rex::getTable('upkeep_ips_threat_log') . ' t
                 LEFT JOIN ' . rex::getTable('upkeep_ips_blocked_ips') . ' b
                     ON b.ip_address = t.ip_address AND (b.expires_at IS NULL OR b.expires_at > ?)
-                WHERE t.created_at >= ? AND b.id IS NULL
+                WHERE t.created_at >= ? AND b.id IS NULL AND t.action_taken <> \'logged_authenticated\'
                 GROUP BY t.ip_address
                 ORDER BY threat_count DESC, last_threat DESC
                 LIMIT ' . max(1, min(100, $limit)), [self::now(), date('Y-m-d H:i:s', time() - 86400)]);
@@ -1830,7 +1888,7 @@ class IntrusionPrevention
         try {
             $sql = rex_sql::factory();
             $sql->setQuery(
-                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken <> 'logged_cross_site' AND severity <> 'low'",
+                'SELECT SUM(' . self::hitExpression() . ') as count FROM ' . rex::getTable('upkeep_ips_threat_log') . " WHERE ip_address = ? AND created_at >= ? AND action_taken NOT IN ('logged_cross_site', 'logged_authenticated') AND severity <> 'low'",
                 [$ip, date('Y-m-d H:i:s', time() - 86400)],
             );
             return (int) $sql->getValue('count');
@@ -2564,13 +2622,15 @@ class IntrusionPrevention
             $today = date('Y-m-d 00:00:00');
             $weekStart = date('Y-m-d 00:00:00', (int) strtotime('monday this week'));
 
-            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?', [$today]);
+            // Treffer angemeldeter Nutzer sind keine Bedrohungen (nur in Statistik und Ereignissen sichtbar)
+            $notAuth = " AND action_taken <> '" . self::ACTION_AUTHENTICATED . "'";
+            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth, [$today]);
             $stats['threats_today'] = (int) $sql->getValue('count');
 
-            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?', [$weekStart]);
+            $sql->setQuery('SELECT SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth, [$weekStart]);
             $stats['threats_week'] = (int) $sql->getValue('count');
 
-            $sql->setQuery('SELECT threat_type, SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ? GROUP BY threat_type ORDER BY count DESC LIMIT 5', [$weekStart]);
+            $sql->setQuery('SELECT threat_type, SUM(' . $hits . ') as count FROM ' . $table . ' WHERE created_at >= ?' . $notAuth . ' GROUP BY threat_type ORDER BY count DESC LIMIT 5', [$weekStart]);
             foreach ($sql as $row) {
                 $stats['top_threats'][] = [
                     'type' => (string) $row->getValue('threat_type'),

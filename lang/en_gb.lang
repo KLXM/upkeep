@@ -1667,7 +1667,7 @@ upkeep_set_group_reporting_events = Triggers
 upkeep_set_group_api_maintenance = Maintenance API
 upkeep_set_group_api_health = System health API
 upkeep_set_ips_active = Protection (IPS)
-upkeep_set_ips_active_help = Detects attack patterns such as SQL injection or requests targeting known vulnerabilities.
+upkeep_set_ips_active_help = Detects attack patterns such as SQL injection or requests targeting known vulnerabilities. Checks frontend and backend; signed-in backend users are never blocked, their hits are only logged.
 upkeep_set_form_protection_active = Form protection
 upkeep_set_form_protection_active_help = Protects YForm forms in the frontend – no extra field and no captcha.
 upkeep_set_mail_security_active = Email protection
@@ -2056,6 +2056,7 @@ upkeep_stats_action_temporary_block = Blocked temporarily
 upkeep_stats_action_permanent_block = Blocked permanently
 upkeep_stats_action_logged = Logged only
 upkeep_stats_action_logged_cross_site = Logged only (other site)
+upkeep_stats_action_logged_authenticated = Logged only (signed in)
 upkeep_stats_source_auto = Automatic
 upkeep_stats_source_manual = Manual
 upkeep_stats_source_external = External (form and email protection)
@@ -2088,3 +2089,8 @@ upkeep_stats_status_unlocked = Self-unlocked
 upkeep_stats_show_events_for = Show events of {0}
 upkeep_stats_show_blocked = Show blocked IPs
 upkeep_filter_all_actions = All results
+
+# Ausgeschaltete Module
+upkeep_module_off_title = This area is switched off
+upkeep_module_off_text = The feature is switched off in the settings. While it is off, nothing can be edited here.
+upkeep_module_off_link = Switch on in the settings

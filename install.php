@@ -529,6 +529,61 @@ try {
 }
 unset($ips302Patterns, $now302, $table302, $check302, $category302, $pattern302, $description302, $severity302, $regex302);
 
+// 3.0.2: Zu breite Standardmuster einengen (Fehlalarme bei normalen Adressen und Suchbegriffen).
+// - CMS-Pfade (/admin, /modules/, /templates/ …) nur noch am Anfang des Pfads und mit „mittel“ statt „hoch“:
+//   ein einzelner Treffer sperrt nicht mehr, wiederholte schon. /de/administration/ oder /redaxo/ treffen nicht.
+// - Shell-Befehle (bash, curl, cat, rm …) nur noch im Befehlskontext (nach ; | & ` $( oder Zeilenumbruch,
+//   bzw. mit typischen Argumenten wie -c oder http://). „?q=cat food“ trifft nicht mehr, „;cat /etc/passwd“ schon.
+// - IP:Port nur noch als Adresse in einer URL (//1.2.3.4:8080), config.php/settings.php nur als aufgerufene Datei.
+// Geändert werden nur Zeilen, die noch genau dem Standard entsprechen (Muster, RegEx, Schweregrad, aktiv) –
+// von Ihnen bearbeitete oder abgeschaltete Muster bleiben unverändert. Einfache SQL-Befehle (alte Klassen im Update).
+$ctx302 = '(?:[;`|]|&&|\$\(|[\r\n]|%0[ad])[\s+]*(?:/(?:usr/)?(?:local/)?bin/)?';
+$narrow302 = [
+    // [altes Muster, alt RegEx, alter Schweregrad, neues Muster, neuer Schweregrad, Beschreibung]
+    ['/fileadmin/', 0, 'high', '#^/fileadmin/#i', 'medium', 'TYPO3 File Admin (Pfadanfang)'],
+    ['/user/login', 0, 'high', '#^/user/login(?:[/?]|$)#i', 'medium', 'Drupal Login (Pfadanfang)'],
+    ['/admin/', 0, 'high', '#^/admin/#i', 'medium', 'Drupal Admin-Bereich (Pfadanfang)'],
+    ['/node/', 0, 'high', '#^/node/#i', 'medium', 'Drupal Node-Zugriff (Pfadanfang)'],
+    ['/sites/default/', 0, 'high', '#^/sites/default/#i', 'medium', 'Drupal Site Config (Pfadanfang)'],
+    ['/modules/', 0, 'high', '#^/modules/#i', 'medium', 'Module-Verzeichnis (Pfadanfang)'],
+    ['/themes/', 0, 'high', '#^/themes/#i', 'medium', 'Drupal Theme-Verzeichnis (Pfadanfang)'],
+    ['/core/', 0, 'high', '#^/core/#i', 'medium', 'Drupal Core-Verzeichnis (Pfadanfang)'],
+    ['/administrator/', 0, 'high', '#^/administrator/#i', 'medium', 'Joomla Administrator (Pfadanfang)'],
+    ['/components/', 0, 'high', '#^/components/#i', 'medium', 'Joomla Components (Pfadanfang)'],
+    ['/plugins/', 0, 'high', '#^/plugins/#i', 'medium', 'Joomla Plugins (Pfadanfang)'],
+    ['/templates/', 0, 'high', '#^/templates/#i', 'medium', 'Joomla Templates (Pfadanfang)'],
+    ['/libraries/', 0, 'high', '#^/libraries/#i', 'medium', 'Joomla Libraries (Pfadanfang)'],
+    ['/admin', 0, 'high', '#^/admin(?:[/?]|$)#i', 'medium', 'Admin Panel (Pfadanfang)'],
+    ['/admin.php', 0, 'high', '#/admin\.php(?:[/?]|$)#i', 'high', 'Admin PHP Script (aufgerufene Datei)'],
+    ['/administrator', 0, 'high', '#^/administrator(?:[/?]|\.php|$)#i', 'medium', 'Administrator Panel (Pfadanfang)'],
+    ['/mysql/', 0, 'high', '#^/mysql/#i', 'medium', 'MySQL Interface (Pfadanfang)'],
+    ['/cpanel/', 0, 'high', '#^/cpanel/#i', 'medium', 'cPanel Interface (Pfadanfang)'],
+    ['/webmail/', 0, 'high', '#^/webmail/#i', 'medium', 'Webmail Interface (Pfadanfang)'],
+    ['/control/', 0, 'high', '#^/control/#i', 'medium', 'Control Panel (Pfadanfang)'],
+    ['/manager/', 0, 'high', '#^/manager/#i', 'medium', 'Manager Interface (Pfadanfang)'],
+    ['/dashboard/', 0, 'high', '#^/dashboard/#i', 'medium', 'Dashboard Interface (Pfadanfang)'],
+    ['/config.php', 0, 'critical', '#^[^?]*/config\.php(?:[/?]|$)#i', 'critical', 'PHP Config File (aufgerufene Datei)'],
+    ['/settings.php', 0, 'critical', '#^[^?]*/settings\.php(?:[/?]|$)#i', 'critical', 'Settings File (aufgerufene Datei)'],
+    ['/\b(powershell|cmd\.exe|bash|sh)\b/i', 1, 'high', '#' . $ctx302 . '(?:powershell|pwsh|cmd|bash|sh|zsh|dash|ksh)\b|\b(?:bash|sh|zsh)[\s+]+-[a-z]*c\b|/bin/(?:ba|z|da|k)?sh\b|\bcmd(?:\.exe)?[\s+]+/c\b|\bpowershell(?:\.exe)?[\s+]+-(?:e|ec|enc|encodedcommand|c|command|nop|noprofile|w|windowstyle|ep|exec|executionpolicy)\b#i', 'high', 'Shell-Programme (nur im Befehlskontext)'],
+    ['/\b(wget|curl|lynx|nc|netcat)\b/i', 1, 'high', '#' . $ctx302 . '(?:wget|curl|lynx|nc|ncat|netcat)\b|\b(?:wget|curl|lynx)[\s+]+(?:-[^\s+]+[\s+]+)*(?:https?|ftp)://|\b(?:nc|ncat|netcat)[\s+]+(?:-[^\s+]+[\s+]+)*-[a-z]*e\b#i', 'high', 'Download-/Netzwerk-Werkzeuge (nur im Befehlskontext)'],
+    ['/\b(cat|type|more|less)\s+/i', 1, 'high', '#' . $ctx302 . '(?:cat|type|more|less|head|tail)[\s+]+[^\s+]#i', 'high', 'Dateien lesen (nur im Befehlskontext)'],
+    ['/\b(rm|del|rmdir)\s+/i', 1, 'high', '#' . $ctx302 . '(?:rm|del|rmdir)[\s+]+[^\s+]#i', 'high', 'Dateien löschen (nur im Befehlskontext)'],
+    ['/\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]+\b/', 1, 'high', '~//(?:[^/?#@\s]*@)?(?:\d{1,3}\.){3}\d{1,3}:\d{1,5}(?!\d)~', 'medium', 'URL mit IP-Adresse und Port (Backdoor, SSRF)'],
+];
+try {
+    $nowNarrow302 = date('Y-m-d H:i:s');
+    foreach ($narrow302 as [$old302, $oldRegex302, $oldSeverity302, $new302, $newSeverity302, $newDescription302]) {
+        rex_sql::factory()->setQuery(
+            'UPDATE ' . rex::getTable('upkeep_ips_default_patterns') . ' SET pattern = ?, is_regex = 1, severity = ?, description = ?, updated_at = ?'
+            . ' WHERE pattern = ? AND is_regex = ? AND severity = ? AND status = 1 AND is_default = 1',
+            [$new302, $newSeverity302, $newDescription302, $nowNarrow302, $old302, $oldRegex302, $oldSeverity302],
+        );
+    }
+} catch (Throwable $e) {
+    rex_logger::logException($e);
+}
+unset($ctx302, $narrow302, $nowNarrow302, $old302, $oldRegex302, $oldSeverity302, $new302, $newSeverity302, $newDescription302);
+
 // 3.0.2: Verzeichnis-Suche (viele 404 in kurzer Zeit) – standardmäßig an
 if ($addon->getConfig('ips_404_flood') === null) {
     $addon->setConfig('ips_404_flood', 1);

@@ -1682,7 +1682,7 @@ upkeep_set_group_reporting_events = Anlässe
 upkeep_set_group_api_maintenance = Wartungs-API
 upkeep_set_group_api_health = System-Health-API
 upkeep_set_ips_active = Schutz (IPS)
-upkeep_set_ips_active_help = Erkennt Angriffsmuster wie SQL-Injection oder Zugriffe auf bekannte Schwachstellen.
+upkeep_set_ips_active_help = Erkennt Angriffsmuster wie SQL-Injection oder Zugriffe auf bekannte Schwachstellen. Prüft Frontend und Backend; angemeldete Backend-Nutzer werden nie gesperrt, ihre Treffer nur protokolliert.
 upkeep_set_form_protection_active = Formularschutz
 upkeep_set_form_protection_active_help = Schützt YForm-Formulare im Frontend – ohne zusätzliches Feld und ohne Captcha.
 upkeep_set_mail_security_active = E-Mail-Schutz
@@ -2071,6 +2071,7 @@ upkeep_stats_action_temporary_block = Zeitweise gesperrt
 upkeep_stats_action_permanent_block = Dauerhaft gesperrt
 upkeep_stats_action_logged = Nur protokolliert
 upkeep_stats_action_logged_cross_site = Nur protokolliert (fremde Seite)
+upkeep_stats_action_logged_authenticated = Nur protokolliert (angemeldet)
 upkeep_stats_source_auto = Automatisch
 upkeep_stats_source_manual = Manuell
 upkeep_stats_source_external = Extern (Formular- und E-Mail-Schutz)
@@ -2103,3 +2104,8 @@ upkeep_stats_status_unlocked = Selbst entsperrt
 upkeep_stats_show_events_for = Ereignisse von {0} anzeigen
 upkeep_stats_show_blocked = Gesperrte IPs anzeigen
 upkeep_filter_all_actions = Alle Ergebnisse
+
+# Ausgeschaltete Module
+upkeep_module_off_title = Dieser Bereich ist ausgeschaltet
+upkeep_module_off_text = Die Funktion ist in den Einstellungen ausgeschaltet. Solange sie aus ist, lässt sich hier nichts bearbeiten.
+upkeep_module_off_link = In den Einstellungen einschalten

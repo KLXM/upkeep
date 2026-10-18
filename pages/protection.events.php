@@ -17,7 +17,7 @@ $pageKey = 'upkeep/protection/events';
 $table = rex::getTable('upkeep_ips_threat_log');
 $perPage = 25;
 $severities = ['low', 'medium', 'high', 'critical'];
-$actionsKnown = ['temporary_block', 'permanent_block', 'logged', 'logged_cross_site'];
+$actionsKnown = ProtectionStats::ACTIONS;
 
 // Kopf
 $ipsOn = (bool) $addon->getConfig('ips_active', false);
@@ -132,13 +132,16 @@ $country = static function (string $ip) use ($geoAvailable, &$countryCache): str
     return $countryCache[$ip];
 };
 
-$actionBadge = static function (string $action): string {
+$actionBadge = static function (string $action) use ($t, $actionsKnown): string {
     $variant = match ($action) {
         'permanent_block' => 'danger',
         'temporary_block', 'blocked' => 'warn',
+        IntrusionPrevention::ACTION_AUTHENTICATED => 'info',
         default => 'muted',
     };
-    return Ui::badge($action ?: '-', $variant);
+    // Bekannte Ergebnisse mit lesbarer Bezeichnung, unbekannte unverändert
+    $label = in_array($action, $actionsKnown, true) ? $t('upkeep_stats_action_' . $action) : ($action ?: '-');
+    return Ui::badge($label, $variant);
 };
 
 // Filterleiste

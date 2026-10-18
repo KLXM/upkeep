@@ -23,7 +23,7 @@ final class ProtectionStats
     public const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 
     /** Bekannte Ergebnisse in action_taken */
-    public const ACTIONS = ['temporary_block', 'permanent_block', 'logged', 'logged_cross_site'];
+    public const ACTIONS = ['temporary_block', 'permanent_block', 'logged', 'logged_cross_site', IntrusionPrevention::ACTION_AUTHENTICATED];
 
     /** Bekannte Herkünfte einer Sperre */
     public const SOURCES = ['auto', 'manual', 'external', IntrusionPrevention::SOURCE_AFTER_UNLOCK];

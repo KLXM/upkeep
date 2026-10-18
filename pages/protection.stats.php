@@ -265,6 +265,7 @@ if (!$hasHits) {
         'permanent_block' => ['critical', 'fa-ban'],
         'logged' => ['low', 'fa-eye'],
         'logged_cross_site' => ['cross', 'fa-external-link'],
+        'logged_authenticated' => ['auth', 'fa-user'],
     ];
     $rows = [];
     foreach ($byAction as $action => $value) {
