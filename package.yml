@@ -31,6 +31,7 @@ page:
             perm: upkeep[]
             subpages:
                 events: {title: 'translate:upkeep_nav_protection_events', icon: 'rex-icon fa fa-list', perm: 'upkeep[ips]'}
+                stats: {title: 'translate:upkeep_nav_protection_stats', icon: 'rex-icon fa fa-bar-chart', perm: admin}
                 blocked: {title: 'translate:upkeep_nav_protection_blocked', icon: 'rex-icon fa fa-ban', perm: 'upkeep[ips]'}
                 allowlist: {title: 'translate:upkeep_nav_protection_allowlist', icon: 'rex-icon fa fa-check-circle', perm: 'upkeep[ips]'}
                 patterns: {title: 'translate:upkeep_nav_protection_patterns', icon: 'rex-icon fa fa-code', perm: 'upkeep[ips]'}

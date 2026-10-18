@@ -18,6 +18,7 @@ Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
 - Wartungs-API: Das Token als Parameter in der Adresse ist veraltet (funktioniert noch); bitte den Header verwenden.
 - Listen-Cache: Ein paralleler Request kann keinen veralteten Stand mehr in den Cache schreiben.
 - Datenbank: Die Kategorie der Positivliste ist in Installation und Update einheitlich `varchar(50)`.
+- Neu: Statistik zu Treffern, Sperren und Arten (Schutz > Statistik, nur Admins).
 
 ## 3.0.1 (2026-10-17)
 

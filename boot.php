@@ -57,6 +57,9 @@ rex_extension::register('PACKAGES_INCLUDED', static function () use ($addon, $sa
     rex_view::addCssFile($addon->getAssetsUrl('css/upkeep.css'));
     if ('upkeep' === rex_be_controller::getCurrentPagePart(1)) {
         rex_view::addCssFile($addon->getAssetsUrl('css/storage.css'));
+        if ('protection' === rex_be_controller::getCurrentPagePart(2) && 'stats' === rex_be_controller::getCurrentPagePart(3)) {
+            rex_view::addCssFile($addon->getAssetsUrl('css/stats.css'));
+        }
     }
 
     // Menü: nur aktive Wartung wird angezeigt – ruhig, ohne Zähler

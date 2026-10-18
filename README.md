@@ -83,6 +83,10 @@ Das IPS prüft jede Anfrage im Frontend auf bekannte Angriffsmuster (SQL-Injecti
 - **Fehlertolerant:** Fehlt eine Tabelle oder tritt ein Fehler auf, bleibt die Website erreichbar; der Fehler steht im System-Log.
 - **Zeit:** Alle Ablaufzeiten werden mit der Uhr von PHP geschrieben und verglichen. Unterschiedliche Zeitzonen von PHP und Datenbank verlängern oder verkürzen Sperren nicht mehr.
 
+#### Statistik
+
+Unter Schutz > Statistik (nur Admins) stehen die Zahlen für 24 Stunden, 7, 30 oder 90 Tage: Treffer gesamt, Sperren (zeitweise/dauerhaft), aktuell gesperrte IPs, Selbst-Entsperrungen, nur protokollierte Treffer (auch von fremden Seiten) und abgewiesene Formulare. Dazu ein Verlauf pro Tag bzw. Stunde nach Schweregrad (auch als Tabelle), die Aufschlüsselung nach Art, Schweregrad, Ergebnis und Herkunft der aktuellen Sperren sowie die zehn auffälligsten Adressen. Gezählt werden Treffer (zusammengefasste Ereignisse zählen mehrfach); jede Zeile führt zu den passend gefilterten Ereignissen.
+
 #### Selbst entsperren – und weiter überwacht
 
 Entsperren heißt nicht, dass eine Adresse nicht mehr überwacht wird.
@@ -165,7 +169,7 @@ Zeigt den Speicherverbrauch der Website als Balken mit Legende: Bilder, Videos, 
 | `upkeep[advisor]` | Empfehlungen einsehen und prüfen |
 | `upkeep[reporting]` | Berichte |
 
-Einstellungen, Backend-Sperre und das Übernehmen von Empfehlungen sind Admins vorbehalten.
+Einstellungen, Backend-Sperre, die Schutz-Statistik und das Übernehmen von Empfehlungen sind Admins vorbehalten.
 
 ## Konsole und Cronjobs
 

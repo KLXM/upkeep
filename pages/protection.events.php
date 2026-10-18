@@ -16,6 +16,7 @@ $pageKey = 'upkeep/protection/events';
 $table = rex::getTable('upkeep_ips_threat_log');
 $perPage = 25;
 $severities = ['low', 'medium', 'high', 'critical'];
+$actionsKnown = ['temporary_block', 'permanent_block', 'logged', 'logged_cross_site'];
 
 // Kopf
 $ipsOn = (bool) $addon->getConfig('ips_active', false);
@@ -34,6 +35,10 @@ $severityFilter = rex_get('severity', 'string', '');
 if (!in_array($severityFilter, $severities, true)) {
     $severityFilter = '';
 }
+$actionFilter = rex_get('action', 'string', '');
+if (!in_array($actionFilter, $actionsKnown, true)) {
+    $actionFilter = '';
+}
 $typeFilter = mb_substr(trim(rex_get('type', 'string', '')), 0, 64);
 $isDate = static fn (string $d): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && checkdate((int) substr($d, 5, 2), (int) substr($d, 8, 2), (int) substr($d, 0, 4));
 $dateFrom = rex_get('from', 'string', '');
@@ -43,13 +48,21 @@ $dateTo = $isDate($dateTo) ? $dateTo : '';
 
 $where = [];
 $params = [];
-if ($ipFilter !== '') {
+if ($ipFilter !== '' && filter_var($ipFilter, FILTER_VALIDATE_IP) !== false) {
+    // Vollständige Adresse: genau diese (sonst träfe 192.0.2.1 auch 192.0.2.10)
+    $where[] = 'ip_address = ?';
+    $params[] = $ipFilter;
+} elseif ($ipFilter !== '') {
     $where[] = 'ip_address LIKE ?';
     $params[] = '%' . addcslashes($ipFilter, '%_\\') . '%';
 }
 if ($severityFilter !== '') {
     $where[] = 'severity = ?';
     $params[] = $severityFilter;
+}
+if ($actionFilter !== '') {
+    $where[] = 'action_taken = ?';
+    $params[] = $actionFilter;
 }
 if ($typeFilter !== '') {
     $where[] = 'threat_type LIKE ?';
@@ -128,7 +141,7 @@ $actionBadge = static function (string $action): string {
 };
 
 // Filterleiste
-$filterParams = array_filter(['ip' => $ipFilter, 'severity' => $severityFilter, 'type' => $typeFilter, 'from' => $dateFrom, 'to' => $dateTo], static fn ($v) => $v !== '');
+$filterParams = array_filter(['ip' => $ipFilter, 'severity' => $severityFilter, 'action' => $actionFilter, 'type' => $typeFilter, 'from' => $dateFrom, 'to' => $dateTo], static fn ($v) => $v !== '');
 
 $filter = '<form class="upk-group upk-filterbar" method="get" action="' . rex_url::backendController() . '">';
 $filter .= '<input type="hidden" name="page" value="' . rex_escape($pageKey) . '">';
@@ -140,6 +153,12 @@ $filter .= '<label class="sr-only" for="upk-ev-sev">' . rex_escape($t('upkeep_ip
     . '<select class="form-control" id="upk-ev-sev" name="severity"><option value="">' . rex_escape($t('upkeep_filter_all_severities')) . '</option>';
 foreach ($severities as $sev) {
     $filter .= '<option value="' . $sev . '"' . ($severityFilter === $sev ? ' selected' : '') . '>' . rex_escape($t('upkeep_ips_severity_' . $sev)) . '</option>';
+}
+$filter .= '</select>';
+$filter .= '<label class="sr-only" for="upk-ev-action">' . rex_escape($t('upkeep_ips_action')) . '</label>'
+    . '<select class="form-control" id="upk-ev-action" name="action"><option value="">' . rex_escape($t('upkeep_filter_all_actions')) . '</option>';
+foreach ($actionsKnown as $act) {
+    $filter .= '<option value="' . $act . '"' . ($actionFilter === $act ? ' selected' : '') . '>' . rex_escape($t('upkeep_stats_action_' . $act)) . '</option>';
 }
 $filter .= '</select>';
 $filter .= '<label class="upk-filterbar-field" for="upk-ev-from"><span>' . rex_escape($t('upkeep_pages_date_from')) . '</span>'

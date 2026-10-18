@@ -1436,7 +1436,7 @@ class IntrusionPrevention
     /**
      * SQL-Ausdruck für die Trefferzahl einer Log-Zeile (mit/ohne hit_count-Spalte)
      */
-    private static function hitExpression(): string
+    public static function hitExpression(): string
     {
         static $expr = null;
         if ($expr === null) {
