@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.0.2 (2026-10-18)
+## 3.0.2 (2026-10-19)
 
 Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
 
