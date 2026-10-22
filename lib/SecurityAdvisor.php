@@ -77,6 +77,7 @@ class SecurityAdvisor
         $this->checkServerHeaders();
         $this->checkPhpConfiguration();
         $this->checkSystemVersions();
+        $this->checkPhpSecurityPatches();
         $this->checkWebserverVersion();
         $this->checkProductionMode();
         $this->checkDirectoryPermissions();
@@ -484,8 +485,13 @@ class SecurityAdvisor
         if ($memoryBytes > 512 * 1024 * 1024) { // > 512MB
             $warnings[] = $this->addon->i18n('upkeep_php_config_memory_limit_high', $memoryLimit);
         } elseif ($memoryBytes === -1) {
-            $issues[] = $this->addon->i18n('upkeep_php_config_unlimited_memory');
-            $score -= 2;
+            // Übergangsmaßnahme gegen OOM-Lücken in PHP (siehe checkPhpSecurityPatches) – bis zum Update kein Fehler
+            if (PhpAdvisories::recommendsUnlimitedMemory()) {
+                $warnings[] = $this->addon->i18n('upkeep_php_config_memory_limit_mitigation');
+            } else {
+                $issues[] = $this->addon->i18n('upkeep_php_config_unlimited_memory');
+                $score -= 2;
+            }
         }
         skip_memory_check:
 
@@ -2074,6 +2080,84 @@ class SecurityAdvisor
             'recommendations' => $allIssues,
             'description' => $this->addon->i18n('upkeep_system_versions_description')
         ];
+    }
+
+    /**
+     * Prüft die PHP-Version gegen bekannte Sicherheitslücken in PHP selbst (PhpAdvisories)
+     * und zeigt, solange sie betroffen ist, den Stand der Übergangsmaßnahmen.
+     */
+    private function checkPhpSecurityPatches(): void
+    {
+        $affecting = PhpAdvisories::affecting();
+        $recommendations = [];
+        $advisories = [];
+
+        foreach ($affecting as $advisory) {
+            $cves = implode(', ', $advisory['cves']);
+            $advisories[] = ['id' => $advisory['id'], 'cves' => $advisory['cves'], 'fixed_in' => $advisory['fixed_in'], 'url' => $advisory['url']];
+            $recommendations[] = null !== $advisory['fixed_in']
+                ? $this->addon->i18n('upkeep_php_patches_update', PHP_VERSION, $cves, $advisory['fixed_in'])
+                : $this->addon->i18n('upkeep_php_patches_no_fix', PHP_VERSION, $cves);
+            $recommendations[] = $this->addon->i18n('upkeep_php_patches_details', \rex_i18n::translate($advisory['title'], false), $advisory['url']);
+        }
+
+        if ([] !== $affecting) {
+            $mitigations = array_values(array_unique(array_merge(...array_map(static fn ($a) => $a['mitigations'], $affecting))));
+            foreach ($this->getPhpMitigationHints($mitigations) as $hint) {
+                $recommendations[] = $hint;
+            }
+            $recommendations[] = $this->addon->i18n('upkeep_php_patches_mitigation_partial');
+            $recommendations[] = $this->addon->i18n('upkeep_php_patches_backport');
+        }
+        // Konsole/Cron prüfen die PHP-Version der Kommandozeile – die Website kann eine andere nutzen
+        if ('cli' === PHP_SAPI) {
+            $recommendations[] = $this->addon->i18n('upkeep_php_patches_cli');
+        }
+
+        $this->results['checks']['php_security_patches'] = [
+            'name' => $this->addon->i18n('upkeep_check_php_security_patches'),
+            'status' => [] === $affecting ? 'success' : 'error',
+            'severity' => 'high',
+            'score' => [] === $affecting ? 10 : 0,
+            'details' => [
+                'php_version' => PHP_VERSION,
+                'sapi' => PHP_SAPI,
+                'advisories' => $advisories,
+            ],
+            'recommendations' => [] === $affecting ? array_merge([$this->addon->i18n('upkeep_php_patches_ok')], $recommendations) : $recommendations,
+            'description' => $this->addon->i18n('upkeep_php_patches_description'),
+        ];
+    }
+
+    /**
+     * Hinweise zu Übergangsmaßnahmen, die noch nicht greifen. Gesetzt werden müssen sie in php.ini,
+     * FPM-Pool oder Serverkonfiguration – ini_set() und .user.ini wirken zu spät.
+     *
+     * @param list<string> $mitigations
+     * @return list<string>
+     */
+    private function getPhpMitigationHints(array $mitigations): array
+    {
+        $hints = [];
+        if (in_array('session_upload_progress', $mitigations, true) && $this->iniEnabled('session.upload_progress.enabled')) {
+            $hints[] = $this->addon->i18n('upkeep_php_patches_upload_progress');
+        }
+        if (in_array('fatal_error_backtraces', $mitigations, true) && PHP_VERSION_ID >= 80500 && $this->iniEnabled('fatal_error_backtraces')) {
+            $hints[] = $this->addon->i18n('upkeep_php_patches_fatal_backtraces');
+        }
+        if (in_array('memory_limit', $mitigations, true) && -1 !== $this->convertToBytes((string) ini_get('memory_limit'))) {
+            $hints[] = $this->addon->i18n('upkeep_php_patches_memory_limit', (string) ini_get('memory_limit'));
+        }
+        if (in_array('post_max_size', $mitigations, true) && $this->convertToBytes((string) ini_get('post_max_size')) > 32 * 1024 * 1024) {
+            $hints[] = $this->addon->i18n('upkeep_php_patches_post_max_size', (string) ini_get('post_max_size'));
+        }
+        return $hints;
+    }
+
+    private function iniEnabled(string $setting): bool
+    {
+        $value = ini_get($setting);
+        return false !== $value && in_array(strtolower(trim($value)), ['1', 'on', 'true', 'yes'], true);
     }
 
     /**

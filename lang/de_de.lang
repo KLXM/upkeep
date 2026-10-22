@@ -889,6 +889,21 @@ upkeep_php_config_upload_max_high = Upload max filesize sehr hoch ({0})
 upkeep_php_config_post_max_high = Post max size sehr hoch ({0})
 upkeep_php_config_open_basedir_unset = Open Basedir nicht gesetzt - PHP kann auf ganze Festplatte zugreifen
 upkeep_php_config_unlimited_memory = Memory Limit unbegrenzt (-1) - schwerwiegendes DoS-Risiko
+upkeep_php_config_memory_limit_mitigation = Memory Limit -1 als Übergangsmaßnahme gegen eine PHP-Sicherheitslücke – nach dem PHP-Update wieder begrenzen
+upkeep_check_php_security_patches = PHP-Sicherheitslücken
+upkeep_php_patches_description = Prüft die PHP-Version gegen bekannte Sicherheitslücken in PHP selbst. Solche Lücken lassen sich von REDAXO aus nicht abwehren, sie greifen teils, bevor Code der Website läuft – helfen kann nur ein PHP-Update.
+upkeep_php_patches_ok = Für die PHP-Version sind keine der bekannten Sicherheitslücken offen.
+upkeep_php_patches_update = PHP {0} ist von {1} betroffen: sofort auf PHP {2} oder neuer aktualisieren (Hoster bzw. Server-Administration).
+upkeep_php_patches_no_fix = PHP {0} ist von {1} betroffen und bekommt vom PHP-Projekt keinen Fix mehr: auf eine unterstützte PHP-Version wechseln oder beim Hoster nach einem Backport fragen.
+upkeep_php_patches_details = {0} – Details: {1}
+upkeep_php_patches_upload_progress = Bis zum Update: session.upload_progress.enabled=0 in php.ini, FPM-Pool oder Serverkonfiguration setzen und PHP neu starten (ini_set() und .user.ini wirken nicht).
+upkeep_php_patches_fatal_backtraces = Bis zum Update: fatal_error_backtraces=0 in php.ini, FPM-Pool oder Serverkonfiguration setzen und PHP neu starten.
+upkeep_php_patches_memory_limit = Bis zum Update: memory_limit=-1 setzen, am besten per php_admin_value (aktuell {0}). Nach dem Update wieder begrenzen.
+upkeep_php_patches_post_max_size = Bis zum Update: post_max_size senken (aktuell {0}; 8M ohne, 32M mit Datei-Uploads), upload_max_filesize darunter halten.
+upkeep_php_patches_mitigation_partial = Die Übergangsmaßnahmen verkleinern nur einzelne Angriffswege, sicher ist erst das Update.
+upkeep_php_patches_backport = Hat der Hoster den Fix eingespielt, ohne die Versionsnummer zu ändern (z. B. Debian, Ubuntu, LTS-Anbieter), diesen Punkt nach Rückfrage ausblenden.
+upkeep_php_advisory_2026_10_21 = Remote Code Execution über Speicherfehler (OOM) und veralteten globalen Zustand
+upkeep_php_patches_cli = Geprüft mit der Kommandozeilen-PHP (Konsole/Cron). Die Website kann eine andere PHP-Version nutzen – zur Sicherheit über den Knopf „Jetzt prüfen“ im Backend gegenprüfen.
 upkeep_php_config_eval_enabled = Kritisch unsichere Funktion aktiviert: eval (sollte deaktiviert werden)
 upkeep_php_config_dangerous_function = Potentiell unsichere Funktion aktiviert: {0} (nur deaktivieren wenn nicht benötigt)
 upkeep_php_config_php_version_unsupported = PHP-Version nicht mehr unterstützt - Sicherheitsrisiko

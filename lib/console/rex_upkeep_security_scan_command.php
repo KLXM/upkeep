@@ -36,13 +36,17 @@ class rex_upkeep_security_scan_command extends rex_console_command
                  InputOption::VALUE_OPTIONAL,
                  'Filter für Ergebnisse (error, warning, success, all)',
                  'all'
-             )
-             ->addOption(
-                 'silent',
-                 's',
-                 InputOption::VALUE_NONE,
-                 'Keine Fortschrittsanzeige (für Cron-Jobs)'
              );
+
+        // Ab Symfony Console 7.2 ist --silent eine globale Option – eine eigene gleichnamige bricht den Befehl ab
+        if (!defined(OutputInterface::class . '::VERBOSITY_SILENT')) {
+            $this->addOption(
+                'silent',
+                's',
+                InputOption::VALUE_NONE,
+                'Keine Fortschrittsanzeige (für Cron-Jobs)'
+            );
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -50,7 +54,7 @@ class rex_upkeep_security_scan_command extends rex_console_command
         $format = $input->getOption('format');
         $outputFile = $input->getOption('output-file');
         $filter = $input->getOption('filter');
-        $silent = $input->getOption('silent');
+        $silent = $output->isQuiet() || ($input->hasOption('silent') && $input->getOption('silent'));
 
         if (!$silent) {
             $output->writeln('<info>Starte Sicherheitsprüfung...</info>');

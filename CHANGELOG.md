@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.0 (2026-10-22)
+
+- Neu: Empfehlungen prüfen die PHP-Version auf bekannte Sicherheitslücken in PHP selbst, zuerst die kritischen RCE-Lücken CVE-2026-109618 und CVE-2026-109619 vom 21.10.2026 (gefixt in 8.2.35, 8.3.36, 8.4.27, 8.5.12; 8.1 und älter ohne Fix). Solange die Version betroffen ist, nennt der Punkt die noch fehlenden Übergangsmaßnahmen (`session.upload_progress.enabled`, `fatal_error_backtraces`, `memory_limit`, `post_max_size`). Abwehren kann Upkeep diese Lücken nicht, nur melden. Weitere Lücken über den Extension Point `UPKEEP_PHP_ADVISORIES`.
+- Empfehlungen: `memory_limit = -1` gilt nicht mehr als kritisch, solange es als Übergangsmaßnahme gegen eine offene PHP-Lücke empfohlen ist.
+- Berichte: Auch bei Sammelversand kommt eine Sofort-Mail, sobald ein kritischer Punkt der Empfehlungen neu offen ist. Beim ersten Scan nach dem Update nur für PHP-Lücken.
+- Konsole: `upkeep:security:scan` brach mit Symfony Console ab 7.2 ab („An option named "silent" already exists“). Dort gilt jetzt die globale Option `--silent`.
+
 ## 3.0.2 (2026-10-19)
 
 Sicherheitsupdate. Danke für den Sicherheitshinweis aus der Community.
