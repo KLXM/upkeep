@@ -88,9 +88,14 @@ class MailReporting
                     return;
                 }
                 $results = (array) $ep->getSubject();
+                $newCritical = self::newCriticalChecks($results);
                 if (self::shouldSendImmediate(self::TYPE_SECURITY_ADVISOR)) {
                     self::sendSecurityAdvisorReport($results);
                 } else {
+                    // Neue kritische Punkte (z. B. eine frisch bekannte PHP-Lücke) nicht bis zum Sammelbericht liegen lassen
+                    if ([] !== $newCritical) {
+                        self::sendCriticalFindings($newCritical);
+                    }
                     self::logReport(self::TYPE_SECURITY_ADVISOR, $results);
                 }
             });
@@ -276,6 +281,61 @@ class MailReporting
             return self::sendMarkdown($subject, self::generateSecurityAdvisorMarkdown($results));
         } catch (Throwable $e) {
             self::logError('Security Advisor Report failed', $e);
+            return false;
+        }
+    }
+
+    /**
+     * Kritische, nicht ausgeblendete Empfehlungen, die beim letzten Lauf noch nicht offen waren.
+     * Der aktuelle Stand wird gemerkt; behobene Punkte melden sich beim Wiederauftreten erneut.
+     *
+     * @param array<string, mixed> $results
+     * @return array<string, array<string, mixed>>
+     */
+    private static function newCriticalChecks(array $results): array
+    {
+        $advisor = new SecurityAdvisor();
+        $current = [];
+        foreach ((array) ($results['checks'] ?? []) as $key => $check) {
+            if ('error' !== ($check['status'] ?? '') || 'high' !== ($check['severity'] ?? '') || $advisor->isCheckReleased((string) $key)) {
+                continue;
+            }
+            // Eine weitere PHP-Lücke im selben Check ist ein neuer Befund
+            $ids = array_column((array) ($check['details']['advisories'] ?? []), 'id');
+            $current[$key . ([] !== $ids ? ':' . implode(',', $ids) : '')] = $check;
+        }
+
+        // Erster Lauf: bestehende Punkte still übernehmen, nur PHP-Lücken sofort melden
+        $known = self::addon()->getConfig('mail_reporting_known_critical', null);
+        if (!is_array($known)) {
+            $known = array_values(array_filter(array_keys($current), static fn ($key) => !str_starts_with($key, 'php_security_patches')));
+        }
+        self::addon()->setConfig('mail_reporting_known_critical', array_keys($current));
+
+        return array_diff_key($current, array_flip($known));
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $checks
+     */
+    private static function sendCriticalFindings(array $checks): bool
+    {
+        try {
+            $raw = static fn ($v) => html_entity_decode((string) $v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $md = "# Upkeep: neue kritische Empfehlungen\n\n";
+            $md .= '**Report Key:** ' . self::cell(self::getKey()) . '  ' . "\n";
+            $md .= '**Timestamp:** ' . date('Y-m-d H:i:s') . "\n\n";
+            foreach ($checks as $check) {
+                $md .= '## ' . self::cell($raw($check['name'] ?? '')) . "\n\n";
+                foreach ((array) ($check['recommendations'] ?? []) as $rec) {
+                    $md .= '- ' . self::cell($raw(is_array($rec) ? ($rec['text'] ?? $rec['title'] ?? '') : $rec)) . "\n";
+                }
+                $md .= "\n";
+            }
+            $names = implode(', ', array_map(static fn ($c) => $raw($c['name'] ?? ''), $checks));
+            return self::sendMarkdown('Upkeep: kritisch - ' . mb_substr($names, 0, 120), $md);
+        } catch (Throwable $e) {
+            self::logError('Critical findings notification failed', $e);
             return false;
         }
     }

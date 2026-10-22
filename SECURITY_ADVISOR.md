@@ -16,7 +16,7 @@ Das Ergebnis wird zwischengespeichert (`advisor_results`, Zeitpunkt in `advisor_
 php redaxo/bin/console upkeep:security:scan                    # Tabelle
 php redaxo/bin/console upkeep:security:scan --format=summary
 php redaxo/bin/console upkeep:security:scan --format=json --output-file=scan.json
-php redaxo/bin/console upkeep:security:scan --filter=error --silent
+php redaxo/bin/console upkeep:security:scan --filter=error --silent   # ab Symfony Console 7.2 die globale Option: keine Ausgabe
 ```
 
 Mit `--filter` (`error`, `warning`, `success`, `all`) begrenzen Sie die Ausgabe. Der Rückgabewert ist `0` ohne Auffälligkeit, `1` bei Warnungen und `2` bei kritischen Problemen, so lässt sich der Befehl in Skripten und Monitoring auswerten.
@@ -25,6 +25,7 @@ Mit `--filter` (`error`, `warning`, `success`, `all`) begrenzen Sie die Ausgabe.
 
 - **REDAXO:** Live-Modus, Debug-Modus, Version und verfügbare Updates, Produktivbetrieb
 - **Server:** PHP-Einstellungen und -Version, Webserver-Version, Datei- und Verzeichnisrechte
+- **PHP-Sicherheitslücken:** ob die PHP-Version von einer bekannten Lücke in PHP selbst betroffen ist (z. B. [CVE-2026-109618/109619](https://www.php.net/archive/2026.php#2026-10-21-5), gefixt in 8.2.35, 8.3.36, 8.4.27, 8.5.12; 8.1 und älter ohne Fix). Solange die Version betroffen ist, zeigt der Punkt zusätzlich, welche Übergangsmaßnahmen noch fehlen. Abwehren kann Upkeep solche Lücken nicht: Sie greifen teils, bevor Code der Website läuft, und die Maßnahmen wirken nur in php.ini, FPM-Pool oder Serverkonfiguration. Spielt der Hoster den Fix ein, ohne die Versionsnummer zu ändern (Debian, Ubuntu, LTS-Anbieter), blenden Admins den Punkt aus. Konsole und Cronjob prüfen die PHP-Version der Kommandozeile, die von der Website abweichen kann.
 - **Header:** `Server`, `X-Powered-By` und Sicherheits-Header. Dafür ruft Upkeep die eigene Startseite ab und liest deren Antwort-Header (Timeout wenige Sekunden). Ist die Seite nicht erreichbar, bleibt der Punkt als Hinweis stehen.
 - **HTTPS:** Verschlüsselung für Frontend und Backend, HSTS
 - **Content Security Policy** für das Backend
@@ -61,7 +62,9 @@ $results = SecurityAdvisor::getCachedResults();            // null, wenn nie gep
 $recommendations = (new SecurityAdvisor())->getRecommendations(); // open, hidden, passed, last_check
 ```
 
-Berichte per E-Mail (Einstellungen > Berichte, Anlass „Empfehlungen“) informieren über neue Ergebnisse.
+Berichte per E-Mail (Einstellungen > Berichte, Anlass „Empfehlungen“) informieren über neue Ergebnisse. Auch bei Sammelversand kommt eine Sofort-Mail, sobald ein kritischer Punkt neu offen ist (nicht ausgeblendet; erneut, wenn er behoben war und wiederkommt, oder bei einer weiteren PHP-Lücke). Beim ersten Scan nach dem Update meldet sie nur PHP-Lücken, bestehende Punkte stehen weiter im Sammelbericht. Damit das ohne Zutun passiert, den Cronjob „Upkeep: Empfehlungen aktualisieren“ täglich laufen lassen.
+
+Weitere PHP-Lücken lassen sich über den Extension Point `UPKEEP_PHP_ADVISORIES` ergänzen (Aufbau siehe `KLXM\Upkeep\PhpAdvisories`).
 
 ## Fehlersuche
 
