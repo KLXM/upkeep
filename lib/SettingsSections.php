@@ -122,6 +122,9 @@ final class SettingsSections
                     ['title' => 'upkeep_set_group_form_behaviour', 'fields' => [
                         ['key' => 'form_protection_message', 'type' => 'text', 'default' => ''],
                         ['key' => 'form_protection_exclude', 'type' => 'textarea', 'default' => '', 'explain' => 'formnames'],
+                        ['key' => 'form_protection_exclude_paths', 'type' => 'textarea', 'default' => '', 'placeholder' => "/service/newsletter/newsletter-bestaetigung/\n/*/double-opt-in/*"],
+                        ['key' => 'form_protection_exclude_types', 'type' => 'textarea', 'default' => 'ycom_auth', 'placeholder' => "ycom_auth\nynewsletter_auth"],
+                        ['key' => 'form_protection_exclude_auto_submit', 'type' => 'switch', 'default' => 1],
                         ['key' => 'form_protection_report_ips', 'type' => 'switch', 'default' => 1],
                         ['key' => 'form_protection_log_days', 'type' => 'number', 'default' => 30, 'min' => 1, 'max' => 365],
                     ]],

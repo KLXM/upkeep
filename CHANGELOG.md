@@ -2,6 +2,10 @@
 
 ## 3.1.1 (2026-11-04)
 
+- Formularschutz: Ausnahmen lassen sich unter Einstellungen > Formularschutz selbst festlegen:
+  - **Ausgenommene Seiten (URL-Pfade):** Formulare auf diesen Seiten werden nicht geprüft, z. B. `/service/newsletter/newsletter-bestaetigung/`. Ein Pfad pro Zeile, gilt für alles darunter, `*` als Platzhalter.
+  - **Ausgenommene Feldtypen und Validierungen:** z. B. `ynewsletter_auth`. Erfasst den Feldtyp und bei `validate`/`action` deren Namen, auch längere Namen mit gleichem Anfang. Vorbelegt mit `ycom_auth` (bisher fest eingebaut).
+  - **Selbst abgeschickte Formulare ausnehmen** (Schalter, standardmäßig an): siehe nächster Punkt.
 - Formularschutz: Formulare, die der Code selbst abschickt (`setObjectparams('send', 1)` bzw. `objparams|send|1`), werden nicht mehr abgewiesen. Betroffen waren vor allem Bestätigungslinks für Newsletter und Double-Opt-in (z. B. YNewsletter mit `ynewsletter_auth`): Sie werden beim Aufruf des Links verarbeitet, ohne dass das Formular je angezeigt wird. Ohne angezeigtes Formular fehlte das Zeit-Token, und Upkeep meldete „Ihre Nachricht konnte nicht gesendet werden“. Von Besuchern abgeschickte Formulare werden weiterhin geprüft: YForm übernimmt `send` aus dem Request erst nach der Prüfung, die Ausnahme lässt sich von außen nicht auslösen.
 
 ## 3.1.0 (2026-10-22)

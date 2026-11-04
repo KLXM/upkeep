@@ -159,7 +159,14 @@ $yform->setObjectparams('upkeep_spam_protection', 0);
 objparams|upkeep_spam_protection|0
 ```
 
-Oder unter Einstellungen > Formularschutz > Ausgenommene Formulare (Formularnamen). Abgewiesene Einsendungen sehen Sie unter Upkeep > Schutz > Formulare.
+Oder unter Einstellungen > Formularschutz:
+
+- **Ausgenommene Formulare:** Formularnamen, eins pro Zeile.
+- **Ausgenommene Seiten (URL-Pfade):** z. B. `/service/newsletter/newsletter-bestaetigung/` – gilt für den Pfad und alles darunter, `*` steht für beliebige Zeichen.
+- **Ausgenommene Feldtypen und Validierungen:** z. B. `ynewsletter_auth`; vorbelegt mit `ycom_auth`.
+- **Selbst abgeschickte Formulare ausnehmen:** standardmäßig an (siehe oben).
+
+Abgewiesene Einsendungen sehen Sie unter Upkeep > Schutz > Formulare.
 
 ### E-Mail-Schutz
 

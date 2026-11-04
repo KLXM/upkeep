@@ -25,9 +25,12 @@ use Throwable;
  * Opt-out per form: $yform->setObjectparams('upkeep_spam_protection', 0)
  * or the definition line objparams|upkeep_spam_protection|0
  *
- * Not protected: backend forms, login forms (ycom_auth) and forms the developer submits
- * programmatically (send = 1 before YForm reads the request), e.g. double-opt-in
- * confirmation links – they are never displayed, so there is no token to check.
+ * Not protected (configurable under Settings > Form protection):
+ * - excluded form names, excluded URL paths and excluded field/validation types
+ *   (default: ycom_auth – password managers submit login forms instantly)
+ * - forms the developer submits programmatically (send = 1 before YForm reads the request),
+ *   e.g. double-opt-in confirmation links: never displayed, so there is no token to check.
+ * Backend forms are never protected.
  */
 final class FormProtection
 {
@@ -58,6 +61,9 @@ final class FormProtection
         'rate_limit' => 5,
         'rate_window' => 600,
         'exclude' => '',
+        'exclude_paths' => '',
+        'exclude_types' => 'ycom_auth',
+        'exclude_auto_submit' => 1,
         'message' => '',
         'log_days' => 30,
     ];
@@ -128,16 +134,20 @@ final class FormProtection
             if (self::isExcluded((string) ($objparams['form_name'] ?? ''))) {
                 return;
             }
-            if (self::isAutoSubmitted($objparams)) {
+            if ((bool) self::config('exclude_auto_submit') && self::isAutoSubmitted($objparams)) {
                 return; // confirmation links etc.: processed without the form ever being shown
             }
+            if (self::isExcludedPath(self::requestPath())) {
+                return;
+            }
+            $excludedTypes = self::lines((string) self::config('exclude_types'));
             foreach ((array) ($objparams['form_elements'] ?? []) as $element) {
                 $type = is_array($element) ? trim((string) ($element[0] ?? '')) : '';
                 if (self::ELEMENT === $type) {
                     return; // already added
                 }
-                if (str_starts_with($type, 'ycom_auth')) {
-                    return; // login forms: password managers submit instantly
+                if (self::isExcludedType($element, $excludedTypes)) {
+                    return; // e.g. ycom_auth (login forms), ynewsletter_auth (confirmation links)
                 }
             }
             $objparams['form_elements'][] = [self::ELEMENT, self::ELEMENT];
@@ -172,6 +182,72 @@ final class FormProtection
             return false;
         }
         return false === $value || 0 === $value || '0' === $value || 'false' === $value || 'off' === $value;
+    }
+
+    /**
+     * Excluded field/validation types: matches the element type (ycom_auth…) and, for
+     * validate/action lines, their name (validate|ynewsletter_auth|… -> ynewsletter_auth).
+     * An entry also matches longer names with the same start (ycom_auth -> ycom_auth_password).
+     *
+     * @param list<string> $excludedTypes
+     */
+    public static function isExcludedType(mixed $element, array $excludedTypes): bool
+    {
+        if (!is_array($element) || [] === $excludedTypes) {
+            return false;
+        }
+        $candidates = [trim((string) ($element[0] ?? ''))];
+        if (in_array($candidates[0], ['validate', 'action'], true)) {
+            $candidates[] = trim((string) ($element[1] ?? ''));
+        }
+        foreach ($candidates as $candidate) {
+            if ('' === $candidate) {
+                continue;
+            }
+            foreach ($excludedTypes as $entry) {
+                if (str_starts_with($candidate, $entry)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Excluded URL paths, one per line: prefix match (e.g. /service/newsletter/), an asterisk
+     * matches any characters (e.g. /de/STAR/bestaetigung/ with STAR = *). Query strings are ignored.
+     */
+    public static function isExcludedPath(string $path): bool
+    {
+        if ('' === $path) {
+            return false;
+        }
+        foreach (self::lines((string) self::config('exclude_paths')) as $entry) {
+            $entry = '/' . ltrim($entry, '/');
+            if (str_contains($entry, '*')) {
+                $regex = '#^' . str_replace('\\*', '.*', preg_quote($entry, '#')) . '$#i';
+                if (1 === preg_match($regex, $path)) {
+                    return true;
+                }
+            } elseif (str_starts_with(strtolower($path), strtolower($entry))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function requestPath(): string
+    {
+        $path = parse_url((string) rex_server('REQUEST_URI', 'string', ''), PHP_URL_PATH);
+        return is_string($path) ? $path : '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function lines(string $value): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/\R/', $value) ?: []), static fn (string $l): bool => '' !== $l && !str_starts_with($l, '#')));
     }
 
     private static function isExcluded(string $formName): bool
