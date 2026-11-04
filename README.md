@@ -132,7 +132,9 @@ datepattern = {^LN-BEG}%%Y-%%m-%%d %%H:%%M:%%S
 
 ### Formularschutz (YForm)
 
-Upkeep hängt sich automatisch in alle YForm-Formulare im Frontend ein. Sie müssen kein Feld anlegen; Formulare im Backend und Anmeldeformulare (`ycom_auth`) bleiben unberührt. Für Besucher ändert sich nichts – es gibt kein Captcha.
+Upkeep hängt sich automatisch in alle YForm-Formulare im Frontend ein. Sie müssen kein Feld anlegen; Formulare im Backend bleiben unberührt, Anmeldeformulare (`ycom_auth`) sind standardmäßig ausgenommen. Für Besucher ändert sich nichts – es gibt kein Captcha.
+
+Ebenfalls standardmäßig ausgenommen sind Formulare, die der Code selbst abschickt (`$yform->setObjectparams('send', 1)` bzw. `objparams|send|1`), zum Beispiel Bestätigungslinks für Newsletter oder Double-Opt-in (`ynewsletter_auth`). Sie werden nie angezeigt, also gibt es nichts zu prüfen. Von Besuchern abgeschickte Formulare bleiben geschützt. Beides lässt sich in den Einstellungen ändern (siehe unten).
 
 Geprüft wird unsichtbar und mit Punkten statt fester Regeln:
 
@@ -157,7 +159,14 @@ $yform->setObjectparams('upkeep_spam_protection', 0);
 objparams|upkeep_spam_protection|0
 ```
 
-Oder unter Einstellungen > Formularschutz > Ausgenommene Formulare (Formularnamen). Abgewiesene Einsendungen sehen Sie unter Upkeep > Schutz > Formulare.
+Oder unter Einstellungen > Formularschutz:
+
+- **Ausgenommene Formulare:** Formularnamen, eins pro Zeile.
+- **Ausgenommene Seiten (URL-Pfade):** z. B. `/service/newsletter/newsletter-bestaetigung/` – gilt für den Pfad und alles darunter, `*` steht für beliebige Zeichen.
+- **Ausgenommene Feldtypen und Validierungen:** z. B. `ynewsletter_auth`; vorbelegt mit `ycom_auth`.
+- **Selbst abgeschickte Formulare ausnehmen:** standardmäßig an (siehe oben).
+
+Abgewiesene Einsendungen sehen Sie unter Upkeep > Schutz > Formulare.
 
 ### E-Mail-Schutz
 
