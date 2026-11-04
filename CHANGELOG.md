@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1 (2026-11-04)
+
+- Formularschutz: Formulare, die der Code selbst abschickt (`setObjectparams('send', 1)` bzw. `objparams|send|1`), werden nicht mehr abgewiesen. Betroffen waren vor allem Bestätigungslinks für Newsletter und Double-Opt-in (z. B. YNewsletter mit `ynewsletter_auth`): Sie werden beim Aufruf des Links verarbeitet, ohne dass das Formular je angezeigt wird. Ohne angezeigtes Formular fehlte das Zeit-Token, und Upkeep meldete „Ihre Nachricht konnte nicht gesendet werden“. Von Besuchern abgeschickte Formulare werden weiterhin geprüft: YForm übernimmt `send` aus dem Request erst nach der Prüfung, die Ausnahme lässt sich von außen nicht auslösen.
+
 ## 3.1.0 (2026-10-22)
 
 - Neu: Empfehlungen prüfen die PHP-Version auf bekannte Sicherheitslücken in PHP selbst, zuerst die kritischen RCE-Lücken CVE-2026-109618 und CVE-2026-109619 vom 21.10.2026 (gefixt in 8.2.35, 8.3.36, 8.4.27, 8.5.12; 8.1 und älter ohne Fix). Solange die Version betroffen ist, nennt der Punkt die noch fehlenden Übergangsmaßnahmen (`session.upload_progress.enabled`, `fatal_error_backtraces`, `memory_limit`, `post_max_size`). Abwehren kann Upkeep diese Lücken nicht, nur melden. Weitere Lücken über den Extension Point `UPKEEP_PHP_ADVISORIES`.

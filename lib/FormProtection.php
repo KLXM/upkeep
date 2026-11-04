@@ -24,6 +24,10 @@ use Throwable;
  *
  * Opt-out per form: $yform->setObjectparams('upkeep_spam_protection', 0)
  * or the definition line objparams|upkeep_spam_protection|0
+ *
+ * Not protected: backend forms, login forms (ycom_auth) and forms the developer submits
+ * programmatically (send = 1 before YForm reads the request), e.g. double-opt-in
+ * confirmation links – they are never displayed, so there is no token to check.
  */
 final class FormProtection
 {
@@ -124,6 +128,9 @@ final class FormProtection
             if (self::isExcluded((string) ($objparams['form_name'] ?? ''))) {
                 return;
             }
+            if (self::isAutoSubmitted($objparams)) {
+                return; // confirmation links etc.: processed without the form ever being shown
+            }
             foreach ((array) ($objparams['form_elements'] ?? []) as $element) {
                 $type = is_array($element) ? trim((string) ($element[0] ?? '')) : '';
                 if (self::ELEMENT === $type) {
@@ -137,6 +144,26 @@ final class FormProtection
         } catch (Throwable $e) {
             rex_logger::logException($e);
         }
+    }
+
+    /**
+     * Form submitted programmatically by the developer: setObjectparams('send', 1) or the definition
+     * line objparams|send|1. YFORM_GENERATE runs before YForm sets send from the request, so a
+     * visitor cannot trigger this – a regular submission still gets the full protection.
+     *
+     * @param array<string, mixed> $objparams
+     */
+    public static function isAutoSubmitted(array $objparams): bool
+    {
+        if ('1' === trim((string) ($objparams['send'] ?? ''))) {
+            return true;
+        }
+        foreach ((array) ($objparams['form_elements'] ?? []) as $element) {
+            if (is_array($element) && 'objparams' === trim((string) ($element[0] ?? '')) && 'send' === trim((string) ($element[1] ?? '')) && '1' === trim((string) ($element[2] ?? ''))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function isOptOut(mixed $value): bool

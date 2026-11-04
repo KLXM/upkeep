@@ -134,6 +134,8 @@ datepattern = {^LN-BEG}%%Y-%%m-%%d %%H:%%M:%%S
 
 Upkeep hängt sich automatisch in alle YForm-Formulare im Frontend ein. Sie müssen kein Feld anlegen; Formulare im Backend und Anmeldeformulare (`ycom_auth`) bleiben unberührt. Für Besucher ändert sich nichts – es gibt kein Captcha.
 
+Ebenfalls ausgenommen sind Formulare, die der Code selbst abschickt (`$yform->setObjectparams('send', 1)` bzw. `objparams|send|1`), zum Beispiel Bestätigungslinks für Newsletter oder Double-Opt-in (`ynewsletter_auth`). Sie werden nie angezeigt, also gibt es nichts zu prüfen. Von Besuchern abgeschickte Formulare bleiben geschützt.
+
 Geprüft wird unsichtbar und mit Punkten statt fester Regeln:
 
 - Falle (Feld, das nur Bots ausfüllen), signierter Zeitstempel und Mindestzeit fürs Ausfüllen
